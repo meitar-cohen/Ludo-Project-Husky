@@ -5,13 +5,11 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import javax.swing.border.EmptyBorder;
+import java.util.Random;
+import controller.GameController;
+import enums.RollAction;
+import model.Game;
 
-/**
- * Game screen - PROTOTYPE.
- * Runs a fixed demo scenario (scripted dice results, no real game logic) so that
- * users can try a full flow: take a piece out of the castle, move it, answer a
- * question, land on a surprise square, see a turn pass, and finish the game.
- */
 public class GameView extends JPanel {
 
     private static final Color BACKGROUND = new Color(14, 22, 54);
@@ -20,16 +18,9 @@ public class GameView extends JPanel {
     private static final Color INK = new Color(14, 23, 55);
     private static final Color LIGHT = new Color(244, 247, 254);
 
-    private enum Stage {
-        P1_ROLL_1, P1_TAKE_OUT, P1_ROLL_2, P1_MOVE_2,
-        OTHER_ROLL, OTHER_PASS,
-        P1_ROLL_3, P1_MOVE_3, BUSY, DONE
-    }
-
     private final String[] names;
     private final String[] colors;
     private final String difficulty;
-    private final boolean easy;
 
     private final BoardPanel board;
     private final DicePanel dice;
@@ -43,11 +34,9 @@ public class GameView extends JPanel {
 
     private Timer gameTimer;
     private int secondsElapsed = 0;
-    private int currentPlayer = 0;
-    private Stage stage = Stage.P1_ROLL_1;
-    private int pendingSteps = 0;
+    private final GameController controller;
 
-    /** Default constructor kept for compatibility (2 demo players, Easy). */
+    /** Default constructor kept for two-player compatibility. */
     public GameView() {
         this(new String[]{"Player 1", "Player 2"}, new String[]{"Red", "Blue"}, "Easy");
     }
@@ -56,7 +45,8 @@ public class GameView extends JPanel {
         this.names = names;
         this.colors = colors;
         this.difficulty = difficulty == null ? "Easy" : difficulty;
-        this.easy = "Easy".equals(this.difficulty);
+        Game game = new Game(names, colors, this.difficulty);
+        this.controller = new GameController(game);
 
         setOpaque(false);
         setLayout(new BorderLayout(0, 14));
@@ -73,7 +63,7 @@ public class GameView extends JPanel {
         JLabel brand = new JLabel("LUDO  /  GAME ARENA");
         brand.setFont(new Font("Segoe UI", Font.BOLD, 24));
         brand.setForeground(Color.WHITE);
-        JLabel tagline = new JLabel("The board is set. Let the game begin!");
+        JLabel tagline = new JLabel("Let the game begin!");
         tagline.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         tagline.setForeground(new Color(191, 203, 242));
         heading.add(brand);
@@ -127,7 +117,7 @@ public class GameView extends JPanel {
         board = new BoardPanel(this.difficulty, colors);
         board.setOpaque(false);
         board.setPieceClickListener(new BoardPanel.PieceClickListener() {
-            @Override public void castlePieceClicked() { onCastlePieceClicked(); }
+            @Override public void castlePieceClicked(int slot) { onCastlePieceClicked(slot); }
             @Override public void boardPieceClicked() { onBoardPieceClicked(); }
         });
         boardCard.add(board, BorderLayout.CENTER);
@@ -163,7 +153,7 @@ public class GameView extends JPanel {
 
         stack.add(leftAligned(sectionLabel("DICE")));
         stack.add(Box.createVerticalStrut(4));
-        dice = new DicePanel(!easy, "Hard".equals(this.difficulty) ? "ULTRA BOOST" : "BOOST");
+        dice = new DicePanel(!controller.isEasyGame(), "Hard".equals(this.difficulty) ? "ULTRA BOOST" : "BOOST");
         stack.add(leftAligned(dice));
         formulaLabel = new JLabel(" ");
         formulaLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
@@ -203,7 +193,7 @@ public class GameView extends JPanel {
         endGameButton.addActionListener(e -> showEndScreen());
         stack.add(leftAligned(endGameButton));
         stack.add(Box.createVerticalStrut(7));
-        JButton menuButton = createButton("Main Menu", new Color(103, 117, 143));
+        JButton menuButton = createButton("Leave game", new Color(103, 117, 143));
         menuButton.addActionListener(e -> backToMenu());
         stack.add(leftAligned(menuButton));
         // The board legend is accessible from the board header.
@@ -231,87 +221,61 @@ public class GameView extends JPanel {
         g.dispose();
     }
 
-    // ------------------------------------------------------------------
-    // Scripted scenario
-    // ------------------------------------------------------------------
-
     private void onRoll() {
-        switch (stage) {
-            case P1_ROLL_1:
-                showRoll(6, 2);
-                setStatus("Rolled a 6! Click a highlighted piece in your castle.");
-                board.highlightCastlePieces();
-                rollButton.setEnabled(false);
-                stage = Stage.P1_TAKE_OUT;
-                break;
-            case P1_ROLL_2:
-                pendingSteps = easy ? showRoll(4, 2) : showRoll(3, 2);
-                setStatus("Move " + pendingSteps + " squares. Click the highlighted piece on the board.");
-                board.highlightBoardPiece();
-                rollButton.setEnabled(false);
-                stage = Stage.P1_MOVE_2;
-                break;
-            case OTHER_ROLL:
-                showRoll(3, 3);
-                setStatus("No 6 for " + names[currentPlayer] + ". No piece can move. Click Next Turn.");
-                rollButton.setText("Next Turn");
-                stage = Stage.OTHER_PASS;
-                break;
-            case OTHER_PASS:
-                currentPlayer++;
-                rollButton.setText("Roll Dice");
-                dice.clear();
-                formulaLabel.setText(" ");
-                if (currentPlayer < names.length) {
-                    stage = Stage.OTHER_ROLL;
-                } else {
-                    currentPlayer = 0;
-                    stage = Stage.P1_ROLL_3;
-                }
-                refreshPlayers();
-                setStatus(names[currentPlayer] + "'s turn. Click Roll Dice.");
-                break;
-            case P1_ROLL_3:
-                pendingSteps = easy ? showRoll(4, 2) : showRoll(3, 2);
-                setStatus("Move " + pendingSteps + " squares. Click the highlighted piece on the board.");
-                board.highlightBoardPiece();
-                rollButton.setEnabled(false);
-                stage = Stage.P1_MOVE_3;
-                break;
-            default:
-                break;
+        if (!controller.canRoll()) return;
+        if ("Next Turn".equals(rollButton.getText())) {
+            passTurn();
+            return;
+        }
+
+        board.setActivePlayerColor(controller.getCurrentPlayerColor());
+        int stepDie = controller.rollStepDie();
+        int boostDie = controller.rollBoostDie();
+        formulaLabel.setText(" ");
+        rollButton.setEnabled(false);
+        rollButton.setText("Rolling...");
+        dice.animate(stepDie, boostDie, () -> finishRoll(stepDie, boostDie));
+    }
+
+    private void finishRoll(int stepDie, int boostDie) {
+        RollAction action = controller.finishRoll(stepDie, boostDie);
+        if (action == RollAction.TAKE_OUT) {
+            setStatus("Rolled a 6! Click a highlighted piece in your castle.");
+            board.highlightCastlePieces(controller.consumeFirstTurnPulse());
+            rollButton.setEnabled(false);
+            rollButton.setText("Select Your Piece");
+        } else if (action == RollAction.MOVE) {
+            setStatus("Move " + controller.getPendingSteps() + " squares. Click the highlighted piece on the board.");
+            board.highlightBoardPiece(controller.consumeFirstTurnPulse());
+            rollButton.setEnabled(false);
+            rollButton.setText("Select Your Piece");
+        } else {
+            setStatus("A 6 is needed to leave the castle. Click Next Turn.");
+            rollButton.setText("Next Turn");
+            rollButton.setEnabled(true);
         }
     }
 
-    private void onCastlePieceClicked() {
-        if (stage != Stage.P1_TAKE_OUT) return;
-        board.placeFirstPieceOnStart();
+    private void onCastlePieceClicked(int slot) {
+        if (!controller.isInTakeOutStage()) return;
+        if (!board.placeActivePieceOnStart(slot)) return;
+        controller.takeOutActivePiece(slot);
         setStatus("Piece on start! You earned another turn. Click Roll Dice.");
         rollButton.setEnabled(true);
-        stage = Stage.P1_ROLL_2;
+        rollButton.setText("Roll Dice");
     }
 
     private void onBoardPieceClicked() {
-        if (stage == Stage.P1_MOVE_2) {
-            stage = Stage.BUSY;
-            int target = board.getFirstPieceStep() + pendingSteps;
-            board.animateFirstPieceTo(target, () -> {
-                if (easy) {
-                    setStatus("Moved " + pendingSteps + " squares.");
+        if (controller.isInMoveStage()) {
+            int target = controller.getMoveTarget(board.getActiveRouteSize());
+            if (target < 0) return;
+            controller.moveActivePiece(target, board.getActiveRouteSize());
+            board.animateActivePieceTo(target, () -> {
+                if (controller.isEasyGame()) {
+                    setStatus("Moved " + controller.getPendingSteps() + " squares.");
                     passTurn();
                 } else {
                     askQuestion();
-                }
-            });
-        } else if (stage == Stage.P1_MOVE_3) {
-            stage = Stage.BUSY;
-            int target = board.getFirstPieceStep() + pendingSteps;
-            board.animateFirstPieceTo(target, () -> {
-                if (easy) {
-                    setStatus("Protection square! Your piece is safe from capture here.");
-                    finishScenario();
-                } else {
-                    showSurprise();
                 }
             });
         }
@@ -322,14 +286,13 @@ public class GameView extends JPanel {
         QuestionDialog dialog = new QuestionDialog(owner);
         dialog.setVisible(true);
         boolean correct = dialog.isCorrect();
-        int target = board.getFirstPieceStep() + (correct ? 1 : -1);
+        int target = controller.getAnswerMoveTarget(correct, board.getActiveRouteSize());
         setStatus(correct
             ? "Correct! Move 1 square forward."
             : "Wrong answer. Move 1 square back.");
-        board.animateFirstPieceTo(target, this::passTurn);
+        board.animateActivePieceTo(target, this::passTurn);
     }
 
-    // חלון הפתעה מעוצב - תרחיש הדגמה בלבד
     private void showSurprise() {
         Window owner = SwingUtilities.getWindowAncestor(this);
         JDialog dialog = new JDialog(owner, "Ludo - Surprise",
@@ -339,7 +302,6 @@ public class GameView extends JPanel {
         dialog.setSize(510, 390);
         dialog.setResizable(false);
 
-        // רקע סגול-כחול המתאים לשאר מסכי המשחק
         JPanel background = new JPanel(new GridBagLayout()) {
             @Override
             protected void paintComponent(Graphics g) {
@@ -352,7 +314,6 @@ public class GameView extends JPanel {
             }
         };
 
-        // כרטיס לבן עם פינות מעוגלות
         JPanel card = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
@@ -385,7 +346,6 @@ public class GameView extends JPanel {
         subtitle.setForeground(new Color(103, 111, 136));
         subtitle.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        // הצגת השפעת ההפתעה בצורה ברורה, ללא אייקון נוצץ
         JPanel eventCard = new JPanel(new GridBagLayout()) {
             @Override
             protected void paintComponent(Graphics g) {
@@ -419,7 +379,6 @@ public class GameView extends JPanel {
         eventText.add(explanation);
         eventCard.add(eventText);
 
-        // כפתור המשך מעוגל עם אפקט מעבר עכבר
         JButton continueButton = new JButton("CONTINUE GAME") {
             @Override
             protected void paintComponent(Graphics g) {
@@ -461,44 +420,30 @@ public class GameView extends JPanel {
         dialog.setLocationRelativeTo(owner);
         dialog.setVisible(true);
 
-        // לוגיקת ההפתעה המקורית נשמרת ללא שינוי
-        int target = Math.max(0, board.getFirstPieceStep() - 3);
+        int target = controller.getSurpriseMoveTarget(board.getActiveRouteSize());
         setStatus("Surprise! Move back 3 squares.");
-        board.animateFirstPieceTo(target, this::finishScenario);
+        board.animateActivePieceTo(target, this::finishScenario);
     }
 
 
     private void passTurn() {
-        currentPlayer = 1;
-        stage = Stage.OTHER_ROLL;
+        controller.passTurn();
         dice.clear();
         formulaLabel.setText(" ");
         rollButton.setEnabled(true);
+        rollButton.setText("Roll Dice");
+        board.clearHighlight();
         refreshPlayers();
-        setStatus(names[currentPlayer] + "'s turn. Click Roll Dice.");
+        setStatus(controller.getCurrentPlayerName() + "'s turn. Click Roll Dice.");
     }
 
     private void finishScenario() {
-        stage = Stage.DONE;
+        controller.finishGame();
         rollButton.setEnabled(false);
         endGameButton.setEnabled(true);
-        setStatus("Demo complete! Click End Game to see the results.");
+        setStatus("Game complete! Click End Game to see the results.");
     }
 
-    /** Shows the dice values and returns the number of steps. */
-    private int showRoll(int stepDie, int boostDie) {
-        int steps;
-        if (easy) {
-            dice.show(stepDie, 0);
-            steps = stepDie;
-            formulaLabel.setText("Steps: " + steps);
-        } else {
-            dice.show(stepDie, boostDie);
-            steps = stepDie * (boostDie - 1);
-            formulaLabel.setText("Steps: " + stepDie + " x (" + boostDie + " - 1) = " + steps);
-        }
-        return steps;
-    }
 
     // ------------------------------------------------------------------
     // Navigation
@@ -519,7 +464,7 @@ public class GameView extends JPanel {
     private void backToMenu() {
         int answer = JOptionPane.showConfirmDialog(this,
             "Leave the game? An unfinished game is not saved to the history.",
-            "Main Menu", JOptionPane.YES_NO_OPTION);
+            "Leave game", JOptionPane.YES_NO_OPTION);
         if (answer != JOptionPane.YES_OPTION) return;
         gameTimer.stop();
         Window w = SwingUtilities.getWindowAncestor(this);
@@ -533,6 +478,7 @@ public class GameView extends JPanel {
 
     private void refreshPlayers() {
         playersPanel.removeAll();
+        int currentPlayer = controller.getCurrentPlayer();
         turnLabel.setText(names[currentPlayer] + "'s turn");
         for (int i = 0; i < names.length; i++) {
             final boolean current = i == currentPlayer;
@@ -576,7 +522,8 @@ public class GameView extends JPanel {
         legend.add(legendRow("#", new Color(225, 230, 239), "Start square"));
         legend.add(legendRow("★", new Color(255, 230, 150), "Protection square"));
         legend.add(legendRow("→", new Color(225, 230, 239), "Arrow to inner path"));
-        if (!easy) {
+        legend.add(legendRow("", new Color(215, 230, 255), "Home path"));
+        if (!controller.isEasyGame()) {
             legend.add(legendRow("?", BoardPanel.Q_EASY, "Question square"));
             legend.add(legendRow("!", BoardPanel.SURPRISE, "Surprise square"));
         }
@@ -691,6 +638,8 @@ public class GameView extends JPanel {
         private final String boostName;
         private int stepValue = 0;
         private int boostValue = 0;
+        private Timer rollTimer;
+        private int rollFrames;
 
         DicePanel(boolean showBoost, String boostName) {
             this.showBoost = showBoost;
@@ -704,6 +653,30 @@ public class GameView extends JPanel {
             stepValue = step;
             boostValue = boost;
             repaint();
+        }
+
+        void animate(int step, int boost, Runnable onFinished) {
+            if (rollTimer != null && rollTimer.isRunning()) {
+                rollTimer.stop();
+            }
+            rollFrames = 0;
+            Random animationRandom = new Random();
+            rollTimer = new Timer(65, null);
+            rollTimer.addActionListener(e -> {
+                rollFrames++;
+                stepValue = animationRandom.nextInt(6) + 1;
+                boostValue = showBoost ? animationRandom.nextInt(6) + 1 : 0;
+                if (rollFrames >= 9) {
+                    rollTimer.stop();
+                    stepValue = step;
+                    boostValue = boost;
+                    repaint();
+                    if (onFinished != null) onFinished.run();
+                } else {
+                    repaint();
+                }
+            });
+            rollTimer.start();
         }
 
         void clear() {

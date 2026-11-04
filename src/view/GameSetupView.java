@@ -5,7 +5,6 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.geom.Ellipse2D;
 import java.awt.geom.RoundRectangle2D;
 
 /** Modern Ludo game setup screen. Pure Java Swing; no external libraries. */
@@ -87,13 +86,15 @@ public class GameSetupView extends JFrame {
 
         JPanel playerOptions = createChoiceRow();
         playerCards = new ChoiceCard[]{
-            new ChoiceCard("2", "DUEL", new Color(88, 142, 255)),
-            new ChoiceCard("3", "TRIO", new Color(163, 106, 241)),
-            new ChoiceCard("4", "PARTY", new Color(255, 113, 135))
+            new ChoiceCard("2", "DUEL"),
+            new ChoiceCard("3", "TRIO"),
+            new ChoiceCard("4", "PARTY")
         };
         for (int i = 0; i < playerCards.length; i++) {
             final int count = i + 2;
             playerCards[i].addActionListener(e -> playerCountComboBox.setSelectedItem(count));
+            playerCards[i].getAccessibleContext().setAccessibleName(count + " players");
+            playerCards[i].getAccessibleContext().setAccessibleDescription("Choose a " + count + "-player game");
             playerOptions.add(playerCards[i]);
         }
         form.add(playerOptions);
@@ -104,14 +105,16 @@ public class GameSetupView extends JFrame {
 
         JPanel difficultyOptions = createChoiceRow();
         difficultyCards = new ChoiceCard[]{
-            new ChoiceCard("Easy", "RELAXED", new Color(51, 184, 150)),
-            new ChoiceCard("Medium", "BALANCED", new Color(88, 142, 255)),
-            new ChoiceCard("Hard", "CHALLENGE", new Color(255, 117, 104))
+            new ChoiceCard("Easy", "RELAXED"),
+            new ChoiceCard("Medium", "BALANCED"),
+            new ChoiceCard("Hard", "CHALLENGE")
         };
         String[] difficulties = {"Easy", "Medium", "Hard"};
         for (int i = 0; i < difficultyCards.length; i++) {
             final String choice = difficulties[i];
             difficultyCards[i].addActionListener(e -> difficultyComboBox.setSelectedItem(choice));
+            difficultyCards[i].getAccessibleContext().setAccessibleName(choice + " difficulty");
+            difficultyCards[i].getAccessibleContext().setAccessibleDescription("Choose " + choice + " game difficulty");
             difficultyOptions.add(difficultyCards[i]);
         }
         form.add(difficultyOptions);
@@ -125,7 +128,7 @@ public class GameSetupView extends JFrame {
         continueButton = new ActionButton("Continue", true);
         continueButton.addActionListener(e -> openPlayerDetails());
 
-        backButton = new ActionButton("Back to Main Menu", false);
+        backButton = new ActionButton("Back to Menu", false);
         backButton.addActionListener(e -> {
             new MainMenuView().setVisible(true);
             dispose();
@@ -136,11 +139,6 @@ public class GameSetupView extends JFrame {
         actions.add(backButton);
         actions.add(Box.createVerticalStrut(10));
 
-        JLabel foot = new JLabel("You can choose player names & colors next.");
-        foot.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        foot.setForeground(MUTED);
-        foot.setAlignmentX(Component.CENTER_ALIGNMENT);
-        actions.add(foot);
         card.add(actions, BorderLayout.SOUTH);
 
         return card;
@@ -317,14 +315,12 @@ public class GameSetupView extends JFrame {
     private static class ChoiceCard extends JButton {
         private final String label;
         private final String caption;
-        private final Color accent;
         private boolean selectedState;
         private boolean hovered;
 
-        ChoiceCard(String label, String caption, Color accent) {
+        ChoiceCard(String label, String caption) {
             this.label = label;
             this.caption = caption;
-            this.accent = accent;
             setOpaque(false);
             setContentAreaFilled(false);
             setBorderPainted(false);
@@ -353,9 +349,6 @@ public class GameSetupView extends JFrame {
             g.setStroke(new BasicStroke(selectedState ? 2.3f : 1.2f));
             g.drawRoundRect(3, 3, w - 7, h - 7, 18, 18);
 
-            int dot = 12;
-            g.setColor(accent);
-            g.fill(new Ellipse2D.Double(w / 2.0 - dot / 2.0, 13, dot, dot));
             g.setColor(selectedState ? BLUE : NAVY);
             Font mainFont = new Font("Segoe UI", Font.BOLD, label.length() >= 5 ? 19 : 25);
             g.setFont(mainFont);

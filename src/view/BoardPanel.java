@@ -12,11 +12,10 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Prototype board for the Ludo game screen.
+ * Board component for the Ludo game screen.
  * Draws the board for the selected difficulty (Easy 15x15, Medium with an extra
  * ring of 64 squares, Hard with extra rings of 64 and 72 squares), the special
- * squares, the castles and the pieces. Only the first player's piece moves
- * (scripted prototype - no real game logic).
+ * squares, the castles and the active player's pieces.
  */
 public class BoardPanel extends JPanel {
 
@@ -52,29 +51,34 @@ public class BoardPanel extends JPanel {
     }
 
     public interface PieceClickListener {
-        void castlePieceClicked();
+        void castlePieceClicked(int slot);
         void boardPieceClicked();
     }
 
     private final String difficulty;
     private final int rings;   // 0 easy, 1 medium, 2 hard
     private final int size;    // board size in cells
-    private final int p1Corner;
-    private final boolean[] activeCorner = new boolean[4];
+    private int activeCorner;
+    private final boolean[] activeCorners = new boolean[4];
     private final int[] piecesInCastle = new int[4];
+    private final boolean[][] castlePieces = new boolean[4][4];
 
-    private final List<Point> p1Path = new ArrayList<>();
+    private final List<Point> activePath = new ArrayList<>();
+    private final List<Point> activeHomePath = new ArrayList<>();
     private final Map<Point, Special> specials = new HashMap<>();
     private final Map<Point, Color> homeCells = new HashMap<>();
 
-    private boolean p1PieceOnBoard = false;
-    private int p1Step = 0;
+    private final boolean[] pieceOnBoard = new boolean[4];
+    private final int[] pieceStep = new int[4];
+    private final boolean[] pieceInHomePath = new boolean[4];
 
     private boolean highlightCastle = false;
     private boolean highlightBoard = false;
 
     private PieceClickListener listener;
     private Timer animation;
+    private Timer highlightPulse;
+    private boolean pulsePhase;
 
     public BoardPanel(String difficulty, String[] playerColorNames) {
         this.difficulty = difficulty;
@@ -89,10 +93,13 @@ public class BoardPanel extends JPanel {
 
         for (String name : playerColorNames) {
             int c = cornerOf(name);
-            activeCorner[c] = true;
+            activeCorners[c] = true;
             piecesInCastle[c] = 4;
+            for (int slot = 0; slot < 4; slot++) {
+                castlePieces[c][slot] = true;
+            }
         }
-        p1Corner = cornerOf(playerColorNames[0]);
+        activeCorner = cornerOf(playerColorNames[0]);
 
         buildBoard();
 
@@ -196,100 +203,222 @@ public class BoardPanel extends JPanel {
             }
         }
 
-        if (rings == 0) {
-            int s = startIdx[p1Corner];
-            for (int i = 0; i <= 20; i++) {
-                p1Path.add(inner.get((s + i) % 52));
+        for (int i = 1; i <= 5; i++) {
+            switch (activeCorner) {
+                case 0: activeHomePath.add(inner(i, 7)); break;
+                case 1: activeHomePath.add(inner(7, i)); break;
+                case 2: activeHomePath.add(inner(14 - i, 7)); break;
+                default: activeHomePath.add(inner(7, 14 - i)); break;
             }
-            return;
         }
 
-        // Outer rings (Medium / Hard). Positions are fixed for the prototype;
-        // in the real system protection, question and surprise squares are random.
-        List<Point> outer = ringPath(0);
-        int k = p1Corner;
-        Color[] qLevels = {Q_EASY, Q_MEDIUM, Q_HARD, Q_EASY};
-        for (int i = 0; i < 4; i++) {
-            int c = (k + i) % 4;
-            specials.put(ringCell(outer, c, 0), new Special(Type.START, CORNER_COLORS[c], 0));
-            specials.put(ringCell(outer, c, 3), new Special(Type.QUESTION, qLevels[i], 0));
-            specials.put(ringCell(outer, c, 11), new Special(Type.STAR, null, 0));
-            int mid = (size - 1) / 2;
-            specials.put(ringCell(outer, c, mid), new Special(Type.ARROW, CORNER_COLORS[c], (c + 1) % 4));
+        if (rings == 0) {
+            int s = startIdx[activeCorner];
+            for (int i = 0; i <= 20; i++) {
+                activePath.add(inner.get((s + i) % 52));
+            }
         }
-        specials.put(ringCell(outer, (k + 1) % 4, 12), new Special(Type.QUESTION, Q_MEDIUM, 0));
-        specials.put(ringCell(outer, (k + 2) % 4, 12), new Special(Type.QUESTION, Q_HARD, 0));
-        specials.put(ringCell(outer, k, 5), new Special(Type.SURPRISE, SURPRISE, 0));
-        specials.put(ringCell(outer, k, 7), new Special(Type.SURPRISE, SURPRISE, 0));
 
-        if (rings == 2) {
-            List<Point> second = ringPath(1);
-            Color[] q2 = {Q_EASY, Q_MEDIUM, Q_HARD};
+        if (rings > 0) {
+            // Configured positions for Medium and Hard board layouts.
+            List<Point> outer = ringPath(0);
+            int k = activeCorner;
+            Color[] qLevels = {Q_EASY, Q_MEDIUM, Q_HARD, Q_EASY};
             for (int i = 0; i < 4; i++) {
                 int c = (k + i) % 4;
-                specials.put(ringCell(second, c, 11), new Special(Type.STAR, null, 0));
-                specials.put(ringCell(second, c, (size - 3) / 2), new Special(Type.ARROW, CORNER_COLORS[c], (c + 1) % 4));
-                if (i > 0) {
-                    specials.put(ringCell(second, c, 3), new Special(Type.QUESTION, q2[i - 1], 0));
-                }
+                specials.put(ringCell(outer, c, 0), new Special(Type.START, CORNER_COLORS[c], 0));
+                specials.put(ringCell(outer, c, 3), new Special(Type.QUESTION, qLevels[i], 0));
+                specials.put(ringCell(outer, c, 11), new Special(Type.STAR, null, 0));
+                int mid = (size - 1) / 2;
+                specials.put(ringCell(outer, c, mid), new Special(Type.ARROW, CORNER_COLORS[c], (c + 1) % 4));
             }
-            specials.put(ringCell(second, (k + 2) % 4, 10), new Special(Type.SURPRISE, SURPRISE, 0));
-        }
+            specials.put(ringCell(outer, (k + 1) % 4, 12), new Special(Type.QUESTION, Q_MEDIUM, 0));
+            specials.put(ringCell(outer, (k + 2) % 4, 12), new Special(Type.QUESTION, Q_HARD, 0));
+            specials.put(ringCell(outer, k, 5), new Special(Type.SURPRISE, SURPRISE, 0));
+            specials.put(ringCell(outer, k, 7), new Special(Type.SURPRISE, SURPRISE, 0));
 
-        for (int i = 0; i <= 20; i++) {
-            p1Path.add(ringCell(outer, k, i));
+            if (rings == 2) {
+                List<Point> second = ringPath(1);
+                Color[] q2 = {Q_EASY, Q_MEDIUM, Q_HARD};
+                for (int i = 0; i < 4; i++) {
+                    int c = (k + i) % 4;
+                    specials.put(ringCell(second, c, 11), new Special(Type.STAR, null, 0));
+                    specials.put(ringCell(second, c, (size - 3) / 2), new Special(Type.ARROW, CORNER_COLORS[c], (c + 1) % 4));
+                    if (i > 0) {
+                        specials.put(ringCell(second, c, 3), new Special(Type.QUESTION, q2[i - 1], 0));
+                    }
+                }
+                specials.put(ringCell(second, (k + 2) % 4, 10), new Special(Type.SURPRISE, SURPRISE, 0));
+            }
+
+            for (int i = 0; i <= 20; i++) {
+                activePath.add(ringCell(outer, k, i));
+            }
         }
     }
 
     // ------------------------------------------------------------------
-    // Scripted piece control (used by GameScreen)
+    // Active player piece control
     // ------------------------------------------------------------------
 
     public void highlightCastlePieces() {
         highlightCastle = true;
         highlightBoard = false;
-        repaint();
+        startHighlightPulse(true);
     }
 
     public void highlightBoardPiece() {
         highlightBoard = true;
         highlightCastle = false;
-        repaint();
+        startHighlightPulse(true);
+    }
+
+    public void highlightCastlePieces(boolean pulse) {
+        highlightCastle = true;
+        highlightBoard = false;
+        startHighlightPulse(pulse);
+    }
+
+    public void highlightBoardPiece(boolean pulse) {
+        highlightBoard = true;
+        highlightCastle = false;
+        startHighlightPulse(pulse);
     }
 
     public void clearHighlight() {
         highlightCastle = false;
         highlightBoard = false;
+        if (highlightPulse != null) {
+            highlightPulse.stop();
+            highlightPulse = null;
+        }
         repaint();
     }
 
-    public void placeFirstPieceOnStart() {
-        piecesInCastle[p1Corner]--;
-        p1PieceOnBoard = true;
-        p1Step = 0;
+    private void startHighlightPulse(boolean pulse) {
+        if (highlightPulse != null) {
+            highlightPulse.stop();
+        }
+        pulsePhase = false;
+        if (!pulse) {
+            highlightPulse = null;
+            repaint();
+            return;
+        }
+        highlightPulse = new Timer(420, e -> {
+            pulsePhase = !pulsePhase;
+            repaint();
+        });
+        highlightPulse.start();
+        repaint();
+    }
+
+    public boolean placeActivePieceOnStart(int slot) {
+        if (slot < 0 || slot >= 4 || !castlePieces[activeCorner][slot]) return false;
+        castlePieces[activeCorner][slot] = false;
+        piecesInCastle[activeCorner]--;
+        pieceOnBoard[activeCorner] = true;
+        pieceStep[activeCorner] = 0;
+        pieceInHomePath[activeCorner] = false;
         clearHighlight();
+        repaint();
+        return true;
     }
 
-    public int getFirstPieceStep() {
-        return p1Step;
+    public int getActivePieceStep() {
+        return pieceStep[activeCorner];
     }
 
-    /** Moves the first player's piece one square at a time to the target step. */
-    public void animateFirstPieceTo(int targetStep, Runnable onDone) {
+    public boolean hasPieceInCastle() {
+        return piecesInCastle[activeCorner] > 0;
+    }
+
+    public boolean hasPieceOnBoard() {
+        return pieceOnBoard[activeCorner];
+    }
+
+    public int getActiveRouteSize() {
+        return pieceInHomePath[activeCorner] ? activeHomePath.size() : activePath.size();
+    }
+
+    public void setActivePlayerColor(String colorName) {
+        activeCorner = cornerOf(colorName);
+        rebuildActivePath();
+    }
+
+    private void rebuildActivePath() {
+        List<Point> inner = innerPath();
+        int[] startIdx = {0, 13, 26, 39};
+        activeHomePath.clear();
+        for (int i = 1; i <= 5; i++) {
+            switch (activeCorner) {
+                case 0: activeHomePath.add(inner(i, 7)); break;
+                case 1: activeHomePath.add(inner(7, i)); break;
+                case 2: activeHomePath.add(inner(14 - i, 7)); break;
+                default: activeHomePath.add(inner(7, 14 - i)); break;
+            }
+        }
+        activePath.clear();
+        if (rings == 0) {
+            int s = startIdx[activeCorner];
+            for (int i = 0; i <= 20; i++) {
+                activePath.add(inner.get((s + i) % 52));
+            }
+        } else {
+            List<Point> outer = ringPath(0);
+            for (int i = 0; i <= 20; i++) {
+                activePath.add(ringCell(outer, activeCorner, i));
+            }
+        }
+        repaint();
+    }
+
+    /** Checks that the selected active-player move stays within the current route. */
+    public boolean canMoveActivePiece(int steps) {
+        if (!pieceOnBoard[activeCorner] || steps < 0) return false;
+        List<Point> route = pieceInHomePath[activeCorner] ? activeHomePath : activePath;
+        return pieceStep[activeCorner] + steps < route.size();
+    }
+
+    private List<Point> currentActivePieceRoute() {
+        return pieceInHomePath[activeCorner] ? activeHomePath : activePath;
+    }
+
+    /** Moves the active player's piece one square at a time to the target step. */
+    public void animateActivePieceTo(int targetStep, Runnable onDone) {
         clearHighlight();
         if (animation != null && animation.isRunning()) {
             animation.stop();
         }
+        final boolean forward = targetStep >= pieceStep[activeCorner];
+        final int[] remaining = {Math.abs(targetStep - pieceStep[activeCorner])};
         animation = new Timer(220, null);
         animation.addActionListener(e -> {
-            if (p1Step == targetStep) {
+            if (remaining[0] == 0) {
                 animation.stop();
                 if (onDone != null) {
                     onDone.run();
                 }
                 return;
             }
-            p1Step += (targetStep > p1Step) ? 1 : -1;
+            if (forward) {
+                List<Point> route = currentActivePieceRoute();
+                pieceStep[activeCorner] = Math.min(pieceStep[activeCorner] + 1, route.size() - 1);
+            } else {
+                pieceStep[activeCorner] = Math.max(pieceStep[activeCorner] - 1, 0);
+            }
+            remaining[0]--;
+
+            if (forward && !pieceInHomePath[activeCorner]) {
+                Point cell = activePath.get(Math.min(pieceStep[activeCorner], activePath.size() - 1));
+                Special special = specials.get(cell);
+                if (special != null && special.type == Type.ARROW
+                        && special.color != null
+                        && special.color.equals(CORNER_COLORS[activeCorner])) {
+                    pieceInHomePath[activeCorner] = true;
+                    pieceStep[activeCorner] = 0;
+                }
+            }
             repaint();
         });
         animation.start();
@@ -331,16 +460,18 @@ public class BoardPanel extends JPanel {
         if (listener == null) return;
         int cs = cellSize();
         if (highlightCastle) {
-            for (int s = 0; s < piecesInCastle[p1Corner]; s++) {
-                double[] c = slotCenter(p1Corner, s);
+            for (int s = 0; s < 4; s++) {
+                if (!castlePieces[activeCorner][s]) continue;
+                double[] c = slotCenter(activeCorner, s);
                 if (p.distance(c[0], c[1]) <= cs * 0.8) {
-                    listener.castlePieceClicked();
+                    listener.castlePieceClicked(s);
                     return;
                 }
             }
         }
-        if (highlightBoard && p1PieceOnBoard) {
-            Point cell = p1Path.get(p1Step);
+        if (highlightBoard && pieceOnBoard[activeCorner]) {
+            List<Point> route = currentActivePieceRoute();
+            Point cell = route.get(Math.min(pieceStep[activeCorner], route.size() - 1));
             Rectangle r = new Rectangle(originX() + cell.x * cs, originY() + cell.y * cs, cs, cs);
             if (r.contains(p)) {
                 listener.boardPieceClicked();
@@ -404,18 +535,20 @@ public class BoardPanel extends JPanel {
 
         // Pieces in castles
         for (int corner = 0; corner < 4; corner++) {
-            for (int s = 0; s < piecesInCastle[corner]; s++) {
+            for (int s = 0; s < 4; s++) {
+                if (!castlePieces[corner][s]) continue;
                 double[] c = slotCenter(corner, s);
-                boolean hl = highlightCastle && corner == p1Corner;
+                boolean hl = highlightCastle && corner == activeCorner;
                 drawPiece(g2, c[0], c[1], cs, CORNER_COLORS[corner], hl);
             }
         }
 
-        // First player's moving piece
-        if (p1PieceOnBoard) {
-            Point cell = p1Path.get(p1Step);
+        // Active player's moving piece
+        if (pieceOnBoard[activeCorner]) {
+            List<Point> route = currentActivePieceRoute();
+            Point cell = route.get(Math.min(pieceStep[activeCorner], route.size() - 1));
             drawPiece(g2, ox + (cell.x + 0.5) * cs, oy + (cell.y + 0.5) * cs, cs,
-                CORNER_COLORS[p1Corner], highlightBoard);
+                CORNER_COLORS[activeCorner], highlightBoard);
         }
 
         g2.setColor(new Color(126, 140, 173));
@@ -444,11 +577,11 @@ public class BoardPanel extends JPanel {
         int y = originY() + o.y * cs;
         int side = cs * 6;
         Color color = CORNER_COLORS[corner];
-        Color base = activeCorner[corner] ? lighter(color) : lighter(lighter(color));
-        Color glow = activeCorner[corner] ? new Color(246, 250, 255) : new Color(250, 251, 255);
+        Color base = activeCorners[corner] ? lighter(color) : lighter(lighter(color));
+        Color glow = activeCorners[corner] ? new Color(246, 250, 255) : new Color(250, 251, 255);
 
         g2.setPaint(new GradientPaint(x, y, base, x + side, y + side,
-            activeCorner[corner] ? lighter(lighter(color)) : new Color(245, 248, 254)));
+            activeCorners[corner] ? lighter(lighter(color)) : new Color(245, 248, 254)));
         g2.fillRoundRect(x + 1, y + 1, side - 2, side - 2, Math.max(12, cs), Math.max(12, cs));
         g2.setColor(new Color(color.getRed(), color.getGreen(), color.getBlue(), 120));
         g2.setStroke(new BasicStroke(1.7f));
@@ -611,9 +744,11 @@ public class BoardPanel extends JPanel {
     private void drawPiece(Graphics2D g2, double cx, double cy, int cs, Color color, boolean highlighted) {
         double r = cs * 0.42;
         if (highlighted) {
-            g2.setColor(new Color(255, 178, 67, 80));
-            g2.fill(new Ellipse2D.Double(cx - r - cs * 0.21, cy - r - cs * 0.21,
-                2 * (r + cs * 0.21), 2 * (r + cs * 0.21)));
+            int glowAlpha = pulsePhase ? 180 : 75;
+            double glowSize = pulsePhase ? 0.28 : 0.21;
+            g2.setColor(new Color(255, 178, 67, glowAlpha));
+            g2.fill(new Ellipse2D.Double(cx - r - cs * glowSize, cy - r - cs * glowSize,
+                2 * (r + cs * glowSize), 2 * (r + cs * glowSize)));
             g2.setColor(HIGHLIGHT);
             g2.setStroke(new BasicStroke(Math.max(2f, cs * 0.10f)));
             g2.draw(new Ellipse2D.Double(cx - r - cs * 0.12, cy - r - cs * 0.12,

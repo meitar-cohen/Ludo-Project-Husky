@@ -12,7 +12,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Modern player details screen for the Ludo prototype.
+ * Player details screen for game setup.
  * Uses only Java Swing; keeps all original validation and game navigation.
  */
 public class PlayerDetailsScreen extends JPanel {
@@ -101,7 +101,7 @@ public class PlayerDetailsScreen extends JPanel {
         header.add(eyebrow);
         header.add(Box.createVerticalStrut(7));
 
-        JLabel title = new JLabel("Meet your players");
+        JLabel title = new JLabel("Create Your Players");
         title.setFont(new Font("Segoe UI", Font.BOLD, 28));
         title.setForeground(NAVY);
         title.setAlignmentX(Component.LEFT_ALIGNMENT);
