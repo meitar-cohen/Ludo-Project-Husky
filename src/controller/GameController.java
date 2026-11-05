@@ -143,8 +143,55 @@ public class GameController {
         return random.nextInt(6) + 1;
     }
 
+    /**
+     * SRS 3.2.3.3.2 (Daniel Azulay) - the bonus die of the level:
+     * Easy - none (0), Medium - Boost 1-3, Hard - UltraBoost 1-6.
+     */
     public int rollBoostDie() {
-        return "Easy".equals(game.getDifficulty()) ? 0 : random.nextInt(6) + 1;
+        int faces = getBoostDieFaces();
+        return faces == 0 ? 0 : random.nextInt(faces) + 1;
+    }
+
+    /** SRS 3.2.3.3.2 - number of faces of the bonus die: 0 (Easy), 3 (Boost), 6 (UltraBoost). */
+    public int getBoostDieFaces() {
+        if ("Hard".equals(game.getDifficulty())) return 6;
+        if ("Medium".equals(game.getDifficulty())) return 3;
+        return 0;
+    }
+
+    /**
+     * SRS 3.2.3.3.5 (Daniel Azulay) - records the step die of a roll and counts sixes in a row.
+     *
+     * @return true when this roll is the third 6 in a row - the roll is cancelled
+     *         and the turn should pass
+     */
+    public boolean registerRollAndCheckThirdSix(int stepDie) {
+        game.setLastStepDie(stepDie);
+        if (stepDie != 6) {
+            game.setConsecutiveSixes(0);
+            return false;
+        }
+        game.setConsecutiveSixes(game.getConsecutiveSixes() + 1);
+        if (game.getConsecutiveSixes() >= 3) {
+            game.setConsecutiveSixes(0);
+            return true;
+        }
+        return false;
+    }
+
+    /** SRS 3.2.3.3.5 (Daniel Azulay) - a 6 on the step die gives the same player another turn. */
+    public boolean hasExtraTurn() {
+        return game.getLastStepDie() == 6;
+    }
+
+    /** SRS 3.2.1.3.3 (Daniel Azulay) - game clock as HH:MM:SS. */
+    public String getElapsedTime() {
+        long seconds = game.getElapsedSeconds();
+        return String.format("%02d:%02d:%02d", seconds / 3600, (seconds % 3600) / 60, seconds % 60);
+    }
+
+    public long getElapsedSeconds() {
+        return game.getElapsedSeconds();
     }
 
     public RollAction finishRoll(int stepDie, int boostDie) {

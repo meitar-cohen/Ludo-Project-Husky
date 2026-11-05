@@ -153,7 +153,8 @@ public class GameView extends JPanel {
 
         stack.add(leftAligned(sectionLabel("DICE")));
         stack.add(Box.createVerticalStrut(4));
-        dice = new DicePanel(!controller.isEasyGame(), "Hard".equals(this.difficulty) ? "ULTRA BOOST" : "BOOST");
+        dice = new DicePanel(!controller.isEasyGame(), "Hard".equals(this.difficulty) ? "ULTRA BOOST" : "BOOST",
+        	    controller.getBoostDieFaces());
         stack.add(leftAligned(dice));
         formulaLabel = new JLabel(" ");
         formulaLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
@@ -238,6 +239,14 @@ public class GameView extends JPanel {
     }
 
     private void finishRoll(int stepDie, int boostDie) {
+    	// SRS 3.2.3.3.5 - the third 6 in a row is cancelled and the turn passes.
+    	if (controller.registerRollAndCheckThirdSix(stepDie)) {
+    	    String player = controller.getCurrentPlayerName();
+    	    passTurn();
+    	    setStatus("Third 6 in a row for " + player + "! The roll is cancelled. "
+    	        + controller.getCurrentPlayerName() + "'s turn. Click Roll Dice.");
+    	    return;
+    	}
         RollAction action = controller.finishRoll(stepDie, boostDie);
         if (action == RollAction.TAKE_OUT) {
             setStatus("Rolled a 6! Click a highlighted piece in your castle.");
@@ -272,8 +281,8 @@ public class GameView extends JPanel {
             controller.moveActivePiece(target, board.getActiveRouteSize());
             board.animateActivePieceTo(target, () -> {
                 if (controller.isEasyGame()) {
-                    setStatus("Moved " + controller.getPendingSteps() + " squares.");
-                    passTurn();
+                	setStatus("Moved " + controller.getPendingSteps() + " squares.");
+                	endTurnOrExtraTurn();
                 } else {
                     askQuestion();
                 }
@@ -290,7 +299,7 @@ public class GameView extends JPanel {
         setStatus(correct
             ? "Correct! Move 1 square forward."
             : "Wrong answer. Move 1 square back.");
-        board.animateActivePieceTo(target, this::passTurn);
+        board.animateActivePieceTo(target, this::endTurnOrExtraTurn);
     }
 
     private void showSurprise() {
@@ -424,7 +433,17 @@ public class GameView extends JPanel {
         setStatus("Surprise! Move back 3 squares.");
         board.animateActivePieceTo(target, this::finishScenario);
     }
-
+    
+    private void endTurnOrExtraTurn() {
+        if (controller.hasExtraTurn()) {
+            board.clearHighlight();
+            rollButton.setEnabled(true);
+            rollButton.setText("Roll Again");
+            setStatus(controller.getCurrentPlayerName() + " rolled a 6 - roll again!");
+        } else {
+            passTurn();
+        }
+    }
 
     private void passTurn() {
         controller.passTurn();
@@ -621,11 +640,10 @@ public class GameView extends JPanel {
     }
 
     private void startTimer() {
-        gameTimer = new Timer(1000, e -> {
-            secondsElapsed++;
-            timerLabel.setText(formatTime(secondsElapsed));
-        });
-        gameTimer.start();
+    	gameTimer = new Timer(1000, e -> {
+    	    secondsElapsed = (int) controller.getElapsedSeconds();
+    	    timerLabel.setText(controller.getElapsedTime());
+    	});
     }
 
     static String formatTime(int seconds) {
@@ -641,9 +659,12 @@ public class GameView extends JPanel {
         private Timer rollTimer;
         private int rollFrames;
 
-        DicePanel(boolean showBoost, String boostName) {
+        private final int boostFaces;
+
+        DicePanel(boolean showBoost, String boostName, int boostFaces) {
             this.showBoost = showBoost;
             this.boostName = boostName;
+            this.boostFaces = boostFaces;
             setOpaque(false);
             setPreferredSize(new Dimension(285, 77));
             setMaximumSize(new Dimension(Integer.MAX_VALUE, 77));
@@ -665,7 +686,7 @@ public class GameView extends JPanel {
             rollTimer.addActionListener(e -> {
                 rollFrames++;
                 stepValue = animationRandom.nextInt(6) + 1;
-                boostValue = showBoost ? animationRandom.nextInt(6) + 1 : 0;
+                boostValue = showBoost ? animationRandom.nextInt(boostFaces) + 1 : 0;
                 if (rollFrames >= 9) {
                     rollTimer.stop();
                     stepValue = step;

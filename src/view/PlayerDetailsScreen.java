@@ -1,5 +1,7 @@
 package view;
 
+import controller.GameSetupController;
+
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
@@ -8,8 +10,6 @@ import java.awt.event.FocusEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.Ellipse2D;
-import java.util.HashSet;
-import java.util.Set;
 
 /**
  * Player details screen for game setup.
@@ -229,30 +229,19 @@ public class PlayerDetailsScreen extends JPanel {
 
     private void handleStartGame() {
         errorLabel.setForeground(new Color(211, 65, 90));
-        Set<String> selectedNames = new HashSet<>();
-        Set<String> selectedColors = new HashSet<>();
         String[] names = new String[numPlayers];
         String[] colors = new String[numPlayers];
-
         for (int i = 0; i < numPlayers; i++) {
-            String name = nameFields[i].getText().trim();
-            String color = (String) colorSelectors[i].getSelectedItem();
-            if (name.isEmpty()) {
-                errorLabel.setText("Please enter a name for Player " + (i + 1) + ".");
-                nameFields[i].requestFocusInWindow();
-                return;
-            }
-            if (!selectedNames.add(name)) {
-                errorLabel.setText("Each player must have a different name.");
-                nameFields[i].requestFocusInWindow();
-                return;
-            }
-            if (!selectedColors.add(color)) {
-                errorLabel.setText("Each player must choose a different color.");
-                return;
-            }
-            names[i] = name;
-            colors[i] = color;
+            names[i] = nameFields[i].getText().trim();
+            colors[i] = (String) colorSelectors[i].getSelectedItem();
+        }
+
+        // SRS 3.2.1.3.2 - the validation rules are in the controller (MVC).
+        GameSetupController.ValidationError error = GameSetupController.validatePlayers(names, colors);
+        if (error != null) {
+            errorLabel.setText(error.getMessage());
+            nameFields[error.getPlayerIndex()].requestFocusInWindow();
+            return;
         }
 
         errorLabel.setForeground(new Color(25, 150, 112));
