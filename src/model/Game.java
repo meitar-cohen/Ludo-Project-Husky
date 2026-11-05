@@ -15,10 +15,51 @@ public class Game {
     private final String[] colors;
     private final String difficulty;
 
+    // SRS 3.2.1.3.3 - opening state and game clock (Daniel Azulay)
+    public static final int PIECES_PER_PLAYER = 4;
+    private final int[] piecesInCastleByPlayer;
+    private final long startTimeMillis;
+
+    // SRS 3.2.3.3.5 - extra turn and three sixes in a row (Daniel Azulay)
+    private int lastStepDie;
+    private int consecutiveSixes;
+
     public Game(String[] names, String[] colors, String difficulty) {
         this.names = names;
         this.colors = colors;
         this.difficulty = difficulty;
+        // SRS 3.2.1.3.3 - all four pieces of every player start in the castle, and the clock starts.
+        this.piecesInCastleByPlayer = new int[names.length];
+        for (int i = 0; i < names.length; i++) {
+            piecesInCastleByPlayer[i] = PIECES_PER_PLAYER;
+        }
+        this.startTimeMillis = System.currentTimeMillis();
+    }
+
+    /** SRS 3.2.1.3.3 - number of pieces of a player that are still in the castle. */
+    public int getPiecesInCastle(int playerIndex) {
+        return piecesInCastleByPlayer[playerIndex];
+    }
+
+    /** SRS 3.2.1.3.3 - game duration in seconds since the game started. */
+    public long getElapsedSeconds() {
+        return (System.currentTimeMillis() - startTimeMillis) / 1000;
+    }
+
+    public int getLastStepDie() {
+        return lastStepDie;
+    }
+
+    public void setLastStepDie(int lastStepDie) {
+        this.lastStepDie = lastStepDie;
+    }
+
+    public int getConsecutiveSixes() {
+        return consecutiveSixes;
+    }
+
+    public void setConsecutiveSixes(int consecutiveSixes) {
+        this.consecutiveSixes = consecutiveSixes;
     }
 
     public Stage getStage() {
