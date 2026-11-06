@@ -52,7 +52,7 @@ public class BoardPanel extends JPanel {
 
     public interface PieceClickListener {
         void castlePieceClicked(int slot);
-        void boardPieceClicked();
+        void boardPieceClicked(int pieceIndex);
     }
 
     private final String difficulty;
@@ -68,9 +68,14 @@ public class BoardPanel extends JPanel {
     private final Map<Point, Special> specials = new HashMap<>();
     private final Map<Point, Color> homeCells = new HashMap<>();
 
-    private final boolean[] pieceOnBoard = new boolean[4];
-    private final int[] pieceStep = new int[4];
-    private final boolean[] pieceInHomePath = new boolean[4];
+    /**
+     * SRS 3.2.4.3.1 (Maor Mizrahi) -
+     * Stores the visual state of each piece for every player color.
+     */
+    private final boolean[][] piecesOnBoard = new boolean[4][4];
+    private final int[][] pieceSteps = new int[4][4];
+    private final boolean[][] piecesInHomePath = new boolean[4][4];
+    private int selectedPieceIndex;
 
     private boolean highlightCastle = false;
     private boolean highlightBoard = false;
@@ -317,16 +322,17 @@ public class BoardPanel extends JPanel {
         if (slot < 0 || slot >= 4 || !castlePieces[activeCorner][slot]) return false;
         castlePieces[activeCorner][slot] = false;
         piecesInCastle[activeCorner]--;
-        pieceOnBoard[activeCorner] = true;
-        pieceStep[activeCorner] = 0;
-        pieceInHomePath[activeCorner] = false;
+        piecesOnBoard[activeCorner][slot] = true;
+        pieceSteps[activeCorner][slot] = 0;
+        piecesInHomePath[activeCorner][slot] = false;
+        selectedPieceIndex = slot;
         clearHighlight();
         repaint();
         return true;
     }
 
     public int getActivePieceStep() {
-        return pieceStep[activeCorner];
+        return pieceSteps[activeCorner][selectedPieceIndex];
     }
 
     public boolean hasPieceInCastle() {
@@ -334,11 +340,24 @@ public class BoardPanel extends JPanel {
     }
 
     public boolean hasPieceOnBoard() {
-        return pieceOnBoard[activeCorner];
+        for (int pieceIndex = 0; pieceIndex < 4; pieceIndex++) {
+            if (piecesOnBoard[activeCorner][pieceIndex]) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public int getActiveRouteSize() {
-        return pieceInHomePath[activeCorner] ? activeHomePath.size() : activePath.size();
+        return getActiveRouteSize(selectedPieceIndex);
+    }
+
+    public int getActiveRouteSize(int pieceIndex) {
+        if (pieceIndex < 0 || pieceIndex >= 4) {
+            return 0;
+        }
+
+        return piecesInHomePath[activeCorner][pieceIndex] ? activeHomePath.size() : activePath.size();
     }
 
     public void setActivePlayerColor(String colorName) {
@@ -375,52 +394,75 @@ public class BoardPanel extends JPanel {
 
     /** Checks that the selected active-player move stays within the current route. */
     public boolean canMoveActivePiece(int steps) {
-        if (!pieceOnBoard[activeCorner] || steps < 0) return false;
-        List<Point> route = pieceInHomePath[activeCorner] ? activeHomePath : activePath;
-        return pieceStep[activeCorner] + steps < route.size();
+        if (!piecesOnBoard[activeCorner][selectedPieceIndex] || steps < 0) return false;
+        List<Point> route = currentPieceRoute(selectedPieceIndex);
+        return pieceSteps[activeCorner][selectedPieceIndex] + steps < route.size();
     }
 
-    private List<Point> currentActivePieceRoute() {
-        return pieceInHomePath[activeCorner] ? activeHomePath : activePath;
+    private List<Point> currentPieceRoute(int pieceIndex) {
+        return piecesInHomePath[activeCorner][pieceIndex] ? activeHomePath : activePath;
     }
 
-    /** Moves the active player's piece one square at a time to the target step. */
-    public void animateActivePieceTo(int targetStep, Runnable onDone) {
+    public void animateActivePiece(
+            int startStep,
+            int targetStep,
+            Runnable onDone) {
+        animatePiece(selectedPieceIndex, startStep, targetStep, onDone);
+    }
+
+    /**
+     * SRS 3.2.4.3.1 (Maor Mizrahi) -
+     * Visually animates an active piece after the movement
+     * has already been validated by GameController.
+     *
+     * This method performs presentation only and does not
+     * validate or apply game rules.
+     */
+    public void animatePiece(
+            int pieceIndex,
+            int startStep,
+            int targetStep,
+            Runnable onDone) {
+        if (pieceIndex < 0 || pieceIndex >= 4) {
+            return;
+        }
         clearHighlight();
+        selectedPieceIndex = pieceIndex;
+
         if (animation != null && animation.isRunning()) {
             animation.stop();
         }
-        final boolean forward = targetStep >= pieceStep[activeCorner];
-        final int[] remaining = {Math.abs(targetStep - pieceStep[activeCorner])};
+
+        pieceSteps[activeCorner][pieceIndex] = startStep;
+
+        final boolean forward = targetStep >= startStep;
+        final int[] remaining = {
+            Math.abs(targetStep - startStep)
+        };
+
         animation = new Timer(220, null);
+
         animation.addActionListener(e -> {
             if (remaining[0] == 0) {
                 animation.stop();
+
                 if (onDone != null) {
                     onDone.run();
                 }
+
                 return;
             }
-            if (forward) {
-                List<Point> route = currentActivePieceRoute();
-                pieceStep[activeCorner] = Math.min(pieceStep[activeCorner] + 1, route.size() - 1);
-            } else {
-                pieceStep[activeCorner] = Math.max(pieceStep[activeCorner] - 1, 0);
-            }
-            remaining[0]--;
 
-            if (forward && !pieceInHomePath[activeCorner]) {
-                Point cell = activePath.get(Math.min(pieceStep[activeCorner], activePath.size() - 1));
-                Special special = specials.get(cell);
-                if (special != null && special.type == Type.ARROW
-                        && special.color != null
-                        && special.color.equals(CORNER_COLORS[activeCorner])) {
-                    pieceInHomePath[activeCorner] = true;
-                    pieceStep[activeCorner] = 0;
-                }
+            if (forward) {
+                pieceSteps[activeCorner][pieceIndex]++;
+            } else {
+                pieceSteps[activeCorner][pieceIndex]--;
             }
+
+            remaining[0]--;
             repaint();
         });
+
         animation.start();
     }
 
@@ -469,12 +511,22 @@ public class BoardPanel extends JPanel {
                 }
             }
         }
-        if (highlightBoard && pieceOnBoard[activeCorner]) {
-            List<Point> route = currentActivePieceRoute();
-            Point cell = route.get(Math.min(pieceStep[activeCorner], route.size() - 1));
-            Rectangle r = new Rectangle(originX() + cell.x * cs, originY() + cell.y * cs, cs, cs);
-            if (r.contains(p)) {
-                listener.boardPieceClicked();
+        if (highlightBoard) {
+            for (int pieceIndex = 0; pieceIndex < 4; pieceIndex++) {
+                if (!piecesOnBoard[activeCorner][pieceIndex]) {
+                    continue;
+                }
+
+                List<Point> route = currentPieceRoute(pieceIndex);
+                int step = Math.min(pieceSteps[activeCorner][pieceIndex], route.size() - 1);
+                Point cell = route.get(step);
+                Rectangle bounds = new Rectangle(originX() + cell.x * cs, originY() + cell.y * cs, cs, cs);
+
+                if (bounds.contains(p)) {
+                    selectedPieceIndex = pieceIndex;
+                    listener.boardPieceClicked(pieceIndex);
+                    return;
+                }
             }
         }
     }
@@ -544,11 +596,16 @@ public class BoardPanel extends JPanel {
         }
 
         // Active player's moving piece
-        if (pieceOnBoard[activeCorner]) {
-            List<Point> route = currentActivePieceRoute();
-            Point cell = route.get(Math.min(pieceStep[activeCorner], route.size() - 1));
+        for (int pieceIndex = 0; pieceIndex < 4; pieceIndex++) {
+            if (!piecesOnBoard[activeCorner][pieceIndex]) {
+                continue;
+            }
+
+            List<Point> route = currentPieceRoute(pieceIndex);
+            Point cell = route.get(Math.min(pieceSteps[activeCorner][pieceIndex], route.size() - 1));
+            boolean highlighted = highlightBoard;
             drawPiece(g2, ox + (cell.x + 0.5) * cs, oy + (cell.y + 0.5) * cs, cs,
-                CORNER_COLORS[activeCorner], highlightBoard);
+                CORNER_COLORS[activeCorner], highlighted);
         }
 
         g2.setColor(new Color(126, 140, 173));
@@ -648,8 +705,12 @@ public class BoardPanel extends JPanel {
         g2.draw(t);
     }
 
-    // Clear, high-contrast marks on every special square.
-    // Easy has START / STAR / ARROW; Medium and Hard additionally have ? and !.
+    /**
+     * SRS 3.2.2.3.4 (Maor Mizrahi) -
+     * Draws a distinct visual marking and color for each special
+     * square type, including start, protection, arrow, question
+     * and surprise squares.
+     */
     private void drawSpecial(Graphics2D g2, Point p, Special s) {
         int cs = cellSize();
         int x = originX() + p.x * cs;

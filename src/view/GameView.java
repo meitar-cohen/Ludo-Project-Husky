@@ -118,7 +118,7 @@ public class GameView extends JPanel {
         board.setOpaque(false);
         board.setPieceClickListener(new BoardPanel.PieceClickListener() {
             @Override public void castlePieceClicked(int slot) { onCastlePieceClicked(slot); }
-            @Override public void boardPieceClicked() { onBoardPieceClicked(); }
+            @Override public void boardPieceClicked(int pieceIndex) { onBoardPieceClicked(pieceIndex); }
         });
         boardCard.add(board, BorderLayout.CENTER);
         arena.add(boardCard, BorderLayout.CENTER);
@@ -274,32 +274,74 @@ public class GameView extends JPanel {
         rollButton.setText("Roll Dice");
     }
 
-    private void onBoardPieceClicked() {
-        if (controller.isInMoveStage()) {
-            int target = controller.getMoveTarget(board.getActiveRouteSize());
-            if (target < 0) return;
-            controller.moveActivePiece(target, board.getActiveRouteSize());
-            board.animateActivePieceTo(target, () -> {
-                if (controller.isEasyGame()) {
-                	setStatus("Moved " + controller.getPendingSteps() + " squares.");
-                	endTurnOrExtraTurn();
-                } else {
-                    askQuestion();
-                }
-            });
+    /**
+     * SRS 3.2.4.3.1 (Maor Mizrahi) -
+     * Handles the user's selection of the active board piece.
+     * Game-rule validation and movement decisions are delegated
+     * to GameController.
+     */
+    private void onBoardPieceClicked(int pieceIndex) {
+        int routeSize = board.getActiveRouteSize(pieceIndex);
+        int targetStep = controller.validatePieceMove(pieceIndex, routeSize);
+
+        if (targetStep < 0) {
+            setStatus("The selected piece cannot make this move.");
+            return;
         }
+
+        int startStep = controller.getPieceStep(pieceIndex);
+
+        if (!controller.movePiece(pieceIndex, targetStep, routeSize)) {
+            setStatus("The selected move is not legal.");
+            return;
+        }
+
+        board.animatePiece(
+                pieceIndex,
+                startStep,
+                targetStep,
+                () -> {
+                    if (controller.isEasyGame()) {
+                        setStatus(
+                                "Moved "
+                                + controller.getPendingSteps()
+                                + " squares."
+                        );
+
+                        endTurnOrExtraTurn();
+                    } else {
+                        askQuestion(pieceIndex);
+                    }
+                }
+        );
     }
 
-    private void askQuestion() {
+    private void askQuestion(int pieceIndex) {
         Window owner = SwingUtilities.getWindowAncestor(this);
+
         QuestionDialog dialog = new QuestionDialog(owner);
         dialog.setVisible(true);
+
         boolean correct = dialog.isCorrect();
-        int target = controller.getAnswerMoveTarget(correct, board.getActiveRouteSize());
+
+        int startStep = controller.getPieceStep(pieceIndex);
+
+        int targetStep = controller.getAnswerMoveTarget(
+            correct,
+            board.getActiveRouteSize(pieceIndex)
+        );
+
         setStatus(correct
             ? "Correct! Move 1 square forward."
-            : "Wrong answer. Move 1 square back.");
-        board.animateActivePieceTo(target, this::endTurnOrExtraTurn);
+            : "Wrong answer. Move 1 square back."
+        );
+
+        board.animatePiece(
+            pieceIndex,
+            startStep,
+            targetStep,
+            this::endTurnOrExtraTurn
+        );
     }
 
     private void showSurprise() {
@@ -429,11 +471,14 @@ public class GameView extends JPanel {
         dialog.setLocationRelativeTo(owner);
         dialog.setVisible(true);
 
-        int target = controller.getSurpriseMoveTarget(board.getActiveRouteSize());
+        int startStep = controller.getActivePieceStep();
+        int targetStep = controller.getSurpriseMoveTarget(board.getActiveRouteSize());
+
         setStatus("Surprise! Move back 3 squares.");
-        board.animateActivePieceTo(target, this::finishScenario);
+
+        board.animateActivePiece(startStep,targetStep, this::finishScenario);
     }
-    
+
     private void endTurnOrExtraTurn() {
         if (controller.hasExtraTurn()) {
             board.clearHighlight();
@@ -534,6 +579,11 @@ public class GameView extends JPanel {
         statusArea.setCaretPosition(0);
     }
 
+    /**
+     * SRS 3.2.2.3.4 (Maor Mizrahi) -
+     * Creates a visual legend for the board square colors
+     * and symbols displayed to the user.
+     */
     private JPanel createLegend() {
         JPanel legend = new JPanel(new GridLayout(0, 1, 0, 2));
         legend.setOpaque(false);

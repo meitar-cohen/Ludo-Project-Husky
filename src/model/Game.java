@@ -8,9 +8,15 @@ public class Game {
     private int pendingSteps;
     private boolean firstTurnPulsePending = true;
     private int piecesInCastle = 4;
-    private boolean pieceOnBoard;
-    private int pieceStep;
-    private boolean pieceInHomePath;
+
+    // SRS 3.2.4.3.1 (Maor Mizrahi) - Stores the state and position of each player's pieces.
+    private final boolean[][] piecesOnBoard;
+    private final int[][] pieceSteps;
+    private final boolean[][] piecesInHomePath;
+    private int selectedPieceIndex;
+
+    // SRS 3.2.4.3.2 (Maor Mizrahi) -Stores whether each piece is on an inner path.
+    private final boolean[][] piecesInInnerPath;
     private final String[] names;
     private final String[] colors;
     private final String difficulty;
@@ -33,6 +39,11 @@ public class Game {
         for (int i = 0; i < names.length; i++) {
             piecesInCastleByPlayer[i] = PIECES_PER_PLAYER;
         }
+        this.piecesOnBoard = new boolean[names.length][PIECES_PER_PLAYER];
+        this.pieceSteps = new int[names.length][PIECES_PER_PLAYER];
+        this.piecesInHomePath = new boolean[names.length][PIECES_PER_PLAYER];
+        this.piecesInInnerPath = new boolean[names.length][PIECES_PER_PLAYER];
+        this.selectedPieceIndex = 0;
         this.startTimeMillis = System.currentTimeMillis();
     }
 
@@ -119,11 +130,11 @@ public class Game {
     }
 
     public boolean hasPieceOnBoard() {
-        return pieceOnBoard;
+        return piecesOnBoard[currentPlayer][selectedPieceIndex];
     }
 
     public int getPieceStep() {
-        return pieceStep;
+        return pieceSteps[currentPlayer][selectedPieceIndex];
     }
 
     public void setPiecesInCastle(int piecesInCastle) {
@@ -131,18 +142,68 @@ public class Game {
     }
 
     public void setPieceOnBoard(boolean pieceOnBoard) {
-        this.pieceOnBoard = pieceOnBoard;
+        piecesOnBoard[currentPlayer][selectedPieceIndex] = pieceOnBoard;
     }
 
     public void setPieceStep(int pieceStep) {
-        this.pieceStep = pieceStep;
+        pieceSteps[currentPlayer][selectedPieceIndex] = pieceStep;
     }
 
     public void setPieceInHomePath(boolean pieceInHomePath) {
-        this.pieceInHomePath = pieceInHomePath;
+        piecesInHomePath[currentPlayer][selectedPieceIndex] = pieceInHomePath;
     }
 
     public boolean isPieceInHomePath() {
-        return pieceInHomePath;
+        return piecesInHomePath[currentPlayer][selectedPieceIndex];
+    }
+
+    // SRS 3.2.4.3.2 (Maor Mizrahi) - Returns whether the active piece is currently on an inner path.
+    public boolean isPieceInInnerPath() {
+        return piecesInInnerPath[currentPlayer][selectedPieceIndex];
+    }
+
+    // SRS 3.2.4.3.2 (Maor Mizrahi) - Updates whether the active piece is currently on an inner path.
+    public void setPieceInInnerPath(boolean pieceInInnerPath) {
+        piecesInInnerPath[currentPlayer][selectedPieceIndex] = pieceInInnerPath;
+    }
+
+    // SRS 3.2.4.3.1 (Maor Mizrahi) - Selects one of the active player's four pieces.
+    public boolean selectPiece(int pieceIndex) {
+        if (pieceIndex < 0 || pieceIndex >= PIECES_PER_PLAYER) {
+            return false;
+        }
+
+        selectedPieceIndex = pieceIndex;
+        return true;
+    }
+
+    public int getSelectedPieceIndex() {
+        return selectedPieceIndex;
+    }
+
+    public boolean isPieceOnBoard(int playerIndex, int pieceIndex) {
+        return piecesOnBoard[playerIndex][pieceIndex];
+    }
+
+    public int getPieceStep(int playerIndex, int pieceIndex) {
+        return pieceSteps[playerIndex][pieceIndex];
+    }
+
+    public boolean isPieceInHomePath(int playerIndex, int pieceIndex) {
+        return piecesInHomePath[playerIndex][pieceIndex];
+    }
+
+    public boolean isPieceInInnerPath(int playerIndex, int pieceIndex) {
+        return piecesInInnerPath[playerIndex][pieceIndex];
+    }
+
+    // SRS 3.2.4.3.1 (Maor Mizrahi) - Returns whether the current player has at least one piece on the board.
+    public boolean hasAnyPieceOnBoard() {
+        for (int pieceIndex = 0; pieceIndex < PIECES_PER_PLAYER; pieceIndex++) {
+            if (piecesOnBoard[currentPlayer][pieceIndex]) {
+                return true;
+            }
+        }
+        return false;
     }
 }

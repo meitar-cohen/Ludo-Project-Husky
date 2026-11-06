@@ -169,6 +169,10 @@ public class PlayerDetailsScreen extends JPanel {
         return card;
     }
 
+    /**
+     * SRS 3.2.1.3.1 (Maor Mizrahi) -
+     * Creates the name field and color selection controls for one player.
+     */
     private JPanel buildPlayerRow(int index) {
         JPanel row = new PlayerCard();
         row.setLayout(new BorderLayout(12, 0));
@@ -227,6 +231,11 @@ public class PlayerDetailsScreen extends JPanel {
         return row;
     }
 
+    /**
+     * SRS 3.2.1.3.1 (Maor Mizrahi) -
+     * Collects the selected game settings and starts the game after
+     * validation by GameSetupController.
+     */
     private void handleStartGame() {
         errorLabel.setForeground(new Color(211, 65, 90));
         String[] names = new String[numPlayers];
@@ -236,7 +245,6 @@ public class PlayerDetailsScreen extends JPanel {
             colors[i] = (String) colorSelectors[i].getSelectedItem();
         }
 
-        // SRS 3.2.1.3.2 - the validation rules are in the controller (MVC).
         GameSetupController.ValidationError error = GameSetupController.validatePlayers(names, colors);
         if (error != null) {
             errorLabel.setText(error.getMessage());

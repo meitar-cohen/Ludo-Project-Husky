@@ -61,11 +61,13 @@ public class GameController {
 
     public void takeOutActivePiece(int slot) {
         if (!canTakeOutActivePiece(slot)) return;
+        if (!game.selectPiece(slot)) return;
         takePieceOutOfCastle();
         game.setPiecesInCastle(game.hasPieceInCastle()
             ? game.getPiecesInCastle() - 1 : 0);
         game.setPieceOnBoard(true);
         game.setPieceStep(0);
+        game.setPieceInInnerPath(false);
         game.setPieceInHomePath(false);
         game.setStage(Stage.ROLL);
     }
@@ -75,24 +77,19 @@ public class GameController {
     }
 
     public boolean hasPieceOnBoard() {
-        return game.hasPieceOnBoard();
+        return game.hasAnyPieceOnBoard();
     }
 
     public int getActivePieceStep() {
         return game.getPieceStep();
     }
 
-    public int getMoveTarget(int routeSize) {
-        return isClockwiseMoveAllowed(game.getPieceStep(), game.getPendingSteps(), routeSize)
-            ? getClockwiseTarget(game.getPieceStep(), game.getPendingSteps())
-            : -1;
-    }
+    public int getPieceStep(int pieceIndex) {
+        if (!game.selectPiece(pieceIndex)) {
+            return -1;
+        }
 
-    public boolean moveActivePiece(int targetStep, int routeSize) {
-        game.setStage(Stage.BUSY);
-        if (!game.hasPieceOnBoard() || targetStep < 0 || targetStep >= routeSize) return false;
-        game.setPieceStep(targetStep);
-        return true;
+        return game.getPieceStep();
     }
 
     public int getAnswerMoveTarget(boolean correct, int routeSize) {
@@ -119,8 +116,62 @@ public class GameController {
         return game.getCurrentPlayerColor();
     }
 
-    public boolean isLegalPieceSelection(boolean pieceOnBoard, boolean pieceInCastle) {
-        return pieceOnBoard || (pieceInCastle && game.getPendingSteps() == 6);
+    /**
+     * SRS 3.2.4.3.1 (Maor Mizrahi) -
+     * Checks whether the selected piece may be moved during the current turn.
+     */
+    public boolean isPieceSelectionLegal(int pieceIndex) {
+        if (game.getStage() != Stage.MOVE) {
+            return false;
+        }
+
+        if (!game.selectPiece(pieceIndex)) {
+            return false;
+        }
+
+        if (!game.hasPieceOnBoard()) {
+            return false;
+        }
+
+        return game.getPendingSteps() > 0;
+    }
+
+    /**
+     * SRS 3.2.4.3.1 (Maor Mizrahi) -
+     * Validates the selected piece and calculates its target position
+     * without changing its position.
+     */
+    public int validatePieceMove(int pieceIndex, int routeSize) {
+        if (!isPieceSelectionLegal(pieceIndex)) {
+            return -1;
+        }
+
+        int currentStep = game.getPieceStep();
+        int steps = game.getPendingSteps();
+
+        if (!isClockwiseMoveAllowed(currentStep, steps, routeSize)) {
+            return -1;
+        }
+
+        return getClockwiseTarget(currentStep, steps);
+    }
+
+    /**
+     * SRS 3.2.4.3.1 (Maor Mizrahi) -
+     * Applies an approved movement to the selected piece.
+     */
+    public boolean movePiece(int pieceIndex, int targetStep, int routeSize) {
+        if (!isPieceSelectionLegal(pieceIndex)) {
+            return false;
+        }
+
+        if (targetStep < 0 || targetStep >= routeSize) {
+            return false;
+        }
+
+        game.setPieceStep(targetStep);
+        game.setStage(Stage.BUSY);
+        return true;
     }
 
     public boolean isClockwiseMoveAllowed(int currentStep, int steps, int routeSize) {
@@ -131,8 +182,41 @@ public class GameController {
         return currentStep + steps;
     }
 
-    public boolean isMatchingArrow(Color color, Color pieceColor) {
-        return color != null && color.equals(pieceColor);
+    /**
+     * SRS 3.2.4.3.2 (Maor Mizrahi) -
+     * Checks whether an arrow square matches the active piece color.
+     *
+     * A matching arrow allows the piece to enter the next inner path.
+     * An arrow of another color is treated as a regular square.
+     */
+    public boolean isMatchingArrow(Color arrowColor, Color pieceColor) {
+        return arrowColor != null
+                && pieceColor != null
+                && arrowColor.equals(pieceColor);
+    }
+
+    /**
+     * SRS 3.2.4.3.2 (Maor Mizrahi) -
+     * Moves the selected piece to the inner path when the arrow color matches.
+     */
+    public boolean enterInnerPathFromArrow(Color arrowColor, Color pieceColor, int innerPathStartStep) {
+        if (!isMatchingArrow(arrowColor, pieceColor)) {
+            return false;
+        }
+
+        if (!game.hasPieceOnBoard()) {
+            return false;
+        }
+
+        if (innerPathStartStep < 0) {
+            return false;
+        }
+
+        game.setPieceInInnerPath(true);
+        game.setPieceInHomePath(false);
+        game.setPieceStep(innerPathStartStep);
+
+        return true;
     }
 
     public void setPendingSteps(int pendingSteps) {
@@ -201,7 +285,7 @@ public class GameController {
             game.setStage(Stage.TAKE_OUT);
             return RollAction.TAKE_OUT;
         }
-        if (game.hasPieceOnBoard()) {
+        if (game.hasAnyPieceOnBoard()) {
             game.setStage(Stage.MOVE);
             return RollAction.MOVE;
         }
