@@ -268,6 +268,16 @@ public class GameController {
         return game.getLastStepDie() == 6;
     }
 
+    /** SRS 3.2.3.3.5 (Daniel Azulay) - the same player rolls again: the game waits for a new roll. */
+    public void grantExtraTurn() {
+        game.setStage(Stage.ROLL);
+    }
+
+    /** SRS 3.2.1.3.3 (Daniel Azulay) - starts the game clock at the first roll. */
+    public void startGameClock() {
+        game.startClock();
+    }
+
     /** SRS 3.2.1.3.3 (Daniel Azulay) - game clock as HH:MM:SS. */
     public String getElapsedTime() {
         long seconds = game.getElapsedSeconds();

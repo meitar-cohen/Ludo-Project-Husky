@@ -229,6 +229,8 @@ public class GameView extends JPanel {
             return;
         }
 
+        // SRS 3.2.1.3.3 - the game clock starts with the first roll.
+        controller.startGameClock();
         board.setActivePlayerColor(controller.getCurrentPlayerColor());
         int stepDie = controller.rollStepDie();
         int boostDie = controller.rollBoostDie();
@@ -481,6 +483,7 @@ public class GameView extends JPanel {
 
     private void endTurnOrExtraTurn() {
         if (controller.hasExtraTurn()) {
+            controller.grantExtraTurn();
             board.clearHighlight();
             rollButton.setEnabled(true);
             rollButton.setText("Roll Again");
@@ -690,10 +693,13 @@ public class GameView extends JPanel {
     }
 
     private void startTimer() {
-    	gameTimer = new Timer(1000, e -> {
-    	    secondsElapsed = (int) controller.getElapsedSeconds();
-    	    timerLabel.setText(controller.getElapsedTime());
-    	});
+        // SRS 3.2.1.3.3 - the game clock is kept by the model; the view only shows it.
+        // It shows 00:00:00 until the first roll and then counts the game time.
+        gameTimer = new Timer(1000, e -> {
+            secondsElapsed = (int) controller.getElapsedSeconds();
+            timerLabel.setText(controller.getElapsedTime());
+        });
+        gameTimer.start();
     }
 
     static String formatTime(int seconds) {
