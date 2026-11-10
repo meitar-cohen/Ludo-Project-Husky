@@ -24,7 +24,7 @@ public class Game {
     // SRS 3.2.1.3.3 - opening state and game clock (Daniel Azulay)
     public static final int PIECES_PER_PLAYER = 4;
     private final int[] piecesInCastleByPlayer;
-    private final long startTimeMillis;
+    private long startTimeMillis = -1;   // -1 = the clock has not started yet
 
     // SRS 3.2.3.3.5 - extra turn and three sixes in a row (Daniel Azulay)
     private int lastStepDie;
@@ -34,7 +34,8 @@ public class Game {
         this.names = names;
         this.colors = colors;
         this.difficulty = difficulty;
-        // SRS 3.2.1.3.3 - all four pieces of every player start in the castle, and the clock starts.
+        // SRS 3.2.1.3.3 - all four pieces of every player start in the castle.
+        // The game clock starts with the first roll (see startClock).
         this.piecesInCastleByPlayer = new int[names.length];
         for (int i = 0; i < names.length; i++) {
             piecesInCastleByPlayer[i] = PIECES_PER_PLAYER;
@@ -44,7 +45,6 @@ public class Game {
         this.piecesInHomePath = new boolean[names.length][PIECES_PER_PLAYER];
         this.piecesInInnerPath = new boolean[names.length][PIECES_PER_PLAYER];
         this.selectedPieceIndex = 0;
-        this.startTimeMillis = System.currentTimeMillis();
     }
 
     /** SRS 3.2.1.3.3 - number of pieces of a player that are still in the castle. */
@@ -52,8 +52,22 @@ public class Game {
         return piecesInCastleByPlayer[playerIndex];
     }
 
-    /** SRS 3.2.1.3.3 - game duration in seconds since the game started. */
+    /** SRS 3.2.1.3.3 - starts the game clock. Called once, at the first roll; later calls do nothing. */
+    public void startClock() {
+        if (startTimeMillis < 0) {
+            startTimeMillis = System.currentTimeMillis();
+        }
+    }
+
+    public boolean isClockStarted() {
+        return startTimeMillis >= 0;
+    }
+
+    /** SRS 3.2.1.3.3 - game duration in seconds since the first roll (0 before the first roll). */
     public long getElapsedSeconds() {
+        if (startTimeMillis < 0) {
+            return 0;
+        }
         return (System.currentTimeMillis() - startTimeMillis) / 1000;
     }
 

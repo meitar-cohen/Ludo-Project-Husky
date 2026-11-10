@@ -247,8 +247,11 @@ public class PlayerDetailsScreen extends JPanel {
 
         GameSetupController.ValidationError error = GameSetupController.validatePlayers(names, colors);
         if (error != null) {
+            // SRS 3.2.1.3.2 - show the message and move the cursor to the wrong name field.
             errorLabel.setText(error.getMessage());
-            nameFields[error.getPlayerIndex()].requestFocusInWindow();
+            if (error.getField() == GameSetupController.Field.NAME) {
+                nameFields[error.getPlayerIndex()].requestFocusInWindow();
+            }
             return;
         }
 
