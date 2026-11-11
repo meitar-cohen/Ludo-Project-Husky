@@ -1,3 +1,4 @@
+package tests;
 
 import model.Game;
 import controller.GameController;
