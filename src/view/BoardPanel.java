@@ -208,7 +208,7 @@ public class BoardPanel extends JPanel {
             }
         }
 
-        for (int i = 1; i <= 5; i++) {
+        for (int i = 1; i <= 6; i++) {
             switch (activeCorner) {
                 case 0: activeHomePath.add(inner(i, 7)); break;
                 case 1: activeHomePath.add(inner(7, i)); break;
@@ -360,6 +360,11 @@ public class BoardPanel extends JPanel {
         return piecesInHomePath[activeCorner][pieceIndex] ? activeHomePath.size() : activePath.size();
     }
 
+    // מחזירה את מספר המשבצות במסלול הבית של השחקן הפעיל
+    public int getActiveHomePathSize() {
+        return activeHomePath.size();
+    } 
+    
     public void setActivePlayerColor(String colorName) {
         activeCorner = cornerOf(colorName);
         rebuildActivePath();
@@ -369,7 +374,7 @@ public class BoardPanel extends JPanel {
         List<Point> inner = innerPath();
         int[] startIdx = {0, 13, 26, 39};
         activeHomePath.clear();
-        for (int i = 1; i <= 5; i++) {
+        for (int i = 1; i <= 6; i++) {
             switch (activeCorner) {
                 case 0: activeHomePath.add(inner(i, 7)); break;
                 case 1: activeHomePath.add(inner(7, i)); break;
