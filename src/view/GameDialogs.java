@@ -60,17 +60,25 @@ public final class GameDialogs {
         card.add(messageRow("!", "<html>Leave the game? An unfinished game<br>is not saved to the history.</html>", true),
                 BorderLayout.CENTER);
 
-        JPanel buttons = buttonRow();
-        JButton yes = new PillButton("Yes, leave game", true);
-        yes.addActionListener(e -> {
-            confirmed[0] = true;
-            dialog.dispose();
-        });
-        JButton no = new PillButton("Keep playing", false);
-        no.addActionListener(e -> dialog.dispose());
-        buttons.add(yes);
-        buttons.add(no);
-        card.add(buttons, BorderLayout.SOUTH);
+
+		JPanel buttons = new JPanel(new GridLayout(1, 2, 12, 0));
+		buttons.setOpaque(false);
+		
+		// אישור יציאה מהמשחק
+		JButton yes = new PillButton("Yes, leave game", true);
+		yes.addActionListener(e -> {
+		    confirmed[0] = true;
+		    dialog.dispose();
+		});
+		
+		// ביטול היציאה והמשך המשחק
+		JButton no = new PillButton("No, keep playing", false);
+		no.addActionListener(e -> dialog.dispose());
+		
+		buttons.add(yes);
+		buttons.add(no);
+		card.add(buttons, BorderLayout.SOUTH);
+
 
         dialog.setContentPane(card);
         dialog.setLocationRelativeTo(parent);
