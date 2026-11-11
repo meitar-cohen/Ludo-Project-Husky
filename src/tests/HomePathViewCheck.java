@@ -1,3 +1,4 @@
+package tests;
 import view.BoardPanel;
 
 public class HomePathViewCheck {

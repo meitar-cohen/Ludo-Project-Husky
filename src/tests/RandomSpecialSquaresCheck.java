@@ -1,3 +1,4 @@
+package tests;
 
 import java.awt.Color;
 import java.awt.Point;

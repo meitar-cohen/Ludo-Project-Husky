@@ -1,3 +1,4 @@
+package tests;
 
 import controller.GameController;
 import enums.RollAction;
