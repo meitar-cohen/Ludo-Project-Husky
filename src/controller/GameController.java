@@ -251,6 +251,25 @@ public class GameController {
         return true;
     }
 
+    // עדכון מיקום הכלי לאחר אירוע שאלה או הפתעה
+    public boolean applyEventMovement(
+            int pieceIndex, int targetStep, int routeSize) {
+
+        // האירוע יכול לשנות מיקום רק במהלך תנועה פעיל
+        if (game.getStage() != Stage.BUSY
+                || !game.selectPiece(pieceIndex)
+                || !game.hasPieceOnBoard()
+                || targetStep < 0
+                || targetStep >= routeSize) {
+            return false;
+        }
+
+        // שמירת המיקום החדש במודל
+        game.setPieceStep(targetStep);
+
+        return true;
+    }
+    
     public boolean isClockwiseMoveAllowed(int currentStep, int steps, int routeSize) {
         return currentStep >= 0 && steps >= 0 && currentStep + steps < routeSize;
     }
