@@ -324,7 +324,7 @@ public class GameController {
     }
 
     /**
-     * SRS 3.2.3.3.2 (Daniel Azulay) - the bonus die of the level:
+     * SRS 3.2.3.3.2 - the bonus die of the level:
      * Easy - none (0), Medium - Boost 1-3, Hard - UltraBoost 1-6.
      */
     public int rollBoostDie() {

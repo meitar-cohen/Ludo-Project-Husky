@@ -170,7 +170,7 @@ public class PlayerDetailsScreen extends JPanel {
     }
 
     /**
-     * SRS 3.2.1.3.1 (Maor Mizrahi) -
+     * SRS 3.2.1.3.1 -
      * Creates the name field and color selection controls for one player.
      */
     private JPanel buildPlayerRow(int index) {
@@ -232,7 +232,7 @@ public class PlayerDetailsScreen extends JPanel {
     }
 
     /**
-     * SRS 3.2.1.3.1 (Maor Mizrahi) -
+     * SRS 3.2.1.3.1 -
      * Collects the selected game settings and starts the game after
      * validation by GameSetupController.
      */

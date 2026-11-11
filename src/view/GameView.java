@@ -831,7 +831,7 @@ public class GameView extends JPanel {
     }
 
     /**
-     * SRS 3.2.2.3.4 (Maor Mizrahi) -
+     * SRS 3.2.2.3.4 -
      * Creates a visual legend for the board square colors
      * and symbols displayed to the user.
      */
