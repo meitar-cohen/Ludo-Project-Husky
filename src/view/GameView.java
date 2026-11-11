@@ -435,6 +435,44 @@ public class GameView extends JPanel {
         // קבלת אורך המסלול הנוכחי של הכלי
         int routeSize = board.getActiveRouteSize(pieceIndex);
 
+
+        // SRS 3.2.4.3.4 - בדיקת כניסה מדויקת לבית הסיום
+        if (controller.tryFinishPiece(pieceIndex, routeSize)) {
+
+            // סנכרון התצוגה עם המודל
+            if (!board.showActivePieceFinished(pieceIndex)) {
+                throw new IllegalStateException(
+                        "Finish state is out of sync");
+            }
+
+            String player = controller.getCurrentPlayerName();
+            int finished = board.getActiveFinishedPieceCount();
+
+            setStatus(player + ": piece reached the goal ("
+                    + finished + "/4).");
+
+            if (controller.isCurrentPlayerFinished()) {
+
+                // משתתף שסיים את כל כליו אינו מקבל תור נוסף
+                passTurn();
+
+                // אם לא נותרה תחרות פעילה, מאפשרים מסך סיום
+                if (controller.getStage() == enums.Stage.DONE) {
+                    endGameButton.setEnabled(true);
+
+                    setStatus(
+                        "Game complete! Click End Game to see the results.");
+                }
+
+            } else {
+
+                // ממשיכים לפי חוק התור הנוסף או מעבר תור רגיל
+                endTurnOrExtraTurn();
+            }
+
+            return;
+        }
+
         // בדיקה האם המהלך מכניס את הכלי למסלול הבית
         if (controller.tryEnterHomePath(pieceIndex, routeSize)) {
 

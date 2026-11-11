@@ -78,6 +78,8 @@ public class BoardPanel extends JPanel {
     private final boolean[][] piecesOnBoard = new boolean[4][4];
     private final int[][] pieceSteps = new int[4][4];
     private final boolean[][] piecesInHomePath = new boolean[4][4];
+    // שמירת הכלים שכבר הגיעו לבית הסיום בתצוגה
+    private final boolean[][] finishedPieces = new boolean[4][4];
     // שומר האם כל כלי נמצא במסלול המשותף הפנימי
     private final boolean[][] piecesInInnerPath = new boolean[4][4];
     private int selectedPieceIndex;
@@ -419,6 +421,49 @@ public class BoardPanel extends JPanel {
         return true;
     }
 
+
+    // הצגת כלי שסיים והסרתו ממסלול התנועה
+    public boolean showActivePieceFinished(int pieceIndex) {
+
+        if (pieceIndex < 0 || pieceIndex >= 4
+                || !piecesOnBoard[activeCorner][pieceIndex]
+                || finishedPieces[activeCorner][pieceIndex]) {
+            return false;
+        }
+
+        finishedPieces[activeCorner][pieceIndex] = true;
+        piecesOnBoard[activeCorner][pieceIndex] = false;
+        selectedPieceIndex = pieceIndex;
+
+        clearHighlight();
+        repaint();
+
+        return true;
+    }
+
+    // מספר הכלים שסיימו אצל השחקן הפעיל
+    public int getActiveFinishedPieceCount() {
+
+        int count = 0;
+
+        for (int piece = 0; piece < 4; piece++) {
+            if (finishedPieces[activeCorner][piece]) {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    // בדיקה אם כלי מסוים כבר הגיע לסיום
+    public boolean isActivePieceFinished(int pieceIndex) {
+
+        return pieceIndex >= 0
+                && pieceIndex < 4
+                && finishedPieces[activeCorner][pieceIndex];
+    }
+
+    
     // בדיקה האם כלי נמצא במסלול הפנימי
     public boolean isActivePieceInInnerPath(int pieceIndex) {
         return pieceIndex >= 0
@@ -790,6 +835,9 @@ public class BoardPanel extends JPanel {
         // Centre (finish)
         drawCentre(g2);
 
+        // הצגת מספר הכלים שסיימו לפי צבע המשתתף
+        drawFinishedPieceCounters(g2, cs, ox, oy);
+        
         // Special squares
         for (Map.Entry<Point, Special> e : specials.entrySet()) {
             drawSpecial(g2, e.getKey(), e.getValue());
@@ -858,6 +906,60 @@ public class BoardPanel extends JPanel {
         g2.dispose();
     }
 
+
+    // הצגת מספר הכלים שסיימו בכל צבע סביב מרכז הלוח
+    private void drawFinishedPieceCounters(
+            Graphics2D g2, int cs, int ox, int oy) {
+
+        int[] cols = {6, 8, 8, 6};
+        int[] rows = {6, 6, 8, 8};
+
+        for (int corner = 0; corner < 4; corner++) {
+
+            int count = 0;
+
+            for (int piece = 0; piece < 4; piece++) {
+                if (finishedPieces[corner][piece]) {
+                    count++;
+                }
+            }
+
+            if (count == 0) {
+                continue;
+            }
+
+            int x = ox + (int) ((cols[corner] + 0.5) * cs);
+            int y = oy + (int) ((rows[corner] + 0.5) * cs);
+            int diameter = Math.max(15, cs / 2);
+
+            // עיגול בצבע המשתתף
+            g2.setColor(CORNER_COLORS[corner]);
+            g2.fillOval(
+                    x - diameter / 2,
+                    y - diameter / 2,
+                    diameter,
+                    diameter
+            );
+
+            // מספר הכלים שסיימו
+            g2.setColor(Color.WHITE);
+            g2.setFont(new Font(
+                    "Dialog", Font.BOLD,
+                    Math.max(10, diameter / 2)
+            ));
+
+            String text = String.valueOf(count);
+            FontMetrics fm = g2.getFontMetrics();
+
+            g2.drawString(
+                    text,
+                    x - fm.stringWidth(text) / 2,
+                    y + (fm.getAscent() - fm.getDescent()) / 2
+            );
+        }
+    }
+
+    
     // Track cells remain in the exact same positions, so click detection is unchanged.
     private void drawCell(Graphics2D g2, Point p, Color fill) {
         int cs = cellSize();
