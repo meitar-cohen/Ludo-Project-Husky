@@ -240,32 +240,78 @@ public class GameView extends JPanel {
         dice.animate(stepDie, boostDie, () -> finishRoll(stepDie, boostDie));
     }
 
+
     private void finishRoll(int stepDie, int boostDie) {
-    	// SRS 3.2.3.3.5 - the third 6 in a row is cancelled and the turn passes.
-    	if (controller.registerRollAndCheckThirdSix(stepDie)) {
-    	    String player = controller.getCurrentPlayerName();
-    	    passTurn();
-    	    setStatus("Third 6 in a row for " + player + "! The roll is cancelled. "
-    	        + controller.getCurrentPlayerName() + "'s turn. Click Roll Dice.");
-    	    return;
-    	}
+
+        // בדיקה אם התקבלו שלוש שישיות ברצף
+        if (controller.registerRollAndCheckThirdSix(stepDie)) {
+            String player = controller.getCurrentPlayerName();
+            passTurn();
+
+            setStatus("Third 6 in a row for " + player
+                + "! The roll is cancelled. "
+                + controller.getCurrentPlayerName()
+                + "'s turn. Click Roll Dice.");
+            return;
+        }
+
+        // קביעת הפעולה האפשרית בעקבות ההטלה
         RollAction action = controller.finishRoll(stepDie, boostDie);
+
+        // אם הוטל 6 ויש כלי על הלוח, מציגים אפשרות בחירה
+        if (action == RollAction.TAKE_OUT
+                && controller.hasPieceOnBoard()
+                && controller.getPendingSteps() > 0) {
+
+
+        	int choice = GameDialogs.chooseMove(this);
+
+
+            // בחירה בהזזת כלי קיים במקום הוצאת כלי
+            if (choice == 1
+                    && controller.chooseBoardMoveInsteadOfTakeOut()) {
+                action = RollAction.MOVE;
+            }
+        }
+
+        // אפשרות 1: הוצאת כלי מהטירה
         if (action == RollAction.TAKE_OUT) {
-            setStatus("Rolled a 6! Click a highlighted piece in your castle.");
-            board.highlightCastlePieces(controller.consumeFirstTurnPulse());
+            setStatus(
+                "Rolled a 6! Click a highlighted piece in your castle."
+            );
+
+            board.highlightCastlePieces(
+                controller.consumeFirstTurnPulse()
+            );
+
             rollButton.setEnabled(false);
             rollButton.setText("Select Your Piece");
+
+        // אפשרות 2: הזזת כלי שכבר נמצא על הלוח
         } else if (action == RollAction.MOVE) {
-            setStatus("Move " + controller.getPendingSteps() + " squares. Click the highlighted piece on the board.");
-            board.highlightBoardPiece(controller.consumeFirstTurnPulse());
+            setStatus(
+                "Move " + controller.getPendingSteps()
+                + " squares. Click the highlighted piece on the board."
+            );
+
+            board.highlightBoardPiece(
+                controller.consumeFirstTurnPulse()
+            );
+
             rollButton.setEnabled(false);
             rollButton.setText("Select Your Piece");
+
+        // אין אפשרות לבצע מהלך
         } else {
-            setStatus("A 6 is needed to leave the castle. Click Next Turn.");
+            setStatus(
+                "A 6 is needed to leave the castle. Click Next Turn."
+            );
+
             rollButton.setText("Next Turn");
             rollButton.setEnabled(true);
         }
     }
+
 
     private void onCastlePieceClicked(int slot) {
         if (!controller.isInTakeOutStage()) return;
@@ -528,16 +574,26 @@ public class GameView extends JPanel {
         }
     }
 
-    private void backToMenu() {
-        int answer = JOptionPane.showConfirmDialog(this,
-            "Leave the game? An unfinished game is not saved to the history.",
-            "Leave game", JOptionPane.YES_NO_OPTION);
-        if (answer != JOptionPane.YES_OPTION) return;
-        gameTimer.stop();
-        Window w = SwingUtilities.getWindowAncestor(this);
-        new MainMenuView().setVisible(true);
-        if (w != null) w.dispose();
-    }
+
+	private void backToMenu() {
+	
+	    // הצגת חלון אישור יציאה מעוצב
+	    if (!GameDialogs.confirmLeave(this)) {
+	        return;
+	    }
+	
+	    // עצירת שעון המשחק לאחר אישור היציאה
+	    gameTimer.stop();
+	
+	    // מעבר לתפריט הראשי וסגירת חלון המשחק
+	    Window w = SwingUtilities.getWindowAncestor(this);
+	    new MainMenuView().setVisible(true);
+	
+	    if (w != null) {
+	        w.dispose();
+	    }
+	}
+
 
     // ------------------------------------------------------------------
     // UI helpers
