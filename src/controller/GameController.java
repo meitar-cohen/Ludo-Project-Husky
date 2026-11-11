@@ -351,8 +351,40 @@ public class GameController {
         return;
     }
 
-    public void enterHomePath() {
-        return;
+ // SRS 3.2.4.3.3 - כניסה למסלול הבית לאחר השלמת המסלול המשותף
+    public boolean tryEnterHomePath(int pieceIndex, int sharedRouteSize) {
+
+        // בדיקת מצב המשחק והכלי שנבחר
+        if (game.getStage() != Stage.MOVE
+                || sharedRouteSize <= 0
+                || !game.selectPiece(pieceIndex)
+                || !game.hasPieceOnBoard()
+                || game.isPieceInHomePath()) {
+            return false;
+        }
+
+        // ברמות בינונית וקשה נדרש להגיע תחילה למסלול הפנימי
+        if (!"Easy".equals(game.getDifficulty())
+                && !game.isPieceInInnerPath()) {
+            return false;
+        }
+
+        int steps = game.getPendingSteps();
+        int destination = game.getPieceStep() + steps;
+
+        // בדיקה שהכלי השלים את המסלול בלי לחרוג ממסלול הבית
+        if (steps <= 0
+                || destination < sharedRouteSize
+                || destination >= sharedRouteSize + 6) {
+            return false;
+        }
+
+        // מעבר הכלי למסלול הבית ושמירת מיקומו
+        game.setPieceInHomePath(true);
+        game.setPieceStep(destination - sharedRouteSize);
+        game.setStage(Stage.BUSY);
+
+        return true;
     }
 
     public void takeOutPiece() {
