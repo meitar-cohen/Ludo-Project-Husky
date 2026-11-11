@@ -260,8 +260,7 @@ public class GameView extends JPanel {
 
         // אם הוטל 6 ויש כלי על הלוח, מציגים אפשרות בחירה
         if (action == RollAction.TAKE_OUT
-                && controller.hasPieceOnBoard()
-                && controller.getPendingSteps() > 0) {
+                && controller.canChooseBoardMoveInsteadOfTakeOut()) {
 
 
         	int choice = GameDialogs.chooseMove(this);
@@ -342,14 +341,33 @@ public class GameView extends JPanel {
     }
 
 
+
     private void onCastlePieceClicked(int slot) {
-        if (!controller.isInTakeOutStage()) return;
-        if (!board.placeActivePieceOnStart(slot)) return;
-        controller.takeOutActivePiece(slot);
-        setStatus("Piece on start! You earned another turn. Click Roll Dice.");
+
+        // בדיקת חוקיות לפני שינוי התצוגה
+        if (!controller.canTakeOutActivePiece(slot)) {
+            return;
+        }
+
+        // הצגת הכלי במשבצת ההתחלה
+        if (!board.placeActivePieceOnStart(slot)) {
+            return;
+        }
+
+        // עדכון מצב הכלי והטירה במודל
+        if (!controller.takeOutActivePiece(slot)) {
+            throw new IllegalStateException(
+                    "Castle state is out of sync");
+        }
+
+        // הוצאת כלי עם 6 מאפשרת הטלה נוספת
+        setStatus(
+                "Piece on start! You earned another turn. Click Roll Dice.");
+
         rollButton.setEnabled(true);
         rollButton.setText("Roll Dice");
     }
+
 
     /**
      * SRS 3.2.4.3.1 -
