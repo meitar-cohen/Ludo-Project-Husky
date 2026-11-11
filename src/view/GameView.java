@@ -574,16 +574,26 @@ public class GameView extends JPanel {
         }
     }
 
-    private void backToMenu() {
-        int answer = JOptionPane.showConfirmDialog(this,
-            "Leave the game? An unfinished game is not saved to the history.",
-            "Leave game", JOptionPane.YES_NO_OPTION);
-        if (answer != JOptionPane.YES_OPTION) return;
-        gameTimer.stop();
-        Window w = SwingUtilities.getWindowAncestor(this);
-        new MainMenuView().setVisible(true);
-        if (w != null) w.dispose();
-    }
+
+	private void backToMenu() {
+	
+	    // הצגת חלון אישור יציאה מעוצב
+	    if (!GameDialogs.confirmLeave(this)) {
+	        return;
+	    }
+	
+	    // עצירת שעון המשחק לאחר אישור היציאה
+	    gameTimer.stop();
+	
+	    // מעבר לתפריט הראשי וסגירת חלון המשחק
+	    Window w = SwingUtilities.getWindowAncestor(this);
+	    new MainMenuView().setVisible(true);
+	
+	    if (w != null) {
+	        w.dispose();
+	    }
+	}
+
 
     // ------------------------------------------------------------------
     // UI helpers
