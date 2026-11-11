@@ -114,6 +114,9 @@ public class BoardPanel extends JPanel {
         activeCorner = cornerOf(playerColorNames[0]);
 
         buildBoard();
+        
+        // הגרלת המשבצות המיוחדות בתחילת כל משחק
+        randomizeSpecialSquares();
 
         setBackground(new Color(244, 247, 255));
         setPreferredSize(new Dimension(700, 700));
@@ -286,6 +289,78 @@ public class BoardPanel extends JPanel {
         }
     }
 
+
+    // SRS 3.2.2.3.3 - הגרלת משבצות מיוחדות מחדש עבור כל משחק
+    private void randomizeSpecialSquares() {
+
+        // משאירים ללא שינוי את משבצות ההתחלה והחצים הקבועים.
+        specials.entrySet().removeIf(entry ->
+                entry.getValue().type == Type.STAR
+                || entry.getValue().type == Type.QUESTION
+                || entry.getValue().type == Type.SURPRISE);
+
+        // המסלול הפנימי (52 משבצות) קיים בכל רמות הקושי.
+        placeRandomSpecialsOnRoute(sharedRoutes.get(0), 4, 0, 0, 0, 0);
+
+        // Medium: מסלול נוסף של 64 משבצות.
+        if (rings == 1) {
+            placeRandomSpecialsOnRoute(sharedRoutes.get(1), 4, 2, 2, 2, 2);
+        }
+
+        // Hard: מסלול של 64 משבצות ומסלול חיצוני של 72 משבצות.
+        if (rings == 2) {
+            placeRandomSpecialsOnRoute(sharedRoutes.get(1), 4, 1, 1, 1, 1);
+            placeRandomSpecialsOnRoute(sharedRoutes.get(2), 4, 2, 2, 2, 2);
+        }
+    }
+
+    // כל משבצת נבחרת מתוך משבצות מסלול פנויות, ללא חפיפה.
+    private void placeRandomSpecialsOnRoute(List<Point> route,
+            int stars, int easyQuestions, int mediumQuestions,
+            int hardQuestions, int surprises) {
+
+        List<Point> available = new ArrayList<>();
+
+        for (Point cell : route) {
+            if (!specials.containsKey(cell) && !homeCells.containsKey(cell)) {
+                available.add(cell);
+            }
+        }
+
+        int needed = stars + easyQuestions + mediumQuestions
+                + hardQuestions + surprises;
+
+        if (available.size() < needed) {
+            throw new IllegalStateException(
+                    "Not enough free squares for special cells");
+        }
+
+        java.util.Collections.shuffle(available);
+        int index = 0;
+
+        for (int i = 0; i < stars; i++) {
+            specials.put(available.get(index++),
+                    new Special(Type.STAR, null, 0));
+        }
+        for (int i = 0; i < easyQuestions; i++) {
+            specials.put(available.get(index++),
+                    new Special(Type.QUESTION, Q_EASY, 0));
+        }
+        for (int i = 0; i < mediumQuestions; i++) {
+            specials.put(available.get(index++),
+                    new Special(Type.QUESTION, Q_MEDIUM, 0));
+        }
+        for (int i = 0; i < hardQuestions; i++) {
+            specials.put(available.get(index++),
+                    new Special(Type.QUESTION, Q_HARD, 0));
+        }
+        for (int i = 0; i < surprises; i++) {
+            specials.put(available.get(index++),
+                    new Special(Type.SURPRISE, SURPRISE, 0));
+        }
+    }
+
+    
     // ------------------------------------------------------------------
     // Active player piece control
     // ------------------------------------------------------------------
