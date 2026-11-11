@@ -65,6 +65,9 @@ public class BoardPanel extends JPanel {
 
     private final List<Point> activePath = new ArrayList<>();
     private final List<Point> activeHomePath = new ArrayList<>();
+
+    // המסלולים המשותפים, מהפנימי לחיצוני
+    private final List<List<Point>> sharedRoutes = new ArrayList<>();
     private final Map<Point, Special> specials = new HashMap<>();
     private final Map<Point, Color> homeCells = new HashMap<>();
 
@@ -187,6 +190,23 @@ public class BoardPanel extends JPanel {
 
     private void buildBoard() {
         List<Point> inner = innerPath();
+
+        // שמירת כל המסלולים המשותפים לפי רמת הקושי
+        sharedRoutes.clear();
+
+        // מסלול פנימי - 52 משבצות בכל הרמות
+        sharedRoutes.add(inner);
+
+        // מסלול של 64 משבצות ברמות Medium ו-Hard
+        if (rings >= 1) {
+            sharedRoutes.add(ringPath(rings == 1 ? 0 : 1));
+        }
+
+        // מסלול חיצוני של 72 משבצות ברמה Hard
+        if (rings == 2) {
+            sharedRoutes.add(ringPath(0));
+        }
+
         int[] startIdx = {0, 13, 26, 39};
 
         // Home paths (5 coloured squares leading to the centre)
@@ -208,7 +228,7 @@ public class BoardPanel extends JPanel {
             }
         }
 
-        for (int i = 1; i <= 5; i++) {
+        for (int i = 1; i <= 6; i++) {
             switch (activeCorner) {
                 case 0: activeHomePath.add(inner(i, 7)); break;
                 case 1: activeHomePath.add(inner(7, i)); break;
@@ -219,8 +239,8 @@ public class BoardPanel extends JPanel {
 
         if (rings == 0) {
             int s = startIdx[activeCorner];
-            for (int i = 0; i <= 20; i++) {
-                activePath.add(inner.get((s + i) % 52));
+            for (int i = 0; i < inner.size(); i++) {
+                activePath.add(inner.get((s + i) % inner.size()));
             }
         }
 
@@ -256,7 +276,7 @@ public class BoardPanel extends JPanel {
                 specials.put(ringCell(second, (k + 2) % 4, 10), new Special(Type.SURPRISE, SURPRISE, 0));
             }
 
-            for (int i = 0; i <= 20; i++) {
+            for (int i = 0; i < outer.size(); i++) {
                 activePath.add(ringCell(outer, k, i));
             }
         }
@@ -360,6 +380,21 @@ public class BoardPanel extends JPanel {
         return piecesInHomePath[activeCorner][pieceIndex] ? activeHomePath.size() : activePath.size();
     }
 
+    // מחזירה את מספר המשבצות במסלול הבית של השחקן הפעיל
+    public int getActiveHomePathSize() {
+        return activeHomePath.size();
+    } 
+    
+    // מחזירה את מספר המסלולים המשותפים בלוח
+    public int getSharedRouteCount() {
+        return sharedRoutes.size();
+    }
+
+    // מחזירה את מספר המשבצות במסלול המבוקש
+    // המסלולים ממוספרים מהפנימי לחיצוני, החל מ-0
+    public int getSharedRouteSize(int routeIndex) {
+        return sharedRoutes.get(routeIndex).size();
+    }
     public void setActivePlayerColor(String colorName) {
         activeCorner = cornerOf(colorName);
         rebuildActivePath();
@@ -369,7 +404,7 @@ public class BoardPanel extends JPanel {
         List<Point> inner = innerPath();
         int[] startIdx = {0, 13, 26, 39};
         activeHomePath.clear();
-        for (int i = 1; i <= 5; i++) {
+        for (int i = 1; i <= 6; i++) {
             switch (activeCorner) {
                 case 0: activeHomePath.add(inner(i, 7)); break;
                 case 1: activeHomePath.add(inner(7, i)); break;
@@ -380,12 +415,12 @@ public class BoardPanel extends JPanel {
         activePath.clear();
         if (rings == 0) {
             int s = startIdx[activeCorner];
-            for (int i = 0; i <= 20; i++) {
-                activePath.add(inner.get((s + i) % 52));
+            for (int i = 0; i < inner.size(); i++) {
+                activePath.add(inner.get((s + i) % inner.size()));
             }
         } else {
             List<Point> outer = ringPath(0);
-            for (int i = 0; i <= 20; i++) {
+            for (int i = 0; i < outer.size(); i++) {
                 activePath.add(ringCell(outer, activeCorner, i));
             }
         }
