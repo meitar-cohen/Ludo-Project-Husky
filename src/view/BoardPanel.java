@@ -72,7 +72,7 @@ public class BoardPanel extends JPanel {
     private final Map<Point, Color> homeCells = new HashMap<>();
 
     /**
-     * SRS 3.2.4.3.1 (Maor Mizrahi) -
+     * SRS 3.2.4.3.1 -
      * Stores the visual state of each piece for every player color.
      */
     private final boolean[][] piecesOnBoard = new boolean[4][4];
@@ -615,7 +615,7 @@ public class BoardPanel extends JPanel {
     }
 
     /**
-     * SRS 3.2.4.3.1 (Maor Mizrahi) -
+     * SRS 3.2.4.3.1 -
      * Visually animates an active piece after the movement
      * has already been validated by GameController.
      *
@@ -1052,7 +1052,7 @@ public class BoardPanel extends JPanel {
     }
 
     /**
-     * SRS 3.2.2.3.4 (Maor Mizrahi) -
+     * SRS 3.2.2.3.4 -
      * Draws a distinct visual marking and color for each special
      * square type, including start, protection, arrow, question
      * and surprise squares.

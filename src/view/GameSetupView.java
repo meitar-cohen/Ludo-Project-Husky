@@ -145,7 +145,7 @@ public class GameSetupView extends JFrame {
     }
 
     /**
-     * SRS 3.2.1.3.1 (Maor Mizrahi) -
+     * SRS 3.2.1.3.1 -
      * Opens the player-details screen using the selected player count
      * and difficulty.
      */

@@ -23,7 +23,7 @@ public class Game {
     private final String[] colors;
     private final String difficulty;
 
-    // SRS 3.2.1.3.3 - opening state and game clock (Daniel Azulay)
+    // SRS 3.2.1.3.3 - opening state and game clock
     public static final int PIECES_PER_PLAYER = 4;
     private final int[] piecesInCastleByPlayer;
     
@@ -31,7 +31,7 @@ public class Game {
     private final boolean[] finishedPlayers;
     private long startTimeMillis = -1;   // -1 = the clock has not started yet
 
-    // SRS 3.2.3.3.5 - extra turn and three sixes in a row (Daniel Azulay)
+    // SRS 3.2.3.3.5 - extra turn and three sixes in a row
     private int lastStepDie;
     private int consecutiveSixes;
 
@@ -199,17 +199,17 @@ public class Game {
         return piecesInHomePath[currentPlayer][selectedPieceIndex];
     }
 
-    // SRS 3.2.4.3.2 (Maor Mizrahi) - Returns whether the active piece is currently on an inner path.
+    // SRS 3.2.4.3.2 - Returns whether the active piece is currently on an inner path.
     public boolean isPieceInInnerPath() {
         return piecesInInnerPath[currentPlayer][selectedPieceIndex];
     }
 
-    // SRS 3.2.4.3.2 (Maor Mizrahi) - Updates whether the active piece is currently on an inner path.
+    // SRS 3.2.4.3.2 - Updates whether the active piece is currently on an inner path.
     public void setPieceInInnerPath(boolean pieceInInnerPath) {
         piecesInInnerPath[currentPlayer][selectedPieceIndex] = pieceInInnerPath;
     }
 
-    // SRS 3.2.4.3.1 (Maor Mizrahi) - Selects one of the active player's four pieces.
+    // SRS 3.2.4.3.1 - Selects one of the active player's four pieces.
     public boolean selectPiece(int pieceIndex) {
         if (pieceIndex < 0 || pieceIndex >= PIECES_PER_PLAYER) {
             return false;
@@ -282,7 +282,7 @@ public class Game {
         return piecesInInnerPath[playerIndex][pieceIndex];
     }
 
-    // SRS 3.2.4.3.1 (Maor Mizrahi) - Returns whether the current player has at least one piece on the board.
+    // SRS 3.2.4.3.1 - Returns whether the current player has at least one piece on the board.
     public boolean hasAnyPieceOnBoard() {
         for (int pieceIndex = 0; pieceIndex < PIECES_PER_PLAYER; pieceIndex++) {
             if (piecesOnBoard[currentPlayer][pieceIndex]) {
