@@ -260,8 +260,8 @@ public class GameView extends JPanel {
 
         // אם הוטל 6 ויש כלי על הלוח, מציגים אפשרות בחירה
         if (action == RollAction.TAKE_OUT
-                && controller.canChooseBoardMoveInsteadOfTakeOut()) {
-
+                && controller.canChooseBoardMoveInsteadOfTakeOut()
+                && controller.hasAnyLegalMove(getCurrentRouteSizes())) {
 
         	int choice = GameDialogs.chooseMove(this);
 
@@ -288,7 +288,14 @@ public class GameView extends JPanel {
 
         // אפשרות 2: הזזת כלי שכבר נמצא על הלוח
         } else if (action == RollAction.MOVE) {
-        	if (controller.getPendingSteps() == 0) {
+
+            // בודקים אם לפחות אחד מארבעת הכלים יכול לזוז
+            if (!controller.hasAnyLegalMove(getCurrentRouteSizes())) {
+                passWhenNoLegalMove();
+                return;
+            }
+
+            if (controller.getPendingSteps() == 0) {
 
                 setStatus(
                     "Boost result is 0. Select a home-path piece to move "
@@ -312,35 +319,83 @@ public class GameView extends JPanel {
             rollButton.setText("Select Your Piece");
 
 
-            // SRS 3.2.3.3.3 - טיפול בתוצאה 0 ללא מהלך חוקי
-            } else if (controller.getPendingSteps() == 0) {
+         // SRS 3.2.3.3.3 - טיפול בתוצאה 0 ללא מהלך חוקי
+        } else if (controller.getPendingSteps() == 0) {
 
-                // שמירת שם השחקן שלא יכול לבצע מהלך
-                String previousPlayer = controller.getCurrentPlayerName();
-
-                // העברת התור לשחקן הבא באופן אוטומטי
-                passTurn();
-
-                // הצגת הסיבה למעבר התור
-                setStatus("Boost result is 0. " + previousPlayer
-                        + " has no legal move. "
-                        + controller.getCurrentPlayerName()
-                        + "'s turn. Click Roll Dice.");
-
-            } else {
-
-                // שמירה על ההתנהגות הקיימת במקרים אחרים
-                setStatus(
-                    "A 6 is needed to leave the castle. Click Next Turn."
-                );
-
-                rollButton.setText("Next Turn");
-                rollButton.setEnabled(true);
+        	// בהטלת 6 אין להעביר את התור לשחקן הבא
+            if (controller.hasExtraTurn()) {
+                passWhenNoLegalMove();
+                return;
             }
+        	
+            // שמירת שם השחקן שלא יכול לבצע מהלך
+            String previousPlayer = controller.getCurrentPlayerName();
 
+            // העברת התור לשחקן הבא באופן אוטומטי
+            passTurn();
+
+            // הצגת הסיבה למעבר התור
+            setStatus("Boost result is 0. " + previousPlayer
+                    + " has no legal move. "
+                    + controller.getCurrentPlayerName()
+                    + "'s turn. Click Roll Dice.");
+
+        } else {
+
+            // SRS 3.2.3.3.6 - אין מהלך חוקי גם כשהתוצאה חיובית
+            passWhenNoLegalMove();
+        }
     }
 
+    // SRS 3.2.3.3.6 - קבלת אורך המסלול של כל כלי
+    private int[] getCurrentRouteSizes() {
 
+        int[] routeSizes = new int[Game.PIECES_PER_PLAYER];
+
+        // בדיקת המסלול הנוכחי של כל אחד מארבעת הכלים
+        for (int piece = 0; piece < Game.PIECES_PER_PLAYER; piece++) {
+            routeSizes[piece] = board.getActiveRouteSize(piece);
+        }
+
+        return routeSizes;
+    }
+
+    // SRS 3.2.3.3.6 - טיפול במצב ללא מהלך חוקי
+    private void passWhenNoLegalMove() {
+
+        String previousPlayer = controller.getCurrentPlayerName();
+
+        // הטלת 6 מעניקה תור נוסף גם כשאין מהלך חוקי
+        if (controller.hasExtraTurn()) {
+
+            controller.grantExtraTurn();
+            board.clearHighlight();
+
+            rollButton.setEnabled(true);
+            rollButton.setText("Roll Again");
+
+            setStatus(previousPlayer
+                    + " has no legal move. Rolled a 6 - roll again.");
+
+            return;
+        }
+
+        // בהטלה רגילה מעבירים את התור לשחקן הבא
+        passTurn();
+
+        if (controller.canRoll()) {
+
+            String reason =
+                    controller.getPendingSteps() == 0
+                    && !controller.isEasyGame()
+                    ? "Boost result is 0. " : "";
+
+            setStatus(reason + previousPlayer
+                    + " has no legal move. "
+                    + controller.getCurrentPlayerName()
+                    + "'s turn. Click Roll Dice.");
+        }
+    }
 
     private void onCastlePieceClicked(int slot) {
 
@@ -613,14 +668,26 @@ public class GameView extends JPanel {
     }
 
     private void passTurn() {
+
+        // מעבר למשתתף הבא שלא סיים
         controller.passTurn();
+
+        // ניקוי מצב ההטלה והלוח
         dice.clear();
         formulaLabel.setText(" ");
-        rollButton.setEnabled(true);
+
+        // מאפשרים הטלה רק אם נותר משחק פעיל
+        rollButton.setEnabled(controller.canRoll());
         rollButton.setText("Roll Dice");
+
         board.clearHighlight();
         refreshPlayers();
-        setStatus(controller.getCurrentPlayerName() + "'s turn. Click Roll Dice.");
+
+        // הודעה לפי מצב המשחק
+        setStatus(controller.canRoll()
+                ? controller.getCurrentPlayerName()
+                    + "'s turn. Click Roll Dice."
+                : "Game finished: no active turns remain.");
     }
 
     private void finishScenario() {
