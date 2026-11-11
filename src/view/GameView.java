@@ -289,11 +289,22 @@ public class GameView extends JPanel {
 
         // אפשרות 2: הזזת כלי שכבר נמצא על הלוח
         } else if (action == RollAction.MOVE) {
-            setStatus(
-                "Move " + controller.getPendingSteps()
-                + " squares. Click the highlighted piece on the board."
-            );
+        	if (controller.getPendingSteps() == 0) {
 
+                setStatus(
+                    "Boost result is 0. Select a home-path piece to move "
+                    + stepDie + " squares."
+                );
+
+            } else {
+
+                setStatus(
+                    "Move " + controller.getPendingSteps()
+                    + " squares on the shared path, or "
+                    + stepDie
+                    + " in the home path. Select a piece."
+                );
+            }
             board.highlightBoardPiece(
                 controller.consumeFirstTurnPulse()
             );
@@ -323,15 +334,38 @@ public class GameView extends JPanel {
     }
 
     /**
-     * SRS 3.2.4.3.1 (Maor Mizrahi) -
+     * SRS 3.2.4.3.1 -
      * Handles the user's selection of the active board piece.
      * Game-rule validation and movement decisions are delegated
      * to GameController.
      */
     private void onBoardPieceClicked(int pieceIndex) {
-        int routeSize = board.getActiveRouteSize(pieceIndex);
-        int targetStep = controller.validatePieceMove(pieceIndex, routeSize);
 
+        // קבלת אורך המסלול הנוכחי של הכלי
+        int routeSize = board.getActiveRouteSize(pieceIndex);
+
+        // בדיקה האם המהלך מכניס את הכלי למסלול הבית
+        if (controller.tryEnterHomePath(pieceIndex, routeSize)) {
+
+            // קבלת המיקום שחושב ונשמר במודל
+            int homeStep = controller.getPieceStep(pieceIndex);
+
+            // עדכון מיקום הכלי בתצוגת הלוח
+            if (!board.showActivePieceInHomePath(pieceIndex, homeStep)) {
+                throw new IllegalStateException(
+                    "Home path view is out of sync"
+                );
+            }
+
+            // סיום המהלך ועדכון מצב התור
+            board.clearHighlight();
+            setStatus("Piece entered the home path!");
+            endTurnOrExtraTurn();
+            return;
+        }
+
+        // אם אין כניסה למסלול הבית, בודקים תנועה רגילה
+        int targetStep = controller.validatePieceMove(pieceIndex, routeSize);
         if (targetStep < 0) {
             setStatus("The selected piece cannot make this move.");
             return;

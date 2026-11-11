@@ -368,6 +368,36 @@ public class BoardPanel extends JPanel {
         return false;
     }
 
+ // שומר על התאימות למתודה ולבדיקות הקיימות
+    public boolean showActivePieceInHomePath(int pieceIndex) {
+        return showActivePieceInHomePath(pieceIndex, 0);
+    }
+
+    // מציג כלי במסלול הבית במיקום שחושב ואושר
+    public boolean showActivePieceInHomePath(int pieceIndex, int homeStep) {
+
+        // בדיקת תקינות הכלי והמיקום במסלול הבית
+        if (pieceIndex < 0 || pieceIndex >= 4
+                || !piecesOnBoard[activeCorner][pieceIndex]
+                || homeStep < 0
+                || homeStep >= activeHomePath.size()) {
+            return false;
+        }
+
+        // עדכון מסלול ומיקום הכלי בתצוגה
+        piecesInHomePath[activeCorner][pieceIndex] = true;
+        pieceSteps[activeCorner][pieceIndex] = homeStep;
+        selectedPieceIndex = pieceIndex;
+
+        repaint();
+        return true;
+    }
+
+    // בדיקה אם כלי של השחקן הפעיל נמצא במסלול הבית
+    public boolean isActivePieceInHomePath(int pieceIndex) {
+        return pieceIndex >= 0 && pieceIndex < 4
+                && piecesInHomePath[activeCorner][pieceIndex];
+    }
     public int getActiveRouteSize() {
         return getActiveRouteSize(selectedPieceIndex);
     }
