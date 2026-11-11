@@ -473,25 +473,40 @@ public class GameView extends JPanel {
                 pieceIndex,
                 startStep,
                 targetStep,
-                () -> {
-                	if (controller.isEasyGame()
-                	        || board.isActivePieceInHomePath(pieceIndex)) {
-
-                	    // במסלול הבית התנועה היא לפי קוביית הצעדים בלבד
-                	    // אין להפעיל משבצת שאלה במהלך התנועה במסלול הבית
-                	    setStatus("Moved "
-                	            + controller.getMoveStepsForSelectedPiece()
-                	            + " squares.");
-
-                	    endTurnOrExtraTurn();
-
-                	} else {
-                	    askQuestion(pieceIndex);
-                	}
-                }
+                () -> finishPieceMovement(pieceIndex)
         );
     }
 
+    // המשך התור לאחר שהכלי סיים את התנועה
+    private void finishPieceMovement(int pieceIndex) {
+
+        // בדיקות האכילה והחסימה ישולבו כאן
+        // במסגרת דרישות 3.2.5
+
+        // בדיקת המשבצת שבה הכלי נעצר
+        String event = board.getSquareEventAtStep(
+                pieceIndex, controller.getPieceStep(pieceIndex));
+
+        // הפעלת שאלה רק בנחיתה על משבצת שאלה
+        if ("QUESTION".equals(event)) {
+            askQuestion(pieceIndex);
+            return;
+        }
+
+        // הפעלת הפתעה רק בנחיתה על משבצת הפתעה
+        if ("SURPRISE".equals(event)) {
+            showSurprise(pieceIndex);
+            return;
+        }
+
+        // אם אין אירוע, מסיימים את המהלך
+        setStatus("Moved "
+                + controller.getMoveStepsForSelectedPiece()
+                + " squares.");
+
+        endTurnOrExtraTurn();
+    }
+    
     private void askQuestion(int pieceIndex) {
         Window owner = SwingUtilities.getWindowAncestor(this);
 
@@ -512,15 +527,28 @@ public class GameView extends JPanel {
             : "Wrong answer. Move 1 square back."
         );
 
+        // שמירת התנועה מהשאלה גם במודל
+        if (!controller.applyEventMovement(
+                pieceIndex,
+                targetStep,
+                board.getActiveRouteSize(pieceIndex))) {
+
+            throw new IllegalStateException(
+                    "Question movement is not legal");
+        }
+
+        // מבצעים את התנועה ומסיימים את התור
+        // בלי להפעיל שוב משבצת מיוחדת
         board.animatePiece(
-            pieceIndex,
-            startStep,
-            targetStep,
-            this::endTurnOrExtraTurn
+                pieceIndex,
+                startStep,
+                targetStep,
+                this::endTurnOrExtraTurn
         );
+
     }
 
-    private void showSurprise() {
+    private void showSurprise(int pieceIndex) {
         Window owner = SwingUtilities.getWindowAncestor(this);
         JDialog dialog = new JDialog(owner, "Ludo - Surprise",
                 Dialog.ModalityType.APPLICATION_MODAL);
@@ -647,12 +675,33 @@ public class GameView extends JPanel {
         dialog.setLocationRelativeTo(owner);
         dialog.setVisible(true);
 
-        int startStep = controller.getActivePieceStep();
-        int targetStep = controller.getSurpriseMoveTarget(board.getActiveRouteSize());
+     // קבלת מיקום הכלי לפני הפעלת ההפתעה
+        int startStep = controller.getPieceStep(pieceIndex);
+
+        // חישוב התנועה אחורה
+        int targetStep = controller.getSurpriseMoveTarget(
+                board.getActiveRouteSize(pieceIndex));
+
+        // עדכון המודל
+        if (!controller.applyEventMovement(
+                pieceIndex,
+                targetStep,
+                board.getActiveRouteSize(pieceIndex))) {
+
+            throw new IllegalStateException(
+                    "Surprise movement is not legal");
+        }
 
         setStatus("Surprise! Move back 3 squares.");
 
-        board.animateActivePiece(startStep,targetStep, this::finishScenario);
+        // לאחר ההפתעה מסיימים רק את התור,
+        // ולא את המשחק כולו
+        board.animatePiece(
+                pieceIndex,
+                startStep,
+                targetStep,
+                this::endTurnOrExtraTurn
+        );
     }
 
     private void endTurnOrExtraTurn() {
@@ -679,6 +728,9 @@ public class GameView extends JPanel {
         // מאפשרים הטלה רק אם נותר משחק פעיל
         rollButton.setEnabled(controller.canRoll());
         rollButton.setText("Roll Dice");
+
+        // אם המשחק הסתיים, מאפשרים מעבר למסך הסיום
+        endGameButton.setEnabled(controller.getStage() == enums.Stage.DONE);
 
         board.clearHighlight();
         refreshPlayers();
