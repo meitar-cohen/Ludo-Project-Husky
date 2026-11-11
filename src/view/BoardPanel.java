@@ -12,11 +12,10 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Prototype board for the Ludo game screen.
+ * Board component for the Ludo game screen.
  * Draws the board for the selected difficulty (Easy 15x15, Medium with an extra
  * ring of 64 squares, Hard with extra rings of 64 and 72 squares), the special
- * squares, the castles and the pieces. Only the first player's piece moves
- * (scripted prototype - no real game logic).
+ * squares, the castles and the active player's pieces.
  */
 public class BoardPanel extends JPanel {
 
@@ -52,29 +51,46 @@ public class BoardPanel extends JPanel {
     }
 
     public interface PieceClickListener {
-        void castlePieceClicked();
-        void boardPieceClicked();
+        void castlePieceClicked(int slot);
+        void boardPieceClicked(int pieceIndex);
     }
 
     private final String difficulty;
     private final int rings;   // 0 easy, 1 medium, 2 hard
     private final int size;    // board size in cells
-    private final int p1Corner;
-    private final boolean[] activeCorner = new boolean[4];
+    private int activeCorner;
+    private final boolean[] activeCorners = new boolean[4];
     private final int[] piecesInCastle = new int[4];
+    private final boolean[][] castlePieces = new boolean[4][4];
 
-    private final List<Point> p1Path = new ArrayList<>();
+    private final List<Point> activePath = new ArrayList<>();
+    private final List<Point> activeHomePath = new ArrayList<>();
+
+    // המסלולים המשותפים, מהפנימי לחיצוני
+    private final List<List<Point>> sharedRoutes = new ArrayList<>();
     private final Map<Point, Special> specials = new HashMap<>();
     private final Map<Point, Color> homeCells = new HashMap<>();
 
-    private boolean p1PieceOnBoard = false;
-    private int p1Step = 0;
+    /**
+     * SRS 3.2.4.3.1 (Maor Mizrahi) -
+     * Stores the visual state of each piece for every player color.
+     */
+    private final boolean[][] piecesOnBoard = new boolean[4][4];
+    private final int[][] pieceSteps = new int[4][4];
+    private final boolean[][] piecesInHomePath = new boolean[4][4];
+    // שמירת הכלים שכבר הגיעו לבית הסיום בתצוגה
+    private final boolean[][] finishedPieces = new boolean[4][4];
+    // שומר האם כל כלי נמצא במסלול המשותף הפנימי
+    private final boolean[][] piecesInInnerPath = new boolean[4][4];
+    private int selectedPieceIndex;
 
     private boolean highlightCastle = false;
     private boolean highlightBoard = false;
 
     private PieceClickListener listener;
     private Timer animation;
+    private Timer highlightPulse;
+    private boolean pulsePhase;
 
     public BoardPanel(String difficulty, String[] playerColorNames) {
         this.difficulty = difficulty;
@@ -89,10 +105,13 @@ public class BoardPanel extends JPanel {
 
         for (String name : playerColorNames) {
             int c = cornerOf(name);
-            activeCorner[c] = true;
+            activeCorners[c] = true;
             piecesInCastle[c] = 4;
+            for (int slot = 0; slot < 4; slot++) {
+                castlePieces[c][slot] = true;
+            }
         }
-        p1Corner = cornerOf(playerColorNames[0]);
+        activeCorner = cornerOf(playerColorNames[0]);
 
         buildBoard();
 
@@ -175,6 +194,23 @@ public class BoardPanel extends JPanel {
 
     private void buildBoard() {
         List<Point> inner = innerPath();
+
+        // שמירת כל המסלולים המשותפים לפי רמת הקושי
+        sharedRoutes.clear();
+
+        // מסלול פנימי - 52 משבצות בכל הרמות
+        sharedRoutes.add(inner);
+
+        // מסלול של 64 משבצות ברמות Medium ו-Hard
+        if (rings >= 1) {
+            sharedRoutes.add(ringPath(rings == 1 ? 0 : 1));
+        }
+
+        // מסלול חיצוני של 72 משבצות ברמה Hard
+        if (rings == 2) {
+            sharedRoutes.add(ringPath(0));
+        }
+
         int[] startIdx = {0, 13, 26, 39};
 
         // Home paths (5 coloured squares leading to the centre)
@@ -196,102 +232,441 @@ public class BoardPanel extends JPanel {
             }
         }
 
-        if (rings == 0) {
-            int s = startIdx[p1Corner];
-            for (int i = 0; i <= 20; i++) {
-                p1Path.add(inner.get((s + i) % 52));
+        for (int i = 1; i <= 6; i++) {
+            switch (activeCorner) {
+                case 0: activeHomePath.add(inner(i, 7)); break;
+                case 1: activeHomePath.add(inner(7, i)); break;
+                case 2: activeHomePath.add(inner(14 - i, 7)); break;
+                default: activeHomePath.add(inner(7, 14 - i)); break;
             }
-            return;
         }
 
-        // Outer rings (Medium / Hard). Positions are fixed for the prototype;
-        // in the real system protection, question and surprise squares are random.
-        List<Point> outer = ringPath(0);
-        int k = p1Corner;
-        Color[] qLevels = {Q_EASY, Q_MEDIUM, Q_HARD, Q_EASY};
-        for (int i = 0; i < 4; i++) {
-            int c = (k + i) % 4;
-            specials.put(ringCell(outer, c, 0), new Special(Type.START, CORNER_COLORS[c], 0));
-            specials.put(ringCell(outer, c, 3), new Special(Type.QUESTION, qLevels[i], 0));
-            specials.put(ringCell(outer, c, 11), new Special(Type.STAR, null, 0));
-            int mid = (size - 1) / 2;
-            specials.put(ringCell(outer, c, mid), new Special(Type.ARROW, CORNER_COLORS[c], (c + 1) % 4));
+        if (rings == 0) {
+            int s = startIdx[activeCorner];
+            for (int i = 0; i < inner.size(); i++) {
+                activePath.add(inner.get((s + i) % inner.size()));
+            }
         }
-        specials.put(ringCell(outer, (k + 1) % 4, 12), new Special(Type.QUESTION, Q_MEDIUM, 0));
-        specials.put(ringCell(outer, (k + 2) % 4, 12), new Special(Type.QUESTION, Q_HARD, 0));
-        specials.put(ringCell(outer, k, 5), new Special(Type.SURPRISE, SURPRISE, 0));
-        specials.put(ringCell(outer, k, 7), new Special(Type.SURPRISE, SURPRISE, 0));
 
-        if (rings == 2) {
-            List<Point> second = ringPath(1);
-            Color[] q2 = {Q_EASY, Q_MEDIUM, Q_HARD};
+        if (rings > 0) {
+            // Configured positions for Medium and Hard board layouts.
+            List<Point> outer = ringPath(0);
+            int k = activeCorner;
+            Color[] qLevels = {Q_EASY, Q_MEDIUM, Q_HARD, Q_EASY};
             for (int i = 0; i < 4; i++) {
                 int c = (k + i) % 4;
-                specials.put(ringCell(second, c, 11), new Special(Type.STAR, null, 0));
-                specials.put(ringCell(second, c, (size - 3) / 2), new Special(Type.ARROW, CORNER_COLORS[c], (c + 1) % 4));
-                if (i > 0) {
-                    specials.put(ringCell(second, c, 3), new Special(Type.QUESTION, q2[i - 1], 0));
-                }
+                specials.put(ringCell(outer, c, 0), new Special(Type.START, CORNER_COLORS[c], 0));
+                specials.put(ringCell(outer, c, 3), new Special(Type.QUESTION, qLevels[i], 0));
+                specials.put(ringCell(outer, c, 11), new Special(Type.STAR, null, 0));
+                int mid = (size - 1) / 2;
+                specials.put(ringCell(outer, c, mid), new Special(Type.ARROW, CORNER_COLORS[c], (c + 1) % 4));
             }
-            specials.put(ringCell(second, (k + 2) % 4, 10), new Special(Type.SURPRISE, SURPRISE, 0));
-        }
+            specials.put(ringCell(outer, (k + 1) % 4, 12), new Special(Type.QUESTION, Q_MEDIUM, 0));
+            specials.put(ringCell(outer, (k + 2) % 4, 12), new Special(Type.QUESTION, Q_HARD, 0));
+            specials.put(ringCell(outer, k, 5), new Special(Type.SURPRISE, SURPRISE, 0));
+            specials.put(ringCell(outer, k, 7), new Special(Type.SURPRISE, SURPRISE, 0));
 
-        for (int i = 0; i <= 20; i++) {
-            p1Path.add(ringCell(outer, k, i));
+            if (rings == 2) {
+                List<Point> second = ringPath(1);
+                Color[] q2 = {Q_EASY, Q_MEDIUM, Q_HARD};
+                for (int i = 0; i < 4; i++) {
+                    int c = (k + i) % 4;
+                    specials.put(ringCell(second, c, 11), new Special(Type.STAR, null, 0));
+                    specials.put(ringCell(second, c, (size - 3) / 2), new Special(Type.ARROW, CORNER_COLORS[c], (c + 1) % 4));
+                    if (i > 0) {
+                        specials.put(ringCell(second, c, 3), new Special(Type.QUESTION, q2[i - 1], 0));
+                    }
+                }
+                specials.put(ringCell(second, (k + 2) % 4, 10), new Special(Type.SURPRISE, SURPRISE, 0));
+            }
+
+            for (int i = 0; i < outer.size(); i++) {
+                activePath.add(ringCell(outer, k, i));
+            }
         }
     }
 
     // ------------------------------------------------------------------
-    // Scripted piece control (used by GameScreen)
+    // Active player piece control
     // ------------------------------------------------------------------
 
     public void highlightCastlePieces() {
         highlightCastle = true;
         highlightBoard = false;
-        repaint();
+        startHighlightPulse(true);
     }
 
     public void highlightBoardPiece() {
         highlightBoard = true;
         highlightCastle = false;
-        repaint();
+        startHighlightPulse(true);
+    }
+
+    public void highlightCastlePieces(boolean pulse) {
+        highlightCastle = true;
+        highlightBoard = false;
+        startHighlightPulse(pulse);
+    }
+
+    public void highlightBoardPiece(boolean pulse) {
+        highlightBoard = true;
+        highlightCastle = false;
+        startHighlightPulse(pulse);
     }
 
     public void clearHighlight() {
         highlightCastle = false;
         highlightBoard = false;
+        if (highlightPulse != null) {
+            highlightPulse.stop();
+            highlightPulse = null;
+        }
         repaint();
     }
 
-    public void placeFirstPieceOnStart() {
-        piecesInCastle[p1Corner]--;
-        p1PieceOnBoard = true;
-        p1Step = 0;
-        clearHighlight();
+    private void startHighlightPulse(boolean pulse) {
+        if (highlightPulse != null) {
+            highlightPulse.stop();
+        }
+        pulsePhase = false;
+        if (!pulse) {
+            highlightPulse = null;
+            repaint();
+            return;
+        }
+        highlightPulse = new Timer(420, e -> {
+            pulsePhase = !pulsePhase;
+            repaint();
+        });
+        highlightPulse.start();
+        repaint();
     }
 
-    public int getFirstPieceStep() {
-        return p1Step;
+    public boolean placeActivePieceOnStart(int slot) {
+        if (slot < 0 || slot >= 4 || !castlePieces[activeCorner][slot]) return false;
+        castlePieces[activeCorner][slot] = false;
+        piecesInCastle[activeCorner]--;
+        piecesOnBoard[activeCorner][slot] = true;
+        pieceSteps[activeCorner][slot] = 0;
+        piecesInHomePath[activeCorner][slot] = false;
+        piecesInInnerPath[activeCorner][slot] = false;
+        selectedPieceIndex = slot;
+        clearHighlight();
+        repaint();
+        return true;
     }
 
-    /** Moves the first player's piece one square at a time to the target step. */
-    public void animateFirstPieceTo(int targetStep, Runnable onDone) {
+    public int getActivePieceStep() {
+        return pieceSteps[activeCorner][selectedPieceIndex];
+    }
+
+    public boolean hasPieceInCastle() {
+        return piecesInCastle[activeCorner] > 0;
+    }
+
+    public boolean hasPieceOnBoard() {
+        for (int pieceIndex = 0; pieceIndex < 4; pieceIndex++) {
+            if (piecesOnBoard[activeCorner][pieceIndex]) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+ // שומר על התאימות למתודה ולבדיקות הקיימות
+    public boolean showActivePieceInHomePath(int pieceIndex) {
+        return showActivePieceInHomePath(pieceIndex, 0);
+    }
+
+    // מציג כלי במסלול הבית במיקום שחושב ואושר
+    public boolean showActivePieceInHomePath(int pieceIndex, int homeStep) {
+
+        // בדיקת תקינות הכלי והמיקום במסלול הבית
+        if (pieceIndex < 0 || pieceIndex >= 4
+                || !piecesOnBoard[activeCorner][pieceIndex]
+                || homeStep < 0
+                || homeStep >= activeHomePath.size()) {
+            return false;
+        }
+
+        // עדכון מסלול ומיקום הכלי בתצוגה
+        piecesInHomePath[activeCorner][pieceIndex] = true;
+        pieceSteps[activeCorner][pieceIndex] = homeStep;
+        selectedPieceIndex = pieceIndex;
+
+        repaint();
+        return true;
+    }
+
+    // עדכון תצוגת כלי שעבר למסלול הפנימי
+    public boolean showActivePieceInInnerPath(int pieceIndex, int innerStep) {
+
+        // מעבר למסלול פנימי אפשרי רק ברמות Medium ו-Hard
+        if (rings == 0
+                || pieceIndex < 0
+                || pieceIndex >= 4
+                || !piecesOnBoard[activeCorner][pieceIndex]
+                || piecesInHomePath[activeCorner][pieceIndex]
+                || innerStep < 0
+                || innerStep >= innerPath().size()) {
+            return false;
+        }
+
+        // עדכון המסלול והמיקום של הכלי בתצוגה
+        piecesInInnerPath[activeCorner][pieceIndex] = true;
+        pieceSteps[activeCorner][pieceIndex] = innerStep;
+        selectedPieceIndex = pieceIndex;
+
+        repaint();
+        return true;
+    }
+
+
+    // הצגת כלי שסיים והסרתו ממסלול התנועה
+    public boolean showActivePieceFinished(int pieceIndex) {
+
+        if (pieceIndex < 0 || pieceIndex >= 4
+                || !piecesOnBoard[activeCorner][pieceIndex]
+                || finishedPieces[activeCorner][pieceIndex]) {
+            return false;
+        }
+
+        finishedPieces[activeCorner][pieceIndex] = true;
+        piecesOnBoard[activeCorner][pieceIndex] = false;
+        selectedPieceIndex = pieceIndex;
+
         clearHighlight();
+        repaint();
+
+        return true;
+    }
+
+    // מספר הכלים שסיימו אצל השחקן הפעיל
+    public int getActiveFinishedPieceCount() {
+
+        int count = 0;
+
+        for (int piece = 0; piece < 4; piece++) {
+            if (finishedPieces[activeCorner][piece]) {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    // בדיקה אם כלי מסוים כבר הגיע לסיום
+    public boolean isActivePieceFinished(int pieceIndex) {
+
+        return pieceIndex >= 0
+                && pieceIndex < 4
+                && finishedPieces[activeCorner][pieceIndex];
+    }
+
+    
+    // בדיקה האם כלי נמצא במסלול הפנימי
+    public boolean isActivePieceInInnerPath(int pieceIndex) {
+        return pieceIndex >= 0
+                && pieceIndex < 4
+                && piecesInInnerPath[activeCorner][pieceIndex];
+    }
+    
+    // בדיקה אם כלי של השחקן הפעיל נמצא במסלול הבית
+    public boolean isActivePieceInHomePath(int pieceIndex) {
+        return pieceIndex >= 0 && pieceIndex < 4
+                && piecesInHomePath[activeCorner][pieceIndex];
+    }
+    public int getActiveRouteSize() {
+        return getActiveRouteSize(selectedPieceIndex);
+    }
+
+    public int getActiveRouteSize(int pieceIndex) {
+        if (pieceIndex < 0 || pieceIndex >= 4) {
+            return 0;
+        }
+
+        return currentPieceRoute(pieceIndex).size();    }
+ // זיהוי אירוע רק במשבצת שבה הכלי נוחת לאחר התנועה
+    public String getSquareEventAtStep(int pieceIndex, int step) {
+
+        // לא מפעילים אירוע עבור כלי לא חוקי או כלי במסלול הבית
+        if (pieceIndex < 0 || pieceIndex >= 4
+                || !piecesOnBoard[activeCorner][pieceIndex]
+                || piecesInHomePath[activeCorner][pieceIndex]) {
+            return "NONE";
+        }
+
+        // בדיקת המיקום במסלול הנוכחי של הכלי
+        List<Point> route = currentPieceRoute(pieceIndex);
+
+        if (step < 0 || step >= route.size()) {
+            return "NONE";
+        }
+
+        // בדיקת סוג המשבצת שבה הכלי נחת
+        Special special = specials.get(route.get(step));
+
+        if (special == null) {
+            return "NONE";
+        }
+
+        if (special.type == Type.QUESTION) {
+            return "QUESTION";
+        }
+
+        if (special.type == Type.SURPRISE) {
+            return "SURPRISE";
+        }
+
+        return "NONE";
+    }
+    
+    // מחזירה את מספר המשבצות במסלול הבית של השחקן הפעיל
+    public int getActiveHomePathSize() {
+        return activeHomePath.size();
+    } 
+    
+    // מחזירה את מספר המסלולים המשותפים בלוח
+    public int getSharedRouteCount() {
+        return sharedRoutes.size();
+    }
+
+    // מחזירה את מספר המשבצות במסלול המבוקש
+    // המסלולים ממוספרים מהפנימי לחיצוני, החל מ-0
+    public int getSharedRouteSize(int routeIndex) {
+        return sharedRoutes.get(routeIndex).size();
+    }
+    public void setActivePlayerColor(String colorName) {
+        activeCorner = cornerOf(colorName);
+        rebuildActivePath();
+    }
+
+    private void rebuildActivePath() {
+        List<Point> inner = innerPath();
+        int[] startIdx = {0, 13, 26, 39};
+        activeHomePath.clear();
+        for (int i = 1; i <= 6; i++) {
+            switch (activeCorner) {
+                case 0: activeHomePath.add(inner(i, 7)); break;
+                case 1: activeHomePath.add(inner(7, i)); break;
+                case 2: activeHomePath.add(inner(14 - i, 7)); break;
+                default: activeHomePath.add(inner(7, 14 - i)); break;
+            }
+        }
+        activePath.clear();
+        if (rings == 0) {
+            int s = startIdx[activeCorner];
+            for (int i = 0; i < inner.size(); i++) {
+                activePath.add(inner.get((s + i) % inner.size()));
+            }
+        } else {
+            List<Point> outer = ringPath(0);
+            for (int i = 0; i < outer.size(); i++) {
+                activePath.add(ringCell(outer, activeCorner, i));
+            }
+        }
+        repaint();
+    }
+
+    /** Checks that the selected active-player move stays within the current route. */
+    public boolean canMoveActivePiece(int steps) {
+        if (!piecesOnBoard[activeCorner][selectedPieceIndex] || steps < 0) return false;
+        List<Point> route = currentPieceRoute(selectedPieceIndex);
+        return pieceSteps[activeCorner][selectedPieceIndex] + steps < route.size();
+    }
+
+    // מחזירה את 52 משבצות המסלול הפנימי לפי צבע השחקן
+    private List<Point> innerRouteForCorner(int corner) {
+
+        List<Point> base = innerPath();
+        List<Point> result = new ArrayList<>();
+
+        int first = corner * 13;
+
+        for (int i = 0; i < base.size(); i++) {
+            result.add(base.get((first + i) % base.size()));
+        }
+
+        return result;
+    }
+
+    // מחזירה את המסלול שבו נמצא הכלי בפועל
+    private List<Point> currentPieceRoute(int pieceIndex) {
+
+        // כלי שנמצא במסלול הבית
+        if (piecesInHomePath[activeCorner][pieceIndex]) {
+            return activeHomePath;
+        }
+
+        // כלי שנמצא במסלול המשותף הפנימי
+        if (piecesInInnerPath[activeCorner][pieceIndex]) {
+            return innerRouteForCorner(activeCorner);
+        }
+
+        // כלי שנמצא במסלול המשותף החיצוני
+        return activePath;
+    }
+
+    public void animateActivePiece(
+            int startStep,
+            int targetStep,
+            Runnable onDone) {
+        animatePiece(selectedPieceIndex, startStep, targetStep, onDone);
+    }
+
+    /**
+     * SRS 3.2.4.3.1 (Maor Mizrahi) -
+     * Visually animates an active piece after the movement
+     * has already been validated by GameController.
+     *
+     * This method performs presentation only and does not
+     * validate or apply game rules.
+     */
+    public void animatePiece(
+            int pieceIndex,
+            int startStep,
+            int targetStep,
+            Runnable onDone) {
+        if (pieceIndex < 0 || pieceIndex >= 4) {
+            return;
+        }
+        clearHighlight();
+        selectedPieceIndex = pieceIndex;
+
         if (animation != null && animation.isRunning()) {
             animation.stop();
         }
+
+        pieceSteps[activeCorner][pieceIndex] = startStep;
+
+        final boolean forward = targetStep >= startStep;
+        final int[] remaining = {
+            Math.abs(targetStep - startStep)
+        };
+
         animation = new Timer(220, null);
+
         animation.addActionListener(e -> {
-            if (p1Step == targetStep) {
+            if (remaining[0] == 0) {
                 animation.stop();
+
                 if (onDone != null) {
                     onDone.run();
                 }
+
                 return;
             }
-            p1Step += (targetStep > p1Step) ? 1 : -1;
+
+            if (forward) {
+                pieceSteps[activeCorner][pieceIndex]++;
+            } else {
+                pieceSteps[activeCorner][pieceIndex]--;
+            }
+
+            remaining[0]--;
             repaint();
         });
+
         animation.start();
     }
 
@@ -331,19 +706,31 @@ public class BoardPanel extends JPanel {
         if (listener == null) return;
         int cs = cellSize();
         if (highlightCastle) {
-            for (int s = 0; s < piecesInCastle[p1Corner]; s++) {
-                double[] c = slotCenter(p1Corner, s);
+            for (int s = 0; s < 4; s++) {
+                if (!castlePieces[activeCorner][s]) continue;
+                double[] c = slotCenter(activeCorner, s);
                 if (p.distance(c[0], c[1]) <= cs * 0.8) {
-                    listener.castlePieceClicked();
+                    listener.castlePieceClicked(s);
                     return;
                 }
             }
         }
-        if (highlightBoard && p1PieceOnBoard) {
-            Point cell = p1Path.get(p1Step);
-            Rectangle r = new Rectangle(originX() + cell.x * cs, originY() + cell.y * cs, cs, cs);
-            if (r.contains(p)) {
-                listener.boardPieceClicked();
+        if (highlightBoard) {
+            for (int pieceIndex = 0; pieceIndex < 4; pieceIndex++) {
+                if (!piecesOnBoard[activeCorner][pieceIndex]) {
+                    continue;
+                }
+
+                List<Point> route = currentPieceRoute(pieceIndex);
+                int step = Math.min(pieceSteps[activeCorner][pieceIndex], route.size() - 1);
+                Point cell = route.get(step);
+                Rectangle bounds = new Rectangle(originX() + cell.x * cs, originY() + cell.y * cs, cs, cs);
+
+                if (bounds.contains(p)) {
+                    selectedPieceIndex = pieceIndex;
+                    listener.boardPieceClicked(pieceIndex);
+                    return;
+                }
             }
         }
     }
@@ -352,6 +739,57 @@ public class BoardPanel extends JPanel {
     // Painting
     // ------------------------------------------------------------------
 
+
+    // מחזירה את המסלול המתאים לכלי, גם אם אינו שייך לשחקן הפעיל
+    private List<Point> routeForPlayerPiece(int corner, int pieceIndex) {
+
+        // עבור השחקן הפעיל משתמשים במסלול שכבר מחושב
+        if (corner == activeCorner) {
+            return currentPieceRoute(pieceIndex);
+        }
+
+        List<Point> route = new ArrayList<>();
+
+        // מסלול הבית של השחקן
+        if (piecesInHomePath[corner][pieceIndex]) {
+            for (int i = 1; i <= 6; i++) {
+                switch (corner) {
+                    case 0: route.add(inner(i, 7)); break;
+                    case 1: route.add(inner(7, i)); break;
+                    case 2: route.add(inner(14 - i, 7)); break;
+                    default: route.add(inner(7, 14 - i)); break;
+                }
+            }
+        }
+        // כלי של שחקן אחר שכבר עבר למסלול הפנימי
+        else if (piecesInInnerPath[corner][pieceIndex]) {
+            route.addAll(innerRouteForCorner(corner));
+        }
+        // המסלול הבסיסי ברמה קלה
+        else if (rings == 0) {
+            List<Point> innerRoute = innerPath();
+            int[] startIdx = {0, 13, 26, 39};
+
+            for (int i = 0; i < innerRoute.size(); i++) {
+                route.add(innerRoute.get(
+                    (startIdx[corner] + i) % innerRoute.size()
+                ));
+            }
+        }
+        // המסלול החיצוני ברמות בינונית וקשה
+        else {
+            List<Point> outerRoute = ringPath(0);
+
+            for (int i = 0; i < outerRoute.size(); i++) {
+                route.add(ringCell(outerRoute, corner, i));
+            }
+        }
+
+        return route;
+    }
+
+    
+    
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -397,6 +835,9 @@ public class BoardPanel extends JPanel {
         // Centre (finish)
         drawCentre(g2);
 
+        // הצגת מספר הכלים שסיימו לפי צבע המשתתף
+        drawFinishedPieceCounters(g2, cs, ox, oy);
+        
         // Special squares
         for (Map.Entry<Point, Special> e : specials.entrySet()) {
             drawSpecial(g2, e.getKey(), e.getValue());
@@ -404,19 +845,60 @@ public class BoardPanel extends JPanel {
 
         // Pieces in castles
         for (int corner = 0; corner < 4; corner++) {
-            for (int s = 0; s < piecesInCastle[corner]; s++) {
+            for (int s = 0; s < 4; s++) {
+                if (!castlePieces[corner][s]) continue;
                 double[] c = slotCenter(corner, s);
-                boolean hl = highlightCastle && corner == p1Corner;
+                boolean hl = highlightCastle && corner == activeCorner;
                 drawPiece(g2, c[0], c[1], cs, CORNER_COLORS[corner], hl);
             }
         }
 
-        // First player's moving piece
-        if (p1PieceOnBoard) {
-            Point cell = p1Path.get(p1Step);
-            drawPiece(g2, ox + (cell.x + 0.5) * cs, oy + (cell.y + 0.5) * cs, cs,
-                CORNER_COLORS[p1Corner], highlightBoard);
+
+        // ציור הכלים של כל השחקנים שנמצאים במשחק
+        for (int corner = 0; corner < 4; corner++) {
+
+            // דילוג על צבע שאינו משתתף במשחק הנוכחי
+            if (!activeCorners[corner]) {
+                continue;
+            }
+
+            for (int pieceIndex = 0; pieceIndex < 4; pieceIndex++) {
+
+                // מציירים רק כלים שנמצאים על הלוח
+                if (!piecesOnBoard[corner][pieceIndex]) {
+                    continue;
+                }
+
+                // המסלול והמיקום שייכים לבעל הכלי
+                List<Point> route = routeForPlayerPiece(
+                    corner, pieceIndex
+                );
+
+                if (route.isEmpty()) {
+                    continue;
+                }
+
+                int step = Math.max(0,
+                    Math.min(pieceSteps[corner][pieceIndex],
+                             route.size() - 1));
+
+                Point cell = route.get(step);
+
+                // רק הכלים של השחקן הפעיל יודגשו
+                boolean highlighted =
+                    highlightBoard && corner == activeCorner;
+
+                drawPiece(
+                    g2,
+                    ox + (cell.x + 0.5) * cs,
+                    oy + (cell.y + 0.5) * cs,
+                    cs,
+                    CORNER_COLORS[corner],
+                    highlighted
+                );
+            }
         }
+
 
         g2.setColor(new Color(126, 140, 173));
         g2.setStroke(new BasicStroke(1.6f));
@@ -424,6 +906,60 @@ public class BoardPanel extends JPanel {
         g2.dispose();
     }
 
+
+    // הצגת מספר הכלים שסיימו בכל צבע סביב מרכז הלוח
+    private void drawFinishedPieceCounters(
+            Graphics2D g2, int cs, int ox, int oy) {
+
+        int[] cols = {6, 8, 8, 6};
+        int[] rows = {6, 6, 8, 8};
+
+        for (int corner = 0; corner < 4; corner++) {
+
+            int count = 0;
+
+            for (int piece = 0; piece < 4; piece++) {
+                if (finishedPieces[corner][piece]) {
+                    count++;
+                }
+            }
+
+            if (count == 0) {
+                continue;
+            }
+
+            int x = ox + (int) ((cols[corner] + 0.5) * cs);
+            int y = oy + (int) ((rows[corner] + 0.5) * cs);
+            int diameter = Math.max(15, cs / 2);
+
+            // עיגול בצבע המשתתף
+            g2.setColor(CORNER_COLORS[corner]);
+            g2.fillOval(
+                    x - diameter / 2,
+                    y - diameter / 2,
+                    diameter,
+                    diameter
+            );
+
+            // מספר הכלים שסיימו
+            g2.setColor(Color.WHITE);
+            g2.setFont(new Font(
+                    "Dialog", Font.BOLD,
+                    Math.max(10, diameter / 2)
+            ));
+
+            String text = String.valueOf(count);
+            FontMetrics fm = g2.getFontMetrics();
+
+            g2.drawString(
+                    text,
+                    x - fm.stringWidth(text) / 2,
+                    y + (fm.getAscent() - fm.getDescent()) / 2
+            );
+        }
+    }
+
+    
     // Track cells remain in the exact same positions, so click detection is unchanged.
     private void drawCell(Graphics2D g2, Point p, Color fill) {
         int cs = cellSize();
@@ -444,11 +980,11 @@ public class BoardPanel extends JPanel {
         int y = originY() + o.y * cs;
         int side = cs * 6;
         Color color = CORNER_COLORS[corner];
-        Color base = activeCorner[corner] ? lighter(color) : lighter(lighter(color));
-        Color glow = activeCorner[corner] ? new Color(246, 250, 255) : new Color(250, 251, 255);
+        Color base = activeCorners[corner] ? lighter(color) : lighter(lighter(color));
+        Color glow = activeCorners[corner] ? new Color(246, 250, 255) : new Color(250, 251, 255);
 
         g2.setPaint(new GradientPaint(x, y, base, x + side, y + side,
-            activeCorner[corner] ? lighter(lighter(color)) : new Color(245, 248, 254)));
+            activeCorners[corner] ? lighter(lighter(color)) : new Color(245, 248, 254)));
         g2.fillRoundRect(x + 1, y + 1, side - 2, side - 2, Math.max(12, cs), Math.max(12, cs));
         g2.setColor(new Color(color.getRed(), color.getGreen(), color.getBlue(), 120));
         g2.setStroke(new BasicStroke(1.7f));
@@ -515,8 +1051,12 @@ public class BoardPanel extends JPanel {
         g2.draw(t);
     }
 
-    // Clear, high-contrast marks on every special square.
-    // Easy has START / STAR / ARROW; Medium and Hard additionally have ? and !.
+    /**
+     * SRS 3.2.2.3.4 (Maor Mizrahi) -
+     * Draws a distinct visual marking and color for each special
+     * square type, including start, protection, arrow, question
+     * and surprise squares.
+     */
     private void drawSpecial(Graphics2D g2, Point p, Special s) {
         int cs = cellSize();
         int x = originX() + p.x * cs;
@@ -611,9 +1151,11 @@ public class BoardPanel extends JPanel {
     private void drawPiece(Graphics2D g2, double cx, double cy, int cs, Color color, boolean highlighted) {
         double r = cs * 0.42;
         if (highlighted) {
-            g2.setColor(new Color(255, 178, 67, 80));
-            g2.fill(new Ellipse2D.Double(cx - r - cs * 0.21, cy - r - cs * 0.21,
-                2 * (r + cs * 0.21), 2 * (r + cs * 0.21)));
+            int glowAlpha = pulsePhase ? 180 : 75;
+            double glowSize = pulsePhase ? 0.28 : 0.21;
+            g2.setColor(new Color(255, 178, 67, glowAlpha));
+            g2.fill(new Ellipse2D.Double(cx - r - cs * glowSize, cy - r - cs * glowSize,
+                2 * (r + cs * glowSize), 2 * (r + cs * glowSize)));
             g2.setColor(HIGHLIGHT);
             g2.setStroke(new BasicStroke(Math.max(2f, cs * 0.10f)));
             g2.draw(new Ellipse2D.Double(cx - r - cs * 0.12, cy - r - cs * 0.12,

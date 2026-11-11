@@ -1,5 +1,7 @@
 package view;
 
+import controller.GameSetupController;
+
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
@@ -8,11 +10,9 @@ import java.awt.event.FocusEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.Ellipse2D;
-import java.util.HashSet;
-import java.util.Set;
 
 /**
- * Modern player details screen for the Ludo prototype.
+ * Player details screen for game setup.
  * Uses only Java Swing; keeps all original validation and game navigation.
  */
 public class PlayerDetailsScreen extends JPanel {
@@ -101,7 +101,7 @@ public class PlayerDetailsScreen extends JPanel {
         header.add(eyebrow);
         header.add(Box.createVerticalStrut(7));
 
-        JLabel title = new JLabel("Meet your players");
+        JLabel title = new JLabel("Create Your Players");
         title.setFont(new Font("Segoe UI", Font.BOLD, 28));
         title.setForeground(NAVY);
         title.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -169,6 +169,10 @@ public class PlayerDetailsScreen extends JPanel {
         return card;
     }
 
+    /**
+     * SRS 3.2.1.3.1 (Maor Mizrahi) -
+     * Creates the name field and color selection controls for one player.
+     */
     private JPanel buildPlayerRow(int index) {
         JPanel row = new PlayerCard();
         row.setLayout(new BorderLayout(12, 0));
@@ -227,32 +231,28 @@ public class PlayerDetailsScreen extends JPanel {
         return row;
     }
 
+    /**
+     * SRS 3.2.1.3.1 (Maor Mizrahi) -
+     * Collects the selected game settings and starts the game after
+     * validation by GameSetupController.
+     */
     private void handleStartGame() {
         errorLabel.setForeground(new Color(211, 65, 90));
-        Set<String> selectedNames = new HashSet<>();
-        Set<String> selectedColors = new HashSet<>();
         String[] names = new String[numPlayers];
         String[] colors = new String[numPlayers];
-
         for (int i = 0; i < numPlayers; i++) {
-            String name = nameFields[i].getText().trim();
-            String color = (String) colorSelectors[i].getSelectedItem();
-            if (name.isEmpty()) {
-                errorLabel.setText("Please enter a name for Player " + (i + 1) + ".");
-                nameFields[i].requestFocusInWindow();
-                return;
+            names[i] = nameFields[i].getText().trim();
+            colors[i] = (String) colorSelectors[i].getSelectedItem();
+        }
+
+        GameSetupController.ValidationError error = GameSetupController.validatePlayers(names, colors);
+        if (error != null) {
+            // SRS 3.2.1.3.2 - show the message and move the cursor to the wrong name field.
+            errorLabel.setText(error.getMessage());
+            if (error.getField() == GameSetupController.Field.NAME) {
+                nameFields[error.getPlayerIndex()].requestFocusInWindow();
             }
-            if (!selectedNames.add(name)) {
-                errorLabel.setText("Each player must have a different name.");
-                nameFields[i].requestFocusInWindow();
-                return;
-            }
-            if (!selectedColors.add(color)) {
-                errorLabel.setText("Each player must choose a different color.");
-                return;
-            }
-            names[i] = name;
-            colors[i] = color;
+            return;
         }
 
         errorLabel.setForeground(new Color(25, 150, 112));
