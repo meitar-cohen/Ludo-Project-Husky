@@ -263,21 +263,9 @@ public class GameView extends JPanel {
                 && controller.hasPieceOnBoard()
                 && controller.getPendingSteps() > 0) {
 
-            Object[] options = {
-                "Take out a piece",
-                "Move a piece on board"
-            };
 
-            int choice = JOptionPane.showOptionDialog(
-                this,
-                "You rolled a 6! Choose your move:",
-                "Choose your move",
-                JOptionPane.DEFAULT_OPTION,
-                JOptionPane.QUESTION_MESSAGE,
-                null,
-                options,
-                options[0]
-            );
+        	int choice = GameDialogs.chooseMove(this);
+
 
             // בחירה בהזזת כלי קיים במקום הוצאת כלי
             if (choice == 1
