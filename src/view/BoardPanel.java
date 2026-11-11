@@ -65,6 +65,9 @@ public class BoardPanel extends JPanel {
 
     private final List<Point> activePath = new ArrayList<>();
     private final List<Point> activeHomePath = new ArrayList<>();
+
+    // המסלולים המשותפים, מהפנימי לחיצוני
+    private final List<List<Point>> sharedRoutes = new ArrayList<>();
     private final Map<Point, Special> specials = new HashMap<>();
     private final Map<Point, Color> homeCells = new HashMap<>();
 
@@ -187,6 +190,23 @@ public class BoardPanel extends JPanel {
 
     private void buildBoard() {
         List<Point> inner = innerPath();
+
+        // שמירת כל המסלולים המשותפים לפי רמת הקושי
+        sharedRoutes.clear();
+
+        // מסלול פנימי - 52 משבצות בכל הרמות
+        sharedRoutes.add(inner);
+
+        // מסלול של 64 משבצות ברמות Medium ו-Hard
+        if (rings >= 1) {
+            sharedRoutes.add(ringPath(rings == 1 ? 0 : 1));
+        }
+
+        // מסלול חיצוני של 72 משבצות ברמה Hard
+        if (rings == 2) {
+            sharedRoutes.add(ringPath(0));
+        }
+
         int[] startIdx = {0, 13, 26, 39};
 
         // Home paths (5 coloured squares leading to the centre)
@@ -365,6 +385,16 @@ public class BoardPanel extends JPanel {
         return activeHomePath.size();
     } 
     
+    // מחזירה את מספר המסלולים המשותפים בלוח
+    public int getSharedRouteCount() {
+        return sharedRoutes.size();
+    }
+
+    // מחזירה את מספר המשבצות במסלול המבוקש
+    // המסלולים ממוספרים מהפנימי לחיצוני, החל מ-0
+    public int getSharedRouteSize(int routeIndex) {
+        return sharedRoutes.get(routeIndex).size();
+    }
     public void setActivePlayerColor(String colorName) {
         activeCorner = cornerOf(colorName);
         rebuildActivePath();
