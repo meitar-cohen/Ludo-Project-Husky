@@ -409,8 +409,64 @@ public class GameController {
         return;
     }
 
-    public void handleNoLegalMove() {
-        return;
+    // SRS 3.2.3.3.6 - בדיקה אם קיים כלי שניתן להזיז
+    public boolean hasAnyLegalMove(int[] routeSizes) {
+
+        // הבדיקה רלוונטית רק במצב בחירת מהלך
+        if ((game.getStage() != Stage.MOVE
+                && game.getStage() != Stage.TAKE_OUT)
+                || routeSizes == null
+                || routeSizes.length != Game.PIECES_PER_PLAYER) {
+            return false;
+        }
+
+        int player = game.getCurrentPlayer();
+
+        // בדיקת כל ארבעת הכלים של המשתתף הפעיל
+        for (int piece = 0; piece < Game.PIECES_PER_PLAYER; piece++) {
+
+            // כלי שנמצא בטירה אינו יכול לזוז על הלוח
+            if (!game.isPieceOnBoard(player, piece)) {
+                continue;
+            }
+
+            boolean inHome = game.isPieceInHomePath(player, piece);
+
+            // במסלול הבית משתמשים בקובייה הרגילה
+            int steps = inHome
+                    ? game.getLastStepDie()
+                    : game.getPendingSteps();
+
+            int current = game.getPieceStep(player, piece);
+            int routeSize = routeSizes[piece];
+
+            // בדיקת נתונים תקינים ותנועה חיובית
+            if (steps <= 0
+                    || current < 0
+                    || routeSize <= 0
+                    || current >= routeSize) {
+                continue;
+            }
+
+            int destination = current + steps;
+
+            // תנועה חוקית בתוך המסלול הנוכחי
+            if (destination < routeSize) {
+                return true;
+            }
+
+            // מעבר חוקי ממסלול 52 המשבצות למסלול הבית
+            if (!inHome
+                    && routeSize == 52
+                    && (isEasyGame()
+                        || game.isPieceInInnerPath(player, piece))
+                    && destination < 52 + 6) {
+                return true;
+            }
+        }
+
+        // כל הכלים נבדקו ולא נמצא מהלך חוקי
+        return false;
     }
 
  // SRS 3.2.4.3.3 - כניסה למסלול הבית לאחר השלמת המסלול המשותף
@@ -454,9 +510,40 @@ public class GameController {
         game.setStage(Stage.ROLL);
     }
 
+    // SRS 3.2.3.3.6 - מעבר תור ודילוג על משתתפים שסיימו
     public void passTurn() {
-        int nextPlayer = (game.getCurrentPlayer() + 1) % game.getPlayerCount();
-        game.setCurrentPlayer(nextPlayer);
-        game.setStage(Stage.ROLL);
+
+        // רצף השישיות שייך למשתתף ולא עובר לשחקן הבא
+        game.setConsecutiveSixes(0);
+
+        int total = game.getPlayerCount();
+        int active = 0;
+
+        // ספירת המשתתפים שעדיין במשחק
+        for (int player = 0; player < total; player++) {
+            if (!game.isPlayerFinished(player)) {
+                active++;
+            }
+        }
+
+        // כאשר נותר משתתף אחד או פחות, אין תור נוסף
+        if (active <= 1) {
+            game.setStage(Stage.DONE);
+            return;
+        }
+
+        // חיפוש המשתתף הבא שעדיין לא סיים
+        for (int offset = 1; offset <= total; offset++) {
+
+            int candidate =
+                    (game.getCurrentPlayer() + offset) % total;
+
+            if (!game.isPlayerFinished(candidate)) {
+
+                game.setCurrentPlayer(candidate);
+                game.setStage(Stage.ROLL);
+                return;
+            }
+        }
     }
 }
