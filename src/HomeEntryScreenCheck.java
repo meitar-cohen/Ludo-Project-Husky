@@ -69,6 +69,7 @@ public class HomeEntryScreenCheck {
                         || board.getActivePieceStep() != 1) {
                     throw new AssertionError(
                         "Board home entry failed"
+                    );
                 }
 
                 System.out.println(
