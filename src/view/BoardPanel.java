@@ -219,8 +219,8 @@ public class BoardPanel extends JPanel {
 
         if (rings == 0) {
             int s = startIdx[activeCorner];
-            for (int i = 0; i <= 20; i++) {
-                activePath.add(inner.get((s + i) % 52));
+            for (int i = 0; i < inner.size(); i++) {
+                activePath.add(inner.get((s + i) % inner.size()));
             }
         }
 
@@ -256,7 +256,7 @@ public class BoardPanel extends JPanel {
                 specials.put(ringCell(second, (k + 2) % 4, 10), new Special(Type.SURPRISE, SURPRISE, 0));
             }
 
-            for (int i = 0; i <= 20; i++) {
+            for (int i = 0; i < outer.size(); i++) {
                 activePath.add(ringCell(outer, k, i));
             }
         }
@@ -380,12 +380,12 @@ public class BoardPanel extends JPanel {
         activePath.clear();
         if (rings == 0) {
             int s = startIdx[activeCorner];
-            for (int i = 0; i <= 20; i++) {
-                activePath.add(inner.get((s + i) % 52));
+            for (int i = 0; i < inner.size(); i++) {
+                activePath.add(inner.get((s + i) % inner.size()));
             }
         } else {
             List<Point> outer = ringPath(0);
-            for (int i = 0; i <= 20; i++) {
+            for (int i = 0; i < outer.size(); i++) {
                 activePath.add(ringCell(outer, activeCorner, i));
             }
         }
