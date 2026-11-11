@@ -441,7 +441,41 @@ public class BoardPanel extends JPanel {
         }
 
         return currentPieceRoute(pieceIndex).size();    }
+ // זיהוי אירוע רק במשבצת שבה הכלי נוחת לאחר התנועה
+    public String getSquareEventAtStep(int pieceIndex, int step) {
 
+        // לא מפעילים אירוע עבור כלי לא חוקי או כלי במסלול הבית
+        if (pieceIndex < 0 || pieceIndex >= 4
+                || !piecesOnBoard[activeCorner][pieceIndex]
+                || piecesInHomePath[activeCorner][pieceIndex]) {
+            return "NONE";
+        }
+
+        // בדיקת המיקום במסלול הנוכחי של הכלי
+        List<Point> route = currentPieceRoute(pieceIndex);
+
+        if (step < 0 || step >= route.size()) {
+            return "NONE";
+        }
+
+        // בדיקת סוג המשבצת שבה הכלי נחת
+        Special special = specials.get(route.get(step));
+
+        if (special == null) {
+            return "NONE";
+        }
+
+        if (special.type == Type.QUESTION) {
+            return "QUESTION";
+        }
+
+        if (special.type == Type.SURPRISE) {
+            return "SURPRISE";
+        }
+
+        return "NONE";
+    }
+    
     // מחזירה את מספר המשבצות במסלול הבית של השחקן הפעיל
     public int getActiveHomePathSize() {
         return activeHomePath.size();
