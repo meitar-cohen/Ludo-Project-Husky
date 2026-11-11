@@ -78,6 +78,8 @@ public class BoardPanel extends JPanel {
     private final boolean[][] piecesOnBoard = new boolean[4][4];
     private final int[][] pieceSteps = new int[4][4];
     private final boolean[][] piecesInHomePath = new boolean[4][4];
+    // שמירת הכלים שכבר הגיעו לבית הסיום בתצוגה
+    private final boolean[][] finishedPieces = new boolean[4][4];
     // שומר האם כל כלי נמצא במסלול המשותף הפנימי
     private final boolean[][] piecesInInnerPath = new boolean[4][4];
     private int selectedPieceIndex;
@@ -112,6 +114,9 @@ public class BoardPanel extends JPanel {
         activeCorner = cornerOf(playerColorNames[0]);
 
         buildBoard();
+        
+        // הגרלת המשבצות המיוחדות בתחילת כל משחק
+        randomizeSpecialSquares();
 
         setBackground(new Color(244, 247, 255));
         setPreferredSize(new Dimension(700, 700));
@@ -284,6 +289,78 @@ public class BoardPanel extends JPanel {
         }
     }
 
+
+    // SRS 3.2.2.3.3 - הגרלת משבצות מיוחדות מחדש עבור כל משחק
+    private void randomizeSpecialSquares() {
+
+        // משאירים ללא שינוי את משבצות ההתחלה והחצים הקבועים.
+        specials.entrySet().removeIf(entry ->
+                entry.getValue().type == Type.STAR
+                || entry.getValue().type == Type.QUESTION
+                || entry.getValue().type == Type.SURPRISE);
+
+        // המסלול הפנימי (52 משבצות) קיים בכל רמות הקושי.
+        placeRandomSpecialsOnRoute(sharedRoutes.get(0), 4, 0, 0, 0, 0);
+
+        // Medium: מסלול נוסף של 64 משבצות.
+        if (rings == 1) {
+            placeRandomSpecialsOnRoute(sharedRoutes.get(1), 4, 2, 2, 2, 2);
+        }
+
+        // Hard: מסלול של 64 משבצות ומסלול חיצוני של 72 משבצות.
+        if (rings == 2) {
+            placeRandomSpecialsOnRoute(sharedRoutes.get(1), 4, 1, 1, 1, 1);
+            placeRandomSpecialsOnRoute(sharedRoutes.get(2), 4, 2, 2, 2, 2);
+        }
+    }
+
+    // כל משבצת נבחרת מתוך משבצות מסלול פנויות, ללא חפיפה.
+    private void placeRandomSpecialsOnRoute(List<Point> route,
+            int stars, int easyQuestions, int mediumQuestions,
+            int hardQuestions, int surprises) {
+
+        List<Point> available = new ArrayList<>();
+
+        for (Point cell : route) {
+            if (!specials.containsKey(cell) && !homeCells.containsKey(cell)) {
+                available.add(cell);
+            }
+        }
+
+        int needed = stars + easyQuestions + mediumQuestions
+                + hardQuestions + surprises;
+
+        if (available.size() < needed) {
+            throw new IllegalStateException(
+                    "Not enough free squares for special cells");
+        }
+
+        java.util.Collections.shuffle(available);
+        int index = 0;
+
+        for (int i = 0; i < stars; i++) {
+            specials.put(available.get(index++),
+                    new Special(Type.STAR, null, 0));
+        }
+        for (int i = 0; i < easyQuestions; i++) {
+            specials.put(available.get(index++),
+                    new Special(Type.QUESTION, Q_EASY, 0));
+        }
+        for (int i = 0; i < mediumQuestions; i++) {
+            specials.put(available.get(index++),
+                    new Special(Type.QUESTION, Q_MEDIUM, 0));
+        }
+        for (int i = 0; i < hardQuestions; i++) {
+            specials.put(available.get(index++),
+                    new Special(Type.QUESTION, Q_HARD, 0));
+        }
+        for (int i = 0; i < surprises; i++) {
+            specials.put(available.get(index++),
+                    new Special(Type.SURPRISE, SURPRISE, 0));
+        }
+    }
+
+    
     // ------------------------------------------------------------------
     // Active player piece control
     // ------------------------------------------------------------------
@@ -419,6 +496,49 @@ public class BoardPanel extends JPanel {
         return true;
     }
 
+
+    // הצגת כלי שסיים והסרתו ממסלול התנועה
+    public boolean showActivePieceFinished(int pieceIndex) {
+
+        if (pieceIndex < 0 || pieceIndex >= 4
+                || !piecesOnBoard[activeCorner][pieceIndex]
+                || finishedPieces[activeCorner][pieceIndex]) {
+            return false;
+        }
+
+        finishedPieces[activeCorner][pieceIndex] = true;
+        piecesOnBoard[activeCorner][pieceIndex] = false;
+        selectedPieceIndex = pieceIndex;
+
+        clearHighlight();
+        repaint();
+
+        return true;
+    }
+
+    // מספר הכלים שסיימו אצל השחקן הפעיל
+    public int getActiveFinishedPieceCount() {
+
+        int count = 0;
+
+        for (int piece = 0; piece < 4; piece++) {
+            if (finishedPieces[activeCorner][piece]) {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    // בדיקה אם כלי מסוים כבר הגיע לסיום
+    public boolean isActivePieceFinished(int pieceIndex) {
+
+        return pieceIndex >= 0
+                && pieceIndex < 4
+                && finishedPieces[activeCorner][pieceIndex];
+    }
+
+    
     // בדיקה האם כלי נמצא במסלול הפנימי
     public boolean isActivePieceInInnerPath(int pieceIndex) {
         return pieceIndex >= 0
@@ -790,6 +910,9 @@ public class BoardPanel extends JPanel {
         // Centre (finish)
         drawCentre(g2);
 
+        // הצגת מספר הכלים שסיימו לפי צבע המשתתף
+        drawFinishedPieceCounters(g2, cs, ox, oy);
+        
         // Special squares
         for (Map.Entry<Point, Special> e : specials.entrySet()) {
             drawSpecial(g2, e.getKey(), e.getValue());
@@ -858,6 +981,60 @@ public class BoardPanel extends JPanel {
         g2.dispose();
     }
 
+
+    // הצגת מספר הכלים שסיימו בכל צבע סביב מרכז הלוח
+    private void drawFinishedPieceCounters(
+            Graphics2D g2, int cs, int ox, int oy) {
+
+        int[] cols = {6, 8, 8, 6};
+        int[] rows = {6, 6, 8, 8};
+
+        for (int corner = 0; corner < 4; corner++) {
+
+            int count = 0;
+
+            for (int piece = 0; piece < 4; piece++) {
+                if (finishedPieces[corner][piece]) {
+                    count++;
+                }
+            }
+
+            if (count == 0) {
+                continue;
+            }
+
+            int x = ox + (int) ((cols[corner] + 0.5) * cs);
+            int y = oy + (int) ((rows[corner] + 0.5) * cs);
+            int diameter = Math.max(15, cs / 2);
+
+            // עיגול בצבע המשתתף
+            g2.setColor(CORNER_COLORS[corner]);
+            g2.fillOval(
+                    x - diameter / 2,
+                    y - diameter / 2,
+                    diameter,
+                    diameter
+            );
+
+            // מספר הכלים שסיימו
+            g2.setColor(Color.WHITE);
+            g2.setFont(new Font(
+                    "Dialog", Font.BOLD,
+                    Math.max(10, diameter / 2)
+            ));
+
+            String text = String.valueOf(count);
+            FontMetrics fm = g2.getFontMetrics();
+
+            g2.drawString(
+                    text,
+                    x - fm.stringWidth(text) / 2,
+                    y + (fm.getAscent() - fm.getDescent()) / 2
+            );
+        }
+    }
+
+    
     // Track cells remain in the exact same positions, so click detection is unchanged.
     private void drawCell(Graphics2D g2, Point p, Color fill) {
         int cs = cellSize();

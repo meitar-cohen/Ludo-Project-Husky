@@ -13,6 +13,8 @@ public class Game {
     private final boolean[][] piecesOnBoard;
     private final int[][] pieceSteps;
     private final boolean[][] piecesInHomePath;
+    // SRS 3.2.4.3.4 - שמירת הכלים שהגיעו לבית הסיום
+    private final boolean[][] finishedPieces;
     private int selectedPieceIndex;
 
     // SRS 3.2.4.3.2 -Stores whether each piece is on an inner path.
@@ -47,6 +49,7 @@ public class Game {
         this.piecesOnBoard = new boolean[names.length][PIECES_PER_PLAYER];
         this.pieceSteps = new int[names.length][PIECES_PER_PLAYER];
         this.piecesInHomePath = new boolean[names.length][PIECES_PER_PLAYER];
+        this.finishedPieces = new boolean[names.length][PIECES_PER_PLAYER];
         this.piecesInInnerPath = new boolean[names.length][PIECES_PER_PLAYER];
         this.selectedPieceIndex = 0;
     }
@@ -228,6 +231,49 @@ public class Game {
         return pieceSteps[playerIndex][pieceIndex];
     }
 
+
+    // בדיקה אם כלי של משתתף מסוים כבר הגיע לבית הסיום
+    public boolean isPieceFinished(int playerIndex, int pieceIndex) {
+        return finishedPieces[playerIndex][pieceIndex];
+    }
+
+    // מספר הכלים שהגיעו לבית הסיום אצל משתתף מסוים
+    public int getFinishedPieceCount(int playerIndex) {
+
+        int count = 0;
+
+        for (int piece = 0; piece < PIECES_PER_PLAYER; piece++) {
+            if (finishedPieces[playerIndex][piece]) {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    // סימון הכלי שנבחר כסיים
+    public boolean finishSelectedPiece() {
+
+        if (!hasPieceOnBoard()
+                || finishedPieces[currentPlayer][selectedPieceIndex]) {
+            return false;
+        }
+
+        // סימון הכלי כסיים והוצאתו ממסלולי התנועה
+        finishedPieces[currentPlayer][selectedPieceIndex] = true;
+        piecesOnBoard[currentPlayer][selectedPieceIndex] = false;
+        piecesInHomePath[currentPlayer][selectedPieceIndex] = true;
+        pieceSteps[currentPlayer][selectedPieceIndex] = 6;
+
+        // משתתף מסיים לאחר שכל ארבעת הכלים הגיעו לבית הסיום
+        if (getFinishedPieceCount(currentPlayer) == PIECES_PER_PLAYER) {
+            finishedPlayers[currentPlayer] = true;
+        }
+
+        return true;
+    }
+
+    
     public boolean isPieceInHomePath(int playerIndex, int pieceIndex) {
         return piecesInHomePath[playerIndex][pieceIndex];
     }

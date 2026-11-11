@@ -185,7 +185,8 @@ public class GameController {
             // הכלי חייב להיות על הלוח ובמסלול הבית
             if (game.isPieceOnBoard(player, pieceIndex)
                     && game.isPieceInHomePath(player, pieceIndex)
-                    && game.getPieceStep(player, pieceIndex) + stepDie < 6) {
+                    && !game.isPieceFinished(player, pieceIndex)
+                    && game.getPieceStep(player, pieceIndex) + stepDie <= 6) {
 
                 return true;
             }
@@ -207,7 +208,9 @@ public class GameController {
             return false;
         }
 
-        if (!game.hasPieceOnBoard()) {
+        if (!game.hasPieceOnBoard()
+                || game.isPieceFinished(
+                        game.getCurrentPlayer(), pieceIndex)) {
             return false;
         }
 
@@ -269,6 +272,69 @@ public class GameController {
 
         return true;
     }
+    
+
+    // SRS 3.2.4.3.4 - כניסה לבית הסיום בתוצאה מדויקת בלבד
+    public boolean tryFinishPiece(int pieceIndex, int routeSize) {
+
+        // בדיקת מצב המשחק והכלי שנבחר
+        if (game.getStage() != Stage.MOVE
+                || !game.selectPiece(pieceIndex)
+                || !game.hasPieceOnBoard()
+                || game.isPieceFinished(
+                        game.getCurrentPlayer(), pieceIndex)) {
+            return false;
+        }
+
+        boolean inHome = game.isPieceInHomePath();
+
+        // במסלול הבית משתמשים בקובייה הרגילה בלבד
+        int steps = inHome
+                ? game.getLastStepDie()
+                : game.getPendingSteps();
+
+        int current = game.getPieceStep();
+
+        if (steps <= 0 || current < 0) {
+            return false;
+        }
+
+        if (inHome) {
+
+            // משבצות מסלול הבית הן 0 עד 5
+            // בית הסיום נמצא בדיוק בצעד 6
+            if (routeSize != 6
+                    || current >= 6
+                    || current + steps != 6) {
+                return false;
+            }
+
+        } else {
+
+            // אפשר לסיים גם במהלך שחוצה את סוף המסלול המשותף
+            // רק ממסלול 52 המשבצות ובתוצאה מדויקת
+            if (routeSize != 52
+                    || current >= routeSize
+                    || (!isEasyGame() && !game.isPieceInInnerPath())
+                    || current + steps != routeSize + 6) {
+                return false;
+            }
+        }
+
+        // עדכון מצב הכלי במודל
+        if (!game.finishSelectedPiece()) {
+            return false;
+        }
+
+        game.setStage(Stage.BUSY);
+        return true;
+    }
+
+    // בדיקה אם השחקן הפעיל סיים את כל ארבעת הכלים
+    public boolean isCurrentPlayerFinished() {
+        return game.isPlayerFinished(game.getCurrentPlayer());
+    }
+
     
     public boolean isClockwiseMoveAllowed(int currentStep, int steps, int routeSize) {
         return currentStep >= 0 && steps >= 0 && currentStep + steps < routeSize;
@@ -445,9 +511,10 @@ public class GameController {
         for (int piece = 0; piece < Game.PIECES_PER_PLAYER; piece++) {
 
             // כלי שנמצא בטירה אינו יכול לזוז על הלוח
-            if (!game.isPieceOnBoard(player, piece)) {
-                continue;
-            }
+        	if (!game.isPieceOnBoard(player, piece)
+        	        || game.isPieceFinished(player, piece)) {
+        	    continue;
+        	}
 
             boolean inHome = game.isPieceInHomePath(player, piece);
 
@@ -470,7 +537,13 @@ public class GameController {
             int destination = current + steps;
 
             // תנועה חוקית בתוך המסלול הנוכחי
-            if (destination < routeSize) {
+            // במסלול הבית מותר להגיע בדיוק לבית הסיום
+            if (inHome && destination <= 6) {
+                return true;
+            }
+
+            // במסלול המשותף מותר לנוע בתוך גבולות המסלול
+            if (!inHome && destination < routeSize) {
                 return true;
             }
 
@@ -479,7 +552,7 @@ public class GameController {
                     && routeSize == 52
                     && (isEasyGame()
                         || game.isPieceInInnerPath(player, piece))
-                    && destination < 52 + 6) {
+                    && destination <= 52 + 6) {
                 return true;
             }
         }

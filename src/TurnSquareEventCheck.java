@@ -1,14 +1,11 @@
+
 import view.BoardPanel;
 
 public class TurnSquareEventCheck {
 
-    private static void same(
-            String expected, String actual, String description) {
-
-        if (!expected.equals(actual)) {
-            throw new AssertionError(
-                    description + ": expected " + expected
-                    + ", got " + actual);
+    private static void check(boolean ok, String message) {
+        if (!ok) {
+            throw new AssertionError(message);
         }
     }
 
@@ -21,56 +18,60 @@ public class TurnSquareEventCheck {
         for (String level :
                 new String[]{"Easy", "Medium", "Hard"}) {
 
-            BoardPanel board = new BoardPanel(level, colors);
-            board.setActivePlayerColor("Green");
+            // בדיקה בעשרה לוחות שונים
+            for (int gameNumber = 0; gameNumber < 10; gameNumber++) {
 
-            if (!board.placeActivePieceOnStart(0)) {
-                throw new AssertionError(
+                BoardPanel board = new BoardPanel(level, colors);
+                board.setActivePlayerColor("Green");
+
+                check(board.placeActivePieceOnStart(0),
                         level + ": cannot place piece");
-            }
 
-            // משבצת רגילה אינה מפעילה אירוע
-            same("NONE",
-                    board.getSquareEventAtStep(0, 1),
-                    level + " normal square");
+                int questions = 0;
+                int surprises = 0;
 
-            // מיקום לא חוקי לא מפעיל אירוע
-            same("NONE",
-                    board.getSquareEventAtStep(0, -1),
-                    level + " invalid position");
+                // בודקים את כל המסלול, כי מיקומי האירועים אקראיים
+                for (int step = 0;
+                        step < board.getActiveRouteSize(0); step++) {
 
-            if ("Easy".equals(level)) {
+                    String event =
+                            board.getSquareEventAtStep(0, step);
 
-                same("NONE",
-                        board.getSquareEventAtStep(0, 3),
-                        level + " no question");
+                    if ("QUESTION".equals(event)) {
+                        questions++;
+                    } else if ("SURPRISE".equals(event)) {
+                        surprises++;
+                    } else {
+                        check("NONE".equals(event),
+                                level + ": unknown event " + event);
+                    }
+                }
 
-            } else {
+                // המסלול החיצוני כולל שש שאלות ושתי הפתעות
+                check(questions == ("Easy".equals(level) ? 0 : 6),
+                        level + ": question detection count");
 
-                // בדיקת המשבצות בלוח הקיים
-                same("QUESTION",
-                        board.getSquareEventAtStep(0, 3),
-                        level + " question square");
+                check(surprises == ("Easy".equals(level) ? 0 : 2),
+                        level + ": surprise detection count");
 
-                same("SURPRISE",
-                        board.getSquareEventAtStep(0, 5),
-                        level + " surprise square");
-            }
+                check("NONE".equals(
+                        board.getSquareEventAtStep(0, -1)),
+                        level + ": invalid step");
 
-            // במסלול הבית לא מפעילים אירועי שאלה והפתעה
-            if (!board.showActivePieceInHomePath(0, 1)) {
-                throw new AssertionError(
+                // במסלול הבית לא מפעילים שאלה או הפתעה
+                check(board.showActivePieceInHomePath(0, 1),
                         level + ": cannot enter home path");
-            }
 
-            same("NONE",
-                    board.getSquareEventAtStep(0, 1),
-                    level + " home path");
+                check("NONE".equals(
+                        board.getSquareEventAtStep(0, 1)),
+                        level + ": home path must not trigger events");
+            }
 
             System.out.println(
-                    "PASS - " + level + " square event detection");
+                    "PASS - " + level + " landing events");
         }
 
-        System.out.println("PASS - turn square event tests");
+        System.out.println(
+                "PASS - dynamic square event detection");
     }
 }
