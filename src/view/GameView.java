@@ -383,17 +383,20 @@ public class GameView extends JPanel {
                 startStep,
                 targetStep,
                 () -> {
-                    if (controller.isEasyGame()) {
-                        setStatus(
-                                "Moved "
-                                + controller.getPendingSteps()
-                                + " squares."
-                        );
+                	if (controller.isEasyGame()
+                	        || board.isActivePieceInHomePath(pieceIndex)) {
 
-                        endTurnOrExtraTurn();
-                    } else {
-                        askQuestion(pieceIndex);
-                    }
+                	    // במסלול הבית התנועה היא לפי קוביית הצעדים בלבד
+                	    // אין להפעיל משבצת שאלה במהלך התנועה במסלול הבית
+                	    setStatus("Moved "
+                	            + controller.getMoveStepsForSelectedPiece()
+                	            + " squares.");
+
+                	    endTurnOrExtraTurn();
+
+                	} else {
+                	    askQuestion(pieceIndex);
+                	}
                 }
         );
     }

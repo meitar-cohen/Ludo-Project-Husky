@@ -78,6 +78,8 @@ public class BoardPanel extends JPanel {
     private final boolean[][] piecesOnBoard = new boolean[4][4];
     private final int[][] pieceSteps = new int[4][4];
     private final boolean[][] piecesInHomePath = new boolean[4][4];
+    // שומר האם כל כלי נמצא במסלול המשותף הפנימי
+    private final boolean[][] piecesInInnerPath = new boolean[4][4];
     private int selectedPieceIndex;
 
     private boolean highlightCastle = false;
@@ -345,6 +347,7 @@ public class BoardPanel extends JPanel {
         piecesOnBoard[activeCorner][slot] = true;
         pieceSteps[activeCorner][slot] = 0;
         piecesInHomePath[activeCorner][slot] = false;
+        piecesInInnerPath[activeCorner][slot] = false;
         selectedPieceIndex = slot;
         clearHighlight();
         repaint();
@@ -393,6 +396,36 @@ public class BoardPanel extends JPanel {
         return true;
     }
 
+    // עדכון תצוגת כלי שעבר למסלול הפנימי
+    public boolean showActivePieceInInnerPath(int pieceIndex, int innerStep) {
+
+        // מעבר למסלול פנימי אפשרי רק ברמות Medium ו-Hard
+        if (rings == 0
+                || pieceIndex < 0
+                || pieceIndex >= 4
+                || !piecesOnBoard[activeCorner][pieceIndex]
+                || piecesInHomePath[activeCorner][pieceIndex]
+                || innerStep < 0
+                || innerStep >= innerPath().size()) {
+            return false;
+        }
+
+        // עדכון המסלול והמיקום של הכלי בתצוגה
+        piecesInInnerPath[activeCorner][pieceIndex] = true;
+        pieceSteps[activeCorner][pieceIndex] = innerStep;
+        selectedPieceIndex = pieceIndex;
+
+        repaint();
+        return true;
+    }
+
+    // בדיקה האם כלי נמצא במסלול הפנימי
+    public boolean isActivePieceInInnerPath(int pieceIndex) {
+        return pieceIndex >= 0
+                && pieceIndex < 4
+                && piecesInInnerPath[activeCorner][pieceIndex];
+    }
+    
     // בדיקה אם כלי של השחקן הפעיל נמצא במסלול הבית
     public boolean isActivePieceInHomePath(int pieceIndex) {
         return pieceIndex >= 0 && pieceIndex < 4
@@ -407,8 +440,7 @@ public class BoardPanel extends JPanel {
             return 0;
         }
 
-        return piecesInHomePath[activeCorner][pieceIndex] ? activeHomePath.size() : activePath.size();
-    }
+        return currentPieceRoute(pieceIndex).size();    }
 
     // מחזירה את מספר המשבצות במסלול הבית של השחקן הפעיל
     public int getActiveHomePathSize() {
@@ -464,8 +496,36 @@ public class BoardPanel extends JPanel {
         return pieceSteps[activeCorner][selectedPieceIndex] + steps < route.size();
     }
 
+    // מחזירה את 52 משבצות המסלול הפנימי לפי צבע השחקן
+    private List<Point> innerRouteForCorner(int corner) {
+
+        List<Point> base = innerPath();
+        List<Point> result = new ArrayList<>();
+
+        int first = corner * 13;
+
+        for (int i = 0; i < base.size(); i++) {
+            result.add(base.get((first + i) % base.size()));
+        }
+
+        return result;
+    }
+
+    // מחזירה את המסלול שבו נמצא הכלי בפועל
     private List<Point> currentPieceRoute(int pieceIndex) {
-        return piecesInHomePath[activeCorner][pieceIndex] ? activeHomePath : activePath;
+
+        // כלי שנמצא במסלול הבית
+        if (piecesInHomePath[activeCorner][pieceIndex]) {
+            return activeHomePath;
+        }
+
+        // כלי שנמצא במסלול המשותף הפנימי
+        if (piecesInInnerPath[activeCorner][pieceIndex]) {
+            return innerRouteForCorner(activeCorner);
+        }
+
+        // כלי שנמצא במסלול המשותף החיצוני
+        return activePath;
     }
 
     public void animateActivePiece(
@@ -621,6 +681,10 @@ public class BoardPanel extends JPanel {
                     default: route.add(inner(7, 14 - i)); break;
                 }
             }
+        }
+        // כלי של שחקן אחר שכבר עבר למסלול הפנימי
+        else if (piecesInInnerPath[corner][pieceIndex]) {
+            route.addAll(innerRouteForCorner(corner));
         }
         // המסלול הבסיסי ברמה קלה
         else if (rings == 0) {
