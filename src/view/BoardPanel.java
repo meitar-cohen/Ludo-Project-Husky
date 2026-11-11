@@ -368,24 +368,27 @@ public class BoardPanel extends JPanel {
         return false;
     }
 
-    // עדכון תצוגת כלי שנכנס למסלול הבית
-    // הפעולה תיקרא רק לאחר שה-Controller יאשר שהמעבר חוקי
+ // שומר על התאימות למתודה ולבדיקות הקיימות
     public boolean showActivePieceInHomePath(int pieceIndex) {
+        return showActivePieceInHomePath(pieceIndex, 0);
+    }
 
-        // בדיקה שמספר הכלי תקין ושהכלי נמצא על הלוח
+    // מציג כלי במסלול הבית במיקום שחושב ואושר
+    public boolean showActivePieceInHomePath(int pieceIndex, int homeStep) {
+
+        // בדיקת תקינות הכלי והמיקום במסלול הבית
         if (pieceIndex < 0 || pieceIndex >= 4
-                || !piecesOnBoard[activeCorner][pieceIndex]) {
+                || !piecesOnBoard[activeCorner][pieceIndex]
+                || homeStep < 0
+                || homeStep >= activeHomePath.size()) {
             return false;
         }
 
-        // סימון שהכלי נמצא במסלול הבית
+        // עדכון מסלול ומיקום הכלי בתצוגה
         piecesInHomePath[activeCorner][pieceIndex] = true;
-
-        // תחילת התנועה במסלול הבית
-        pieceSteps[activeCorner][pieceIndex] = 0;
+        pieceSteps[activeCorner][pieceIndex] = homeStep;
         selectedPieceIndex = pieceIndex;
 
-        // עדכון תצוגת הלוח
         repaint();
         return true;
     }
