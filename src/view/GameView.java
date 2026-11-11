@@ -289,11 +289,22 @@ public class GameView extends JPanel {
 
         // אפשרות 2: הזזת כלי שכבר נמצא על הלוח
         } else if (action == RollAction.MOVE) {
-            setStatus(
-                "Move " + controller.getPendingSteps()
-                + " squares. Click the highlighted piece on the board."
-            );
+        	if (controller.getPendingSteps() == 0) {
 
+                setStatus(
+                    "Boost result is 0. Select a home-path piece to move "
+                    + stepDie + " squares."
+                );
+
+            } else {
+
+                setStatus(
+                    "Move " + controller.getPendingSteps()
+                    + " squares on the shared path, or "
+                    + stepDie
+                    + " in the home path. Select a piece."
+                );
+            }
             board.highlightBoardPiece(
                 controller.consumeFirstTurnPulse()
             );

@@ -134,8 +134,41 @@ public class GameController {
         return game.getCurrentPlayerColor();
     }
 
+    // SRS 3.2.4.3.3 - חישוב צעדים בהתאם למסלול שבו נמצא הכלי
+    public int getMoveStepsForSelectedPiece() {
+
+        // במסלול הבית משתמשים בקובייה הרגילה ללא מכפיל
+        if (game.isPieceInHomePath()) {
+            return game.getLastStepDie();
+        }
+
+        // במסלול המשותף משתמשים בתוצאה המחושבת
+        return game.getPendingSteps();
+    }
+
+    // בדיקה אם קיים כלי שניתן להזיז במסלול הבית
+    private boolean hasAvailableHomePathMove(int stepDie) {
+
+        int player = game.getCurrentPlayer();
+
+        for (int pieceIndex = 0;
+                pieceIndex < Game.PIECES_PER_PLAYER;
+                pieceIndex++) {
+
+            // הכלי חייב להיות על הלוח ובמסלול הבית
+            if (game.isPieceOnBoard(player, pieceIndex)
+                    && game.isPieceInHomePath(player, pieceIndex)
+                    && game.getPieceStep(player, pieceIndex) + stepDie < 6) {
+
+                return true;
+            }
+        }
+
+        return false;
+    }
+    
     /**
-     * SRS 3.2.4.3.1 (Maor Mizrahi) -
+     * SRS 3.2.4.3.1 -
      * Checks whether the selected piece may be moved during the current turn.
      */
     public boolean isPieceSelectionLegal(int pieceIndex) {
@@ -151,11 +184,10 @@ public class GameController {
             return false;
         }
 
-        return game.getPendingSteps() > 0;
-    }
+        return getMoveStepsForSelectedPiece() > 0;    }
 
     /**
-     * SRS 3.2.4.3.1 (Maor Mizrahi) -
+     * SRS 3.2.4.3.1 -
      * Validates the selected piece and calculates its target position
      * without changing its position.
      */
@@ -165,7 +197,7 @@ public class GameController {
         }
 
         int currentStep = game.getPieceStep();
-        int steps = game.getPendingSteps();
+        int steps = getMoveStepsForSelectedPiece();
 
         if (!isClockwiseMoveAllowed(currentStep, steps, routeSize)) {
             return -1;
@@ -175,7 +207,7 @@ public class GameController {
     }
 
     /**
-     * SRS 3.2.4.3.1 (Maor Mizrahi) -
+     * SRS 3.2.4.3.1 -
      * Applies an approved movement to the selected piece.
      */
     public boolean movePiece(int pieceIndex, int targetStep, int routeSize) {
@@ -201,7 +233,7 @@ public class GameController {
     }
 
     /**
-     * SRS 3.2.4.3.2 (Maor Mizrahi) -
+     * SRS 3.2.4.3.2  -
      * Checks whether an arrow square matches the active piece color.
      *
      * A matching arrow allows the piece to enter the next inner path.
@@ -214,7 +246,7 @@ public class GameController {
     }
 
     /**
-     * SRS 3.2.4.3.2 (Maor Mizrahi) -
+     * SRS 3.2.4.3.2  -
      * Moves the selected piece to the inner path when the arrow color matches.
      */
     public boolean enterInnerPathFromArrow(Color arrowColor, Color pieceColor, int innerPathStartStep) {
@@ -262,7 +294,7 @@ public class GameController {
     }
 
     /**
-     * SRS 3.2.3.3.5 (Daniel Azulay) - records the step die of a roll and counts sixes in a row.
+     * SRS 3.2.3.3.5 - records the step die of a roll and counts sixes in a row.
      *
      * @return true when this roll is the third 6 in a row - the roll is cancelled
      *         and the turn should pass
@@ -281,22 +313,22 @@ public class GameController {
         return false;
     }
 
-    /** SRS 3.2.3.3.5 (Daniel Azulay) - a 6 on the step die gives the same player another turn. */
+    /** SRS 3.2.3.3.5 - a 6 on the step die gives the same player another turn. */
     public boolean hasExtraTurn() {
         return game.getLastStepDie() == 6;
     }
 
-    /** SRS 3.2.3.3.5 (Daniel Azulay) - the same player rolls again: the game waits for a new roll. */
+    /** SRS 3.2.3.3.5  - the same player rolls again: the game waits for a new roll. */
     public void grantExtraTurn() {
         game.setStage(Stage.ROLL);
     }
 
-    /** SRS 3.2.1.3.3 (Daniel Azulay) - starts the game clock at the first roll. */
+    /** SRS 3.2.1.3.3  - starts the game clock at the first roll. */
     public void startGameClock() {
         game.startClock();
     }
 
-    /** SRS 3.2.1.3.3 (Daniel Azulay) - game clock as HH:MM:SS. */
+    /** SRS 3.2.1.3.3  - game clock as HH:MM:SS. */
     public String getElapsedTime() {
         long seconds = game.getElapsedSeconds();
         return String.format("%02d:%02d:%02d", seconds / 3600, (seconds % 3600) / 60, seconds % 60);
@@ -319,8 +351,11 @@ public class GameController {
             return RollAction.TAKE_OUT;
         }
 
-        // תנועה רגילה אפשרית רק כאשר מספר הצעדים חיובי
-        if (game.getPendingSteps() > 0 && game.hasAnyPieceOnBoard()) {
+        // תנועה במסלול משותף או במסלול הבית
+        // במסלול הבית מותר לזוז גם כשהמכפיל נותן 0
+        if ((game.getPendingSteps() > 0 && game.hasAnyPieceOnBoard())
+                || hasAvailableHomePathMove(stepDie)) {
+
             game.setStage(Stage.MOVE);
             return RollAction.MOVE;
         }
