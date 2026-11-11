@@ -24,6 +24,9 @@ public class Game {
     // SRS 3.2.1.3.3 - opening state and game clock (Daniel Azulay)
     public static final int PIECES_PER_PLAYER = 4;
     private final int[] piecesInCastleByPlayer;
+    
+ // SRS 3.2.3.3.6 - שמירת המשתתפים שכבר סיימו את המשחק
+    private final boolean[] finishedPlayers;
     private long startTimeMillis = -1;   // -1 = the clock has not started yet
 
     // SRS 3.2.3.3.5 - extra turn and three sixes in a row (Daniel Azulay)
@@ -37,6 +40,7 @@ public class Game {
         // SRS 3.2.1.3.3 - all four pieces of every player start in the castle.
         // The game clock starts with the first roll (see startClock).
         this.piecesInCastleByPlayer = new int[names.length];
+        this.finishedPlayers = new boolean[names.length];
         for (int i = 0; i < names.length; i++) {
             piecesInCastleByPlayer[i] = PIECES_PER_PLAYER;
         }
@@ -135,6 +139,15 @@ public class Game {
         this.firstTurnPulsePending = firstTurnPulsePending;
     }
 
+    // בדיקה אם משתתף מסוים כבר סיים את המשחק
+    public boolean isPlayerFinished(int playerIndex) {
+        return finishedPlayers[playerIndex];
+    }
+
+    // עדכון מצב סיום של משתתף
+    public void setPlayerFinished(int playerIndex, boolean finished) {
+        finishedPlayers[playerIndex] = finished;
+    }
     // בדיקה אם לשחקן הפעיל נותרו כלים בטירה
     public boolean hasPieceInCastle() {
         return piecesInCastleByPlayer[currentPlayer] > 0;
