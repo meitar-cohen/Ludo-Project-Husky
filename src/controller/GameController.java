@@ -55,37 +55,64 @@ public class GameController {
         return "Easy".equals(game.getDifficulty());
     }
 
+
+    // SRS 3.2.3.3.4 - בדיקה שהכלי עדיין נמצא בטירה
     public boolean canTakeOutActivePiece(int slot) {
-        return slot >= 0 && slot < 4 && game.hasPieceInCastle() && game.getStage() == Stage.TAKE_OUT;
+
+        return game.getStage() == Stage.TAKE_OUT
+                && slot >= 0
+                && slot < Game.PIECES_PER_PLAYER
+                && game.hasPieceInCastle()
+                && !game.isPieceOnBoard(
+                        game.getCurrentPlayer(), slot);
     }
 
-    public void takeOutActivePiece(int slot) {
-        if (!canTakeOutActivePiece(slot)) return;
-        if (!game.selectPiece(slot)) return;
-        takePieceOutOfCastle();
-        game.setPiecesInCastle(game.hasPieceInCastle()
-            ? game.getPiecesInCastle() - 1 : 0);
+    // הוצאת כלי מהטירה ועדכון מצב המשחק
+    public boolean takeOutActivePiece(int slot) {
+
+        // אין להוציא כלי שכבר נמצא על הלוח
+        if (!canTakeOutActivePiece(slot)
+                || !game.selectPiece(slot)) {
+            return false;
+        }
+
+        // הפחתת כלי אחד מהטירה של השחקן הפעיל
+        game.setPiecesInCastle(
+                game.getPiecesInCastle() - 1);
+
+        // מיקום הכלי במשבצת ההתחלה
         game.setPieceOnBoard(true);
         game.setPieceStep(0);
         game.setPieceInInnerPath(false);
         game.setPieceInHomePath(false);
+
+        // לאחר הוצאת כלי עם 6 השחקן יכול להטיל שוב
         game.setStage(Stage.ROLL);
+
+        return true;
     }
 
+    // בדיקה האם אפשר להזיז כלי קיים במקום להוציא כלי
+    public boolean canChooseBoardMoveInsteadOfTakeOut() {
 
-    // SRS 3.2.3.3.4 - בחירת הזזת כלי קיים במקום הוצאת כלי מהטירה
+        return game.getStage() == Stage.TAKE_OUT
+                && game.getLastStepDie() == 6
+                && game.hasAnyPieceOnBoard()
+                && (game.getPendingSteps() > 0
+                    || hasAvailableHomePathMove(
+                            game.getLastStepDie()));
+    }
+
+    // בחירת הזזת כלי קיים במקום הוצאה מהטירה
     public boolean chooseBoardMoveInsteadOfTakeOut() {
 
-        // האפשרות קיימת רק לאחר הטלת 6 ובמצב הוצאת כלי
-        if (game.getStage() != Stage.TAKE_OUT ||
-                game.getLastStepDie() != 6 ||
-                game.getPendingSteps() <= 0 ||
-                !game.hasAnyPieceOnBoard()) {
+        if (!canChooseBoardMoveInsteadOfTakeOut()) {
             return false;
         }
 
-        // מעבר למצב בחירת כלי שנמצא על הלוח
+        // מעבר למצב בחירת כלי על הלוח
         game.setStage(Stage.MOVE);
+
         return true;
     }
 
