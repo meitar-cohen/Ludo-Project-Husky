@@ -760,7 +760,6 @@ public class GameView extends JPanel {
         controller.passTurn();
 
         // ניקוי מצב ההטלה והלוח
-        dice.clear();
         formulaLabel.setText(" ");
 
         // מאפשרים הטלה רק אם נותר משחק פעיל
