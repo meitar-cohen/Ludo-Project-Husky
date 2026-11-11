@@ -288,24 +288,42 @@ public class GameController {
         return game.getElapsedSeconds();
     }
 
+
+    // SRS 3.2.3.3.3 - חישוב מספר הצעדים לפי רמת הקושי
     public RollAction finishRoll(int stepDie, int boostDie) {
-        calculateSteps();
-        game.setPendingSteps(stepDie);
-        if (game.getPendingSteps() == 6 && game.hasPieceInCastle()) {
+
+        // חישוב התנועה ושמירתה במצב המשחק
+        game.setPendingSteps(calculateSteps(stepDie, boostDie));
+
+        // הוצאת כלי מהטירה תלויה בקובייה הרגילה בלבד
+        if (stepDie == 6 && game.hasPieceInCastle()) {
             game.setStage(Stage.TAKE_OUT);
             return RollAction.TAKE_OUT;
         }
-        if (game.hasAnyPieceOnBoard()) {
+
+        // תנועה רגילה אפשרית רק כאשר מספר הצעדים חיובי
+        if (game.getPendingSteps() > 0 && game.hasAnyPieceOnBoard()) {
             game.setStage(Stage.MOVE);
             return RollAction.MOVE;
         }
+
+        // כרגע אין תנועה חוקית במסלול המשותף
         game.setStage(Stage.ROLL);
         return RollAction.NEED_SIX;
     }
 
-    public void calculateSteps() {
-        return;
+    // חישוב הצעדים בהתאם לקוביות ולרמת הקושי
+    public int calculateSteps(int stepDie, int boostDie) {
+
+        // ברמה קלה משתמשים רק בקובייה הרגילה
+        if ("Easy".equals(game.getDifficulty())) {
+            return stepDie;
+        }
+
+        // ברמות Medium ו-Hard משתמשים במכפיל
+        return stepDie * (boostDie - 1);
     }
+
 
     public void takePieceOutOfCastle() {
         return;
