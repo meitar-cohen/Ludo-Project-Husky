@@ -7,15 +7,15 @@ public class Game {
     private int currentPlayer;
     private int pendingSteps;
     private boolean firstTurnPulsePending = true;
-    private int piecesInCastle = 4;
+    
 
-    // SRS 3.2.4.3.1 (Maor Mizrahi) - Stores the state and position of each player's pieces.
+    // SRS 3.2.4.3.1 - Stores the state and position of each player's pieces.
     private final boolean[][] piecesOnBoard;
     private final int[][] pieceSteps;
     private final boolean[][] piecesInHomePath;
     private int selectedPieceIndex;
 
-    // SRS 3.2.4.3.2 (Maor Mizrahi) -Stores whether each piece is on an inner path.
+    // SRS 3.2.4.3.2 -Stores whether each piece is on an inner path.
     private final boolean[][] piecesInInnerPath;
     private final String[] names;
     private final String[] colors;
@@ -135,13 +135,16 @@ public class Game {
         this.firstTurnPulsePending = firstTurnPulsePending;
     }
 
+    // בדיקה אם לשחקן הפעיל נותרו כלים בטירה
     public boolean hasPieceInCastle() {
-        return piecesInCastle > 0;
+        return piecesInCastleByPlayer[currentPlayer] > 0;
     }
 
+    // מספר הכלים בטירה של השחקן הפעיל
     public int getPiecesInCastle() {
-        return piecesInCastle;
+        return piecesInCastleByPlayer[currentPlayer];
     }
+
 
     public boolean hasPieceOnBoard() {
         return piecesOnBoard[currentPlayer][selectedPieceIndex];
@@ -151,9 +154,18 @@ public class Game {
         return pieceSteps[currentPlayer][selectedPieceIndex];
     }
 
+
+    // עדכון מספר הכלים בטירה של השחקן הפעיל בלבד
     public void setPiecesInCastle(int piecesInCastle) {
-        this.piecesInCastle = piecesInCastle;
+        if (piecesInCastle < 0 || piecesInCastle > PIECES_PER_PLAYER) {
+            throw new IllegalArgumentException(
+                "Invalid castle piece count"
+            );
+        }
+
+        piecesInCastleByPlayer[currentPlayer] = piecesInCastle;
     }
+
 
     public void setPieceOnBoard(boolean pieceOnBoard) {
         piecesOnBoard[currentPlayer][selectedPieceIndex] = pieceOnBoard;

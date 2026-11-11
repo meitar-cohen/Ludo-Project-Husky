@@ -597,6 +597,53 @@ public class BoardPanel extends JPanel {
     // Painting
     // ------------------------------------------------------------------
 
+
+    // מחזירה את המסלול המתאים לכלי, גם אם אינו שייך לשחקן הפעיל
+    private List<Point> routeForPlayerPiece(int corner, int pieceIndex) {
+
+        // עבור השחקן הפעיל משתמשים במסלול שכבר מחושב
+        if (corner == activeCorner) {
+            return currentPieceRoute(pieceIndex);
+        }
+
+        List<Point> route = new ArrayList<>();
+
+        // מסלול הבית של השחקן
+        if (piecesInHomePath[corner][pieceIndex]) {
+            for (int i = 1; i <= 6; i++) {
+                switch (corner) {
+                    case 0: route.add(inner(i, 7)); break;
+                    case 1: route.add(inner(7, i)); break;
+                    case 2: route.add(inner(14 - i, 7)); break;
+                    default: route.add(inner(7, 14 - i)); break;
+                }
+            }
+        }
+        // המסלול הבסיסי ברמה קלה
+        else if (rings == 0) {
+            List<Point> innerRoute = innerPath();
+            int[] startIdx = {0, 13, 26, 39};
+
+            for (int i = 0; i < innerRoute.size(); i++) {
+                route.add(innerRoute.get(
+                    (startIdx[corner] + i) % innerRoute.size()
+                ));
+            }
+        }
+        // המסלול החיצוני ברמות בינונית וקשה
+        else {
+            List<Point> outerRoute = ringPath(0);
+
+            for (int i = 0; i < outerRoute.size(); i++) {
+                route.add(ringCell(outerRoute, corner, i));
+            }
+        }
+
+        return route;
+    }
+
+    
+    
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -657,18 +704,52 @@ public class BoardPanel extends JPanel {
             }
         }
 
-        // Active player's moving piece
-        for (int pieceIndex = 0; pieceIndex < 4; pieceIndex++) {
-            if (!piecesOnBoard[activeCorner][pieceIndex]) {
+
+        // ציור הכלים של כל השחקנים שנמצאים במשחק
+        for (int corner = 0; corner < 4; corner++) {
+
+            // דילוג על צבע שאינו משתתף במשחק הנוכחי
+            if (!activeCorners[corner]) {
                 continue;
             }
 
-            List<Point> route = currentPieceRoute(pieceIndex);
-            Point cell = route.get(Math.min(pieceSteps[activeCorner][pieceIndex], route.size() - 1));
-            boolean highlighted = highlightBoard;
-            drawPiece(g2, ox + (cell.x + 0.5) * cs, oy + (cell.y + 0.5) * cs, cs,
-                CORNER_COLORS[activeCorner], highlighted);
+            for (int pieceIndex = 0; pieceIndex < 4; pieceIndex++) {
+
+                // מציירים רק כלים שנמצאים על הלוח
+                if (!piecesOnBoard[corner][pieceIndex]) {
+                    continue;
+                }
+
+                // המסלול והמיקום שייכים לבעל הכלי
+                List<Point> route = routeForPlayerPiece(
+                    corner, pieceIndex
+                );
+
+                if (route.isEmpty()) {
+                    continue;
+                }
+
+                int step = Math.max(0,
+                    Math.min(pieceSteps[corner][pieceIndex],
+                             route.size() - 1));
+
+                Point cell = route.get(step);
+
+                // רק הכלים של השחקן הפעיל יודגשו
+                boolean highlighted =
+                    highlightBoard && corner == activeCorner;
+
+                drawPiece(
+                    g2,
+                    ox + (cell.x + 0.5) * cs,
+                    oy + (cell.y + 0.5) * cs,
+                    cs,
+                    CORNER_COLORS[corner],
+                    highlighted
+                );
+            }
         }
+
 
         g2.setColor(new Color(126, 140, 173));
         g2.setStroke(new BasicStroke(1.6f));

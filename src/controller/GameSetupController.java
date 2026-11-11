@@ -1,3 +1,4 @@
+
 package controller;
 
 import java.util.HashSet;
@@ -5,71 +6,95 @@ import java.util.Set;
 
 /**
  * Controller of the new-game setup.
- * SRS 3.2.1.3.2 - validates the player details entered in the view (Daniel Azulay).
+ * SRS 3.2.1.3.2 - validates the player details entered in the view.
  */
 public final class GameSetupController {
 
     private GameSetupController() {
     }
 
+    // סוג השדה שבו נמצאה שגיאת אימות
+    public enum Field {
+        NAME,
+        COLOR
+    }
+
     /**
-     * Checks the player details (SRS 3.2.1.3.2): every name must be filled in, contain at least
-     * one letter and be different from the other names, and every colour must be different.
-     *
-     * @return the invalid field (player and field type) with an error message,
-     *         or null when all details are valid
+     * בדיקת שמות וצבעים של המשתתפים.
+     * מחזירה את השגיאה הראשונה או null אם הקלט תקין.
      */
-    public static ValidationError validatePlayers(String[] names, String[] colors) {
+    public static ValidationError validatePlayers(
+            String[] names, String[] colors) {
+
         Set<String> usedNames = new HashSet<>();
         Set<String> usedColors = new HashSet<>();
+
         for (int i = 0; i < names.length; i++) {
-            String player = "Player " + (i + 1);
+
+            // בדיקה שהשם אינו ריק
             String name = names[i] == null ? "" : names[i].trim();
+
             if (name.isEmpty()) {
-                return new ValidationError(i, Field.NAME, "Please enter a name for " + player + ".");
+                return new ValidationError(
+                    i,
+                    Field.NAME,
+                    "Please enter a name for Player " + (i + 1) + "."
+                );
             }
-            if (!containsLetter(name)) {
-                return new ValidationError(i, Field.NAME, player + "'s name must contain at least one letter.");
-            }
+
+            // בדיקה שאין שם כפול
             if (!usedNames.add(name.toLowerCase())) {
-                return new ValidationError(i, Field.NAME, player + "'s name is already used. Each player needs a different name.");
+                return new ValidationError(
+                    i,
+                    Field.NAME,
+                    "Each player must have a different name."
+                );
             }
+
+            // בדיקה שאין צבע כפול או צבע שלא נבחר
             if (colors[i] == null || !usedColors.add(colors[i])) {
-                return new ValidationError(i, Field.COLOR, player + "'s color is already taken. Each player needs a different color.");
+                return new ValidationError(
+                    i,
+                    Field.COLOR,
+                    "Each player must choose a different color."
+                );
             }
         }
+
+        // כל פרטי המשתתפים תקינים
         return null;
     }
 
-    /** True when the text has at least one letter (in any language, e.g. English or Hebrew). */
-    static boolean containsLetter(String text) {
-        for (int i = 0; i < text.length(); i++) {
-            if (Character.isLetter(text.charAt(i))) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /** Which field of a player is invalid. */
-    public enum Field { NAME, COLOR }
-
-    /** The result of a failed validation: which player and which field are wrong, and the message to show. */
+    /**
+     * מייצג שגיאה באימות פרטי משתתף.
+     */
     public static final class ValidationError {
+
         private final int playerIndex;
         private final Field field;
         private final String message;
 
-        public ValidationError(int playerIndex, Field field, String message) {
+        public ValidationError(
+                int playerIndex, Field field, String message) {
+
             this.playerIndex = playerIndex;
             this.field = field;
             this.message = message;
         }
 
-        public int getPlayerIndex() { return playerIndex; }
+        // מספר המשתתף שבו נמצאה השגיאה
+        public int getPlayerIndex() {
+            return playerIndex;
+        }
 
-        public Field getField() { return field; }
+        // סוג השדה שבו נמצאה השגיאה
+        public Field getField() {
+            return field;
+        }
 
-        public String getMessage() { return message; }
+        // הודעת השגיאה להצגה למשתמש
+        public String getMessage() {
+            return message;
+        }
     }
 }
