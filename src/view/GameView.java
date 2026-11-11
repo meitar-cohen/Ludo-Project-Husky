@@ -312,15 +312,33 @@ public class GameView extends JPanel {
             rollButton.setEnabled(false);
             rollButton.setText("Select Your Piece");
 
-        // אין אפשרות לבצע מהלך
-        } else {
-            setStatus(
-                "A 6 is needed to leave the castle. Click Next Turn."
-            );
 
-            rollButton.setText("Next Turn");
-            rollButton.setEnabled(true);
-        }
+            // SRS 3.2.3.3.3 - טיפול בתוצאה 0 ללא מהלך חוקי
+            } else if (controller.getPendingSteps() == 0) {
+
+                // שמירת שם השחקן שלא יכול לבצע מהלך
+                String previousPlayer = controller.getCurrentPlayerName();
+
+                // העברת התור לשחקן הבא באופן אוטומטי
+                passTurn();
+
+                // הצגת הסיבה למעבר התור
+                setStatus("Boost result is 0. " + previousPlayer
+                        + " has no legal move. "
+                        + controller.getCurrentPlayerName()
+                        + "'s turn. Click Roll Dice.");
+
+            } else {
+
+                // שמירה על ההתנהגות הקיימת במקרים אחרים
+                setStatus(
+                    "A 6 is needed to leave the castle. Click Next Turn."
+                );
+
+                rollButton.setText("Next Turn");
+                rollButton.setEnabled(true);
+            }
+
     }
 
 
