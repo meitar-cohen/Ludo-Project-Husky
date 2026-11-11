@@ -72,6 +72,24 @@ public class GameController {
         game.setStage(Stage.ROLL);
     }
 
+
+    // SRS 3.2.3.3.4 - בחירת הזזת כלי קיים במקום הוצאת כלי מהטירה
+    public boolean chooseBoardMoveInsteadOfTakeOut() {
+
+        // האפשרות קיימת רק לאחר הטלת 6 ובמצב הוצאת כלי
+        if (game.getStage() != Stage.TAKE_OUT ||
+                game.getLastStepDie() != 6 ||
+                game.getPendingSteps() <= 0 ||
+                !game.hasAnyPieceOnBoard()) {
+            return false;
+        }
+
+        // מעבר למצב בחירת כלי שנמצא על הלוח
+        game.setStage(Stage.MOVE);
+        return true;
+    }
+
+    
     public boolean hasPieceInCastle() {
         return game.hasPieceInCastle();
     }
