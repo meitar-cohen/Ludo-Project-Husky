@@ -345,11 +345,11 @@ public class GameController {
     }
 
     /**
-     * SRS 3.2.4.3.2  -
-     * Checks whether an arrow square matches the active piece color.
+     * דרישה 3.2.4.3.2 -
+     * בודקת אם צבע משבצת החץ תואם לצבע הכלי הפעיל.
      *
-     * A matching arrow allows the piece to enter the next inner path.
-     * An arrow of another color is treated as a regular square.
+     * חץ תואם מאפשר לכלי להיכנס למסלול הפנימי הבא.
+     * חץ בצבע אחר נחשב למשבצת רגילה.
      */
     public boolean isMatchingArrow(Color arrowColor, Color pieceColor) {
         return arrowColor != null
@@ -358,11 +358,12 @@ public class GameController {
     }
 
     /**
-     * SRS 3.2.4.3.2  -
-     * Moves the selected piece to the inner path when the arrow color matches.
+     * דרישה 3.2.4.3.2 -
+     * מעבירה את הכלי שנבחר למסלול הפנימי כאשר צבע החץ תואם.
      */
     public boolean enterInnerPathFromArrow(Color arrowColor, Color pieceColor, int innerPathStartStep) {
-        if (!isMatchingArrow(arrowColor, pieceColor)) {
+        if (isEasyGame()
+                || !isMatchingArrow(arrowColor, pieceColor)) {
             return false;
         }
 
