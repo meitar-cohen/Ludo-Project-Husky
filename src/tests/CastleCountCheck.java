@@ -9,11 +9,7 @@ public class CastleCountCheck {
     public static void main(String[] args) {
 
         // יצירת משחק עם שני שחקנים
-        Game game = new Game(
-            new String[] {"Blue", "Red"},
-            new String[] {"Blue", "Red"},
-            "Easy"
-        );
+        Game game = new Game(TestPlayers.of(new String[] {"Blue", "Red"}, new String[] {"Blue", "Red"}), "Easy");
 
         GameController controller = new GameController(game);
 

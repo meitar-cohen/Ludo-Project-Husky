@@ -33,11 +33,7 @@ public class HomeEntryRuleCheck {
             int routeSize,
             boolean alreadyInner) {
 
-        Game game = new Game(
-            new String[] {"A", "B"},
-            new String[] {"Red", "Blue"},
-            level
-        );
+        Game game = new Game(TestPlayers.of(new String[] {"A", "B"}, new String[] {"Red", "Blue"}), level);
 
         game.setStage(Stage.MOVE);
         game.setPieceOnBoard(true);

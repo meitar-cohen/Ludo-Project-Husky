@@ -30,11 +30,7 @@ public class StepZeroAcceptanceCheck {
     // יצירת משחק חדש לצורך בדיקה
     private static Game newGame(String level) {
 
-        return new Game(
-                new String[]{"A", "B"},
-                new String[]{"Red", "Blue"},
-                level
-        );
+        return new Game(TestPlayers.of(new String[]{"A", "B"}, new String[]{"Red", "Blue"}), level);
     }
 
     // גישה לשדות פרטיים לצורך בדיקת המסך בלבד
@@ -185,11 +181,7 @@ public class StepZeroAcceptanceCheck {
 
             try {
 
-                view = new GameView(
-                        new String[]{"A", "B"},
-                        new String[]{"Red", "Blue"},
-                        level
-                );
+                view = new GameView(TestPlayers.of(new String[]{"A", "B"}, new String[]{"Red", "Blue"}), level);
 
                 GameController controller =
                         (GameController) field(view, "controller");

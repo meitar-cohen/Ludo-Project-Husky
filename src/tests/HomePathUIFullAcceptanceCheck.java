@@ -42,11 +42,7 @@ public class HomePathUIFullAcceptanceCheck {
             SwingUtilities.invokeAndWait(() -> {
                 try {
                     // יצירת מסך משחק לפי רמת הקושי
-                    view[0] = new GameView(
-                            new String[]{"A", "B"},
-                            new String[]{"Red", "Blue"},
-                            level
-                    );
+                    view[0] = new GameView(TestPlayers.of(new String[]{"A", "B"}, new String[]{"Red", "Blue"}), level);
 
                     GameController controller =
                             (GameController) getField(

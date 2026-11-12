@@ -40,11 +40,7 @@ public class ExactHomeFinishViewCheck {
             try {
 
                 // יצירת מסך המשחק
-                view = new GameView(
-                        new String[]{"A", "B"},
-                        new String[]{"Red", "Blue"},
-                        level
-                );
+                view = new GameView(TestPlayers.of(new String[]{"A", "B"}, new String[]{"Red", "Blue"}), level);
 
                 GameController controller =
                         (GameController) field(view, "controller");

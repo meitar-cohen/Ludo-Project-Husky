@@ -26,11 +26,7 @@ public class HomeEntryScreenCheck {
         SwingUtilities.invokeAndWait(() -> {
             try {
                 // יצירת מסך משחק ברמה קלה
-                GameView view = new GameView(
-                    new String[]{"Player1", "Player2"},
-                    new String[]{"Red", "Blue"},
-                    "Easy"
-                );
+                GameView view = new GameView(TestPlayers.of(new String[]{"Player1", "Player2"}, new String[]{"Red", "Blue"}), "Easy");
 
                 BoardPanel board = (BoardPanel)
                     getField(view, "board");

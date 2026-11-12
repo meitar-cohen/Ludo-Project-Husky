@@ -23,10 +23,7 @@ public class InnerPathArrowCheck {
     }
 
     private static void testMatchingArrow() {
-        Game game = new Game(
-                new String[]{"Green", "Yellow"},
-                new String[]{"Green", "Yellow"},
-                "Medium");
+        Game game = new Game(TestPlayers.of(new String[]{"Green", "Yellow"}, new String[]{"Green", "Yellow"}), "Medium");
         GameController controller = new GameController(game);
 
         game.selectPiece(0);
@@ -43,10 +40,7 @@ public class InnerPathArrowCheck {
     }
 
     private static void testNonMatchingArrow() {
-        Game game = new Game(
-                new String[]{"Green", "Yellow"},
-                new String[]{"Green", "Yellow"},
-                "Medium");
+        Game game = new Game(TestPlayers.of(new String[]{"Green", "Yellow"}, new String[]{"Green", "Yellow"}), "Medium");
         GameController controller = new GameController(game);
 
         game.selectPiece(0);

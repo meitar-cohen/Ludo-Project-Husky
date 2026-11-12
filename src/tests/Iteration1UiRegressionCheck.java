@@ -42,10 +42,7 @@ public class Iteration1UiRegressionCheck {
             GameView view = null;
 
             try {
-                view = new GameView(
-                        new String[]{"A", "B"},
-                        new String[]{"Red", "Blue"},
-                        "Medium");
+                view = new GameView(TestPlayers.of(new String[]{"A", "B"}, new String[]{"Red", "Blue"}), "Medium");
 
                 Object dice = field(view, "dice");
 
@@ -159,7 +156,7 @@ public class Iteration1UiRegressionCheck {
         String[] names = {"A", "B"};
         String[] colors = {"Red", "Blue"};
 
-        Game game = new Game(names, colors, "Medium");
+        Game game = new Game(TestPlayers.of(names, colors), "Medium");
         GameController controller = new GameController(game);
         BoardPanel board = new BoardPanel("Medium", colors);
 

@@ -10,11 +10,7 @@ public class CastleChoiceCheck {
     public static void main(String[] args) {
 
         // בדיקה 1 - אפשר לבחור כלי קיים לאחר הטלת 6
-        Game game = new Game(
-            new String[] {"Blue", "Red"},
-            new String[] {"Blue", "Red"},
-            "Easy"
-        );
+        Game game = new Game(TestPlayers.of(new String[] {"Blue", "Red"}, new String[] {"Blue", "Red"}), "Easy");
 
         GameController controller = new GameController(game);
 
@@ -39,11 +35,7 @@ public class CastleChoiceCheck {
         );
 
         // בדיקה 2 - אי אפשר לבחור תנועה אם כל הכלים בטירה
-        Game empty = new Game(
-            new String[] {"Blue", "Red"},
-            new String[] {"Blue", "Red"},
-            "Easy"
-        );
+        Game empty = new Game(TestPlayers.of(new String[] {"Blue", "Red"}, new String[] {"Blue", "Red"}), "Easy");
 
         GameController onlyCastle = new GameController(empty);
 
@@ -63,11 +55,7 @@ public class CastleChoiceCheck {
         );
 
         // בדיקה 3 - בתוצאה 0 אי אפשר לבצע תנועה רגילה
-        Game zero = new Game(
-            new String[] {"Blue", "Red"},
-            new String[] {"Blue", "Red"},
-            "Medium"
-        );
+        Game zero = new Game(TestPlayers.of(new String[] {"Blue", "Red"}, new String[] {"Blue", "Red"}), "Medium");
 
         zero.setPiecesInCastle(3);
         zero.setPieceOnBoard(true);

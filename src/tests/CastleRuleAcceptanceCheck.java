@@ -8,10 +8,7 @@ import model.Game;
 public class CastleRuleAcceptanceCheck {
 
     private static Game newGame(String level) {
-        return new Game(
-                new String[]{"A", "B"},
-                new String[]{"Red", "Blue"},
-                level);
+        return new Game(TestPlayers.of(new String[]{"A", "B"}, new String[]{"Red", "Blue"}), level);
     }
 
     private static void check(boolean condition, String message) {

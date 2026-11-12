@@ -19,11 +19,7 @@ public class HomePathZeroRollCheck {
     }
 
     private static Game newGame(String difficulty) {
-        return new Game(
-            new String[]{"Alice", "Bob"},
-            new String[]{"Red", "Blue"},
-            difficulty
-        );
+        return new Game(TestPlayers.of(new String[]{"Alice", "Bob"}, new String[]{"Red", "Blue"}), difficulty);
     }
 
     // בדיקה שתוצאה 0 עדיין מאפשרת תנועה במסלול הבית

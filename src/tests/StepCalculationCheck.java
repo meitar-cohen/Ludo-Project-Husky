@@ -9,11 +9,7 @@ public class StepCalculationCheck {
     private static void check(String label, String difficulty,
                               int stepDie, int boostDie, int expected) {
 
-        Game game = new Game(
-            new String[] {"Player1", "Player2"},
-            new String[] {"Red", "Blue"},
-            difficulty
-        );
+        Game game = new Game(TestPlayers.of(new String[] {"Player1", "Player2"}, new String[] {"Red", "Blue"}), difficulty);
 
         GameController controller = new GameController(game);
         int actual = controller.calculateSteps(stepDie, boostDie);
@@ -41,10 +37,7 @@ public class StepCalculationCheck {
         check("Hard maximum movement", "Hard", 6, 6, 30);
 
         // בדיקה שהמשחק משתמש בתוצאה המחושבת
-        Game game1 = new Game(
-            new String[] {"Player1", "Player2"},
-            new String[] {"Red", "Blue"}, "Medium"
-        );
+        Game game1 = new Game(TestPlayers.of(new String[] {"Player1", "Player2"}, new String[] {"Red", "Blue"}), "Medium");
 
         game1.setPieceOnBoard(true);
         GameController controller1 = new GameController(game1);
@@ -59,10 +52,7 @@ public class StepCalculationCheck {
         System.out.println("PASS - Medium movement integration");
 
         // בדיקת תוצאה 0 ללא כלי במסלול הבית
-        Game game2 = new Game(
-            new String[] {"Player1", "Player2"},
-            new String[] {"Red", "Blue"}, "Medium"
-        );
+        Game game2 = new Game(TestPlayers.of(new String[] {"Player1", "Player2"}, new String[] {"Red", "Blue"}), "Medium");
 
         game2.setPieceOnBoard(true);
         GameController controller2 = new GameController(game2);
@@ -77,10 +67,7 @@ public class StepCalculationCheck {
         System.out.println("PASS - Zero movement integration");
 
         // בדיקת הוצאת כלי בהטלת 6 גם כשהמכפיל נותן 0
-        Game game3 = new Game(
-            new String[] {"Player1", "Player2"},
-            new String[] {"Red", "Blue"}, "Medium"
-        );
+        Game game3 = new Game(TestPlayers.of(new String[] {"Player1", "Player2"}, new String[] {"Red", "Blue"}), "Medium");
 
         GameController controller3 = new GameController(game3);
 

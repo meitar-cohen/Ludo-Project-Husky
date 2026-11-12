@@ -16,10 +16,7 @@ public class NoLegalMoveRulesCheck {
     }
 
     private static Game newGame(String difficulty) {
-        return new Game(
-                new String[]{"A", "B", "C"},
-                new String[]{"Red", "Blue", "Green"},
-                difficulty);
+        return new Game(TestPlayers.of(new String[]{"A", "B", "C"}, new String[]{"Red", "Blue", "Green"}), difficulty);
     }
 
     // בדיקת זיהוי מהלך חוקי ולא חוקי

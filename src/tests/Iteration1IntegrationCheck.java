@@ -28,7 +28,7 @@ public class Iteration1IntegrationCheck {
         String[] colors = {"Red", "Blue"};
 
         // יצירת המודל, הבקר והלוח
-        Game game = new Game(names, colors, level);
+        Game game = new Game(TestPlayers.of(names, colors), level);
         GameController controller = new GameController(game);
         BoardPanel board = new BoardPanel(level, colors);
 

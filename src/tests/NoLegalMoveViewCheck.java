@@ -39,10 +39,7 @@ public class NoLegalMoveViewCheck {
             GameView view = null;
 
             try {
-                view = new GameView(
-                        new String[]{"A", "B", "C"},
-                        new String[]{"Red", "Blue", "Green"},
-                        level);
+                view = new GameView(TestPlayers.of(new String[]{"A", "B", "C"}, new String[]{"Red", "Blue", "Green"}), level);
 
                 GameController controller =
                         (GameController) field(view, "controller");

@@ -29,10 +29,7 @@ public class TurnFlowAcceptanceCheck {
     // בדיקת עדכון המודל לאחר אירוע
     private static void testEventModel() {
 
-        Game game = new Game(
-                new String[]{"A", "B"},
-                new String[]{"Green", "Red"},
-                "Medium");
+        Game game = new Game(TestPlayers.of(new String[]{"A", "B"}, new String[]{"Green", "Red"}), "Medium");
 
         GameController controller = new GameController(game);
 
@@ -77,10 +74,7 @@ public class TurnFlowAcceptanceCheck {
         SwingUtilities.invokeAndWait(() -> {
             try {
 
-                view[0] = new GameView(
-                        new String[]{"A", "B"},
-                        new String[]{"Green", "Red"},
-                        level);
+                view[0] = new GameView(TestPlayers.of(new String[]{"A", "B"}, new String[]{"Green", "Red"}), level);
 
                 GameController controller =
                         (GameController) field(view[0], "controller");
