@@ -595,6 +595,28 @@ public class BoardPanel extends JPanel {
 
         return "NONE";
     }
+
+    /**
+     * דרישה 3.2.4.3.2 -
+     * מחזירה את צבע החץ במסלול הנוכחי של הכלי שנבחר.
+     * ערך null מציין שמשבצת היעד אינה משבצת חץ.
+     */
+    public Color getArrowColorAtStep(int pieceIndex, int step) {
+        if (pieceIndex < 0 || pieceIndex >= 4
+                || !piecesOnBoard[activeCorner][pieceIndex]
+                || piecesInHomePath[activeCorner][pieceIndex]) {
+            return null;
+        }
+
+        List<Point> route = currentPieceRoute(pieceIndex);
+        if (step < 0 || step >= route.size()) {
+            return null;
+        }
+
+        Special special = specials.get(route.get(step));
+        return special != null && special.type == Type.ARROW
+                ? special.color : null;
+    }
     
     // מחזירה את מספר המשבצות במסלול הבית של השחקן הפעיל
     public int getActiveHomePathSize() {
