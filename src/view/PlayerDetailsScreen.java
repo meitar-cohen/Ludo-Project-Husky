@@ -20,7 +20,6 @@ public class PlayerDetailsScreen extends JPanel {
 
     private final int numPlayers;
     private final String difficulty;
-    private final Player[] players;
     private final JTextField[] nameFields;
     private final JComboBox<String>[] colorSelectors;
     private JLabel errorLabel;
@@ -37,7 +36,6 @@ public class PlayerDetailsScreen extends JPanel {
     public PlayerDetailsScreen(int selectedPlayers, String difficulty) {
         this.numPlayers = Math.max(2, Math.min(4, selectedPlayers));
         this.difficulty = difficulty == null ? "Easy" : difficulty;
-        this.players = new Player[this.numPlayers];
         this.nameFields = new JTextField[this.numPlayers];
         @SuppressWarnings("unchecked")
         JComboBox<String>[] selectors = (JComboBox<String>[]) new JComboBox<?>[this.numPlayers];
@@ -178,7 +176,6 @@ public class PlayerDetailsScreen extends JPanel {
      */
     private JPanel buildPlayerRow(int index) {
         JPanel row = new PlayerCard();
-        players[index] = new Player("Player " + (index + 1), COLOR_NAMES[index]);
         row.setLayout(new BorderLayout(12, 0));
         row.setBorder(new EmptyBorder(8, 12, 8, 12));
         row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 83));
@@ -242,18 +239,15 @@ public class PlayerDetailsScreen extends JPanel {
      */
     private void handleStartGame() {
         errorLabel.setForeground(new Color(211, 65, 90));
+        String[] names = new String[numPlayers];
+        String[] colors = new String[numPlayers];
         for (int i = 0; i < numPlayers; i++) {
-            String name = nameFields[i].getText().trim();
-            if (name.isEmpty()) {
-                errorLabel.setText("Please enter a name for Player " + (i + 1) + ".");
-                nameFields[i].requestFocusInWindow();
-                return;
-            }
-            players[i].setName(name);
-            players[i].setColor((String) colorSelectors[i].getSelectedItem());
+            names[i] = nameFields[i].getText().trim();
+            colors[i] = (String) colorSelectors[i].getSelectedItem();
         }
 
-        GameSetupController.ValidationError error = GameSetupController.validatePlayers(players);
+        GameSetupController.ValidationError error =
+                GameSetupController.validatePlayers(names, colors);
         if (error != null) {
             // SRS 3.2.1.3.2 - show the message and move the cursor to the wrong name field.
             errorLabel.setText(error.getMessage());
@@ -265,6 +259,7 @@ public class PlayerDetailsScreen extends JPanel {
 
         errorLabel.setForeground(new Color(25, 150, 112));
         errorLabel.setText("Success! Loading game...");
+        Player[] players = GameSetupController.createPlayers(names, colors);
 
         Window window = SwingUtilities.getWindowAncestor(this);
         if (window instanceof JFrame) {

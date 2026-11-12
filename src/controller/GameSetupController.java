@@ -24,19 +24,17 @@ public final class GameSetupController {
      * בדיקת שמות וצבעים של המשתתפים.
      * מחזירה את השגיאה הראשונה או null אם הקלט תקין.
      */
-    public static ValidationError validatePlayers(Player[] players) {
-        if (players == null) {
+    public static ValidationError validatePlayers(
+            String[] names, String[] colors) {
+        if (names == null || colors == null || names.length != colors.length) {
             return new ValidationError(0, Field.NAME, "Players are required.");
         }
         Set<String> usedNames = new HashSet<>();
         Set<String> usedColors = new HashSet<>();
 
-        for (int i = 0; i < players.length; i++) {
-            Player player = players[i];
-
+        for (int i = 0; i < names.length; i++) {
             // בדיקה שהשם אינו ריק
-            String name = player == null || player.getName() == null
-                    ? "" : player.getName().trim();
+            String name = names[i] == null ? "" : names[i].trim();
 
             if (name.isEmpty()) {
                 return new ValidationError(
@@ -56,8 +54,7 @@ public final class GameSetupController {
             }
 
             // בדיקה שאין צבע כפול או צבע שלא נבחר
-            if (player.getColor() == null
-                    || !usedColors.add(player.getColor())) {
+            if (colors[i] == null || !usedColors.add(colors[i])) {
                 return new ValidationError(
                     i,
                     Field.COLOR,
@@ -68,6 +65,14 @@ public final class GameSetupController {
 
         // כל פרטי המשתתפים תקינים
         return null;
+    }
+
+    public static Player[] createPlayers(String[] names, String[] colors) {
+        Player[] players = new Player[names.length];
+        for (int i = 0; i < players.length; i++) {
+            players[i] = new Player(names[i], colors[i]);
+        }
+        return players;
     }
 
     /**
