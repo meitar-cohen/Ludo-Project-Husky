@@ -12,10 +12,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-/**
- * Ludo question management - interactive UI prototype.
- * Questions are sample data kept in memory only; closing the screen discards edits.
- */
+/** Ludo question management screen. */
 public class QuestionManagementView extends JFrame {
 
     private static final Color NAVY = new Color(20, 28, 70);
@@ -27,7 +24,6 @@ public class QuestionManagementView extends JFrame {
     private static final Color RED = new Color(204, 69, 89);
     private static final Font BODY_FONT = new Font("Segoe UI", Font.PLAIN, 14);
 
-    // Demo data only - no file or database persistence.
     private final List<Question> questions = new ArrayList<>();
     private final DefaultTableModel tableModel;
     private final JTable table;
@@ -44,7 +40,6 @@ public class QuestionManagementView extends JFrame {
         setLocationRelativeTo(null);
         setResizable(false);
 
-        loadSampleQuestions();
         tableModel = new DefaultTableModel(
                 new String[]{"#", "QUESTION", "DIFFICULTY", "CORRECT ANSWER"}, 0) {
             @Override public boolean isCellEditable(int row, int column) { return false; }
@@ -98,7 +93,7 @@ public class QuestionManagementView extends JFrame {
         badgeContainer.setOpaque(false);
         RoundedSurface badge = new RoundedSurface(new Color(235, 239, 255), 14);
         badge.setLayout(new FlowLayout(FlowLayout.CENTER, 12, 9));
-        JLabel tag = label("PROTOTYPE  |  SAMPLE DATA", 12, Font.BOLD, BLUE);
+        JLabel tag = label("QUESTION BANK", 12, Font.BOLD, BLUE);
         badge.add(tag);
         badgeContainer.add(badge);
         top.add(badgeContainer, BorderLayout.EAST);
@@ -195,8 +190,6 @@ public class QuestionManagementView extends JFrame {
     private JPanel createFooter() {
         JPanel footer = new JPanel(new BorderLayout());
         footer.setOpaque(false);
-        JLabel note = label("PROTOTYPE PREVIEW  /  CHANGES ARE NOT SAVED AFTER CLOSING", 11, Font.PLAIN, MUTED);
-        footer.add(note, BorderLayout.WEST);
         RoundedButton back = new RoundedButton("Back to Main Menu", Style.PRIMARY);
         back.setPreferredSize(new Dimension(225, 45));
         back.addActionListener(e -> {
@@ -256,24 +249,13 @@ public class QuestionManagementView extends JFrame {
         }
     }
 
-    // All CRUD operations intentionally update in-memory sample data only.
-    private void loadSampleQuestions() {
-        questions.add(new Question("Which language runs on the JVM?",
-                new String[]{"Python", "Java", "HTML", "SQL"}, 1, "Easy"));
-        questions.add(new Question("What does CPU stand for?",
-                new String[]{"Central Processing Unit", "Computer Power Unit",
-                        "Central Program Utility", "Control Processing User"}, 0, "Medium"));
-        questions.add(new Question("Which data structure uses FIFO?",
-                new String[]{"Stack", "Tree", "Queue", "Graph"}, 2, "Hard"));
-    }
-
     private void refreshTable(int selectIndex) {
         tableModel.setRowCount(0);
         for (int i = 0; i < questions.size(); i++) {
             Question q = questions.get(i);
             tableModel.addRow(new Object[]{i + 1, q.text, q.difficulty, q.options[q.correctIndex]});
         }
-        countLabel.setText(questions.size() + "  questions in this demo");
+        countLabel.setText(questions.size() + "  questions");
         if (!questions.isEmpty() && selectIndex >= 0) {
             table.setRowSelectionInterval(Math.min(selectIndex, questions.size() - 1),
                     Math.min(selectIndex, questions.size() - 1));

@@ -8,7 +8,7 @@ import java.awt.event.MouseEvent;
 import java.awt.geom.RoundRectangle2D;
 
 /**
- * Modern Ludo question popup - clickable prototype, no external libraries.
+ * Modern Ludo question popup with no external libraries.
  * Keeps the existing fixed question, answer logic and isCorrect() contract.
  */
 public class QuestionDialog extends JDialog {

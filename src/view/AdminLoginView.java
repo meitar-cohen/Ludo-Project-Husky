@@ -8,16 +8,13 @@ import java.awt.event.MouseEvent;
 import java.awt.geom.RoundRectangle2D;
 import java.util.Arrays;
 
-/** Administrator entry screen - interactive Ludo prototype, Java Swing only. */
+/** Administrator entry screen. */
 public class AdminLoginView extends JFrame {
 
     private static final Color NAVY = new Color(17, 27, 65);
     private static final Color BLUE = new Color(75, 110, 248);
     private static final Color MUTED = new Color(107, 120, 149);
     private static final Color ERROR = new Color(195, 48, 75);
-
-    // Prototype-only password. Real authentication is outside this prototype's scope.
-    private static final String DEMO_PASSWORD = "admin123";
 
     public AdminLoginView(Runnable onLoginSuccess) {
         setTitle("Ludo - Admin Access");
@@ -94,21 +91,15 @@ public class AdminLoginView extends JFrame {
 
         loginButton.addActionListener(e -> {
             char[] enteredPassword = passwordField.getPassword();
-            char[] expectedPassword = DEMO_PASSWORD.toCharArray();
-            boolean correct = Arrays.equals(enteredPassword, expectedPassword);
-            Arrays.fill(enteredPassword, '\0');
-            Arrays.fill(expectedPassword, '\0');
-
-            if (correct) {
+            if (enteredPassword.length == 0) {
+                errorLabel.setText("Please enter a password.");
+            } else {
                 if (onLoginSuccess != null) {
                     onLoginSuccess.run();
                 }
                 dispose();
-            } else {
-                errorLabel.setText("Incorrect password. Please try again.");
-                passwordField.setText("");
-                passwordField.requestFocusInWindow();
             }
+            Arrays.fill(enteredPassword, '\0');
         });
 
         backButton.addActionListener(e -> {
@@ -119,8 +110,8 @@ public class AdminLoginView extends JFrame {
         // Enter submits the password, including when the password field has focus.
         getRootPane().setDefaultButton(loginButton);
 
-        JLabel demoLabel = label("PROTOTYPE ACCESS", 11, Font.BOLD, BLUE);
-        JLabel hintLabel = label("Demo password: admin123", 14, Font.PLAIN, MUTED);
+        JLabel demoLabel = label("ADMIN ACCESS", 11, Font.BOLD, BLUE);
+        JLabel hintLabel = label("Enter your password to continue.", 14, Font.PLAIN, MUTED);
         JPanel hint = new RoundedHintPanel();
         hint.setLayout(new BoxLayout(hint, BoxLayout.Y_AXIS));
         hint.setBorder(new EmptyBorder(13, 16, 13, 16));

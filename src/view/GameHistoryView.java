@@ -10,8 +10,7 @@ import java.awt.event.MouseEvent;
 import java.awt.geom.RoundRectangle2D;
 
 /**
- * Game history - interactive prototype with sample data only.
- * The games are not persisted to a file or database.
+ * Game history screen.
  */
 public class GameHistoryView extends JFrame {
 
@@ -20,19 +19,6 @@ public class GameHistoryView extends JFrame {
     private static final Color MUTED = new Color(112, 124, 151);
     private static final Color LIGHT = new Color(243, 246, 253);
     private static final Font FONT = new Font("Segoe UI", Font.PLAIN, 14);
-
-    // Original prototype entries - unchanged, no persistent storage
-    private final Object[][] sampleGames = {
-        {"G-003", "27/10/2026 18:35", "Medium", "Noa", "00:23:15"},
-        {"G-002", "26/10/2026 14:10", "Easy", "Meitar", "00:15:42"},
-        {"G-001", "25/10/2026 20:05", "Hard", "Daniel", "00:31:04"}
-    };
-
-    private final String[][] rankings = {
-        {"Noa", "Meitar", "Maor", "Daniel"},
-        {"Meitar", "Daniel", "Maor"},
-        {"Daniel", "Noa"}
-    };
 
     private final JPanel rankingCards = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 2));
     private final JLabel rankingGameLabel = new JLabel();
@@ -96,7 +82,7 @@ public class GameHistoryView extends JFrame {
         headings.add(subtitle);
         header.add(headings, BorderLayout.CENTER);
 
-        JLabel count = new JLabel("  3 SAMPLE GAMES  ");
+        JLabel count = new JLabel("  NO SAVED GAMES  ");
         count.setFont(new Font("Segoe UI", Font.BOLD, 12));
         count.setForeground(BLUE);
         count.setOpaque(true);
@@ -117,7 +103,7 @@ public class GameHistoryView extends JFrame {
         container.setBorder(new EmptyBorder(10, 13, 10, 13));
 
         String[] columns = {"GAME", "DATE & TIME", "DIFFICULTY", "WINNER", "DURATION"};
-        DefaultTableModel model = new DefaultTableModel(sampleGames, columns) {
+        DefaultTableModel model = new DefaultTableModel(new Object[0][columns.length], columns) {
             @Override public boolean isCellEditable(int row, int column) { return false; }
         };
 
@@ -157,7 +143,7 @@ public class GameHistoryView extends JFrame {
                 showRanking(index);
             }
         });
-        table.setRowSelectionInterval(0, 0);
+        rankingGameLabel.setText("No completed games yet");
         return container;
     }
 
@@ -181,46 +167,22 @@ public class GameHistoryView extends JFrame {
 
         rankingCards.setOpaque(false);
         panel.add(rankingCards, BorderLayout.CENTER);
-        showRanking(0);
+        JLabel empty = new JLabel("Complete a game to see its final standings.",
+                SwingConstants.CENTER);
+        empty.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        empty.setForeground(MUTED);
+        rankingCards.add(empty);
         return panel;
     }
 
     private void showRanking(int index) {
-        rankingCards.removeAll();
-        rankingGameLabel.setText(sampleGames[index][0] + "  |  " + sampleGames[index][2]);
-        String[] places = {"1ST", "2ND", "3RD", "4TH"};
-        // Rank colors: winner green, second blue, third orange, fourth neutral.
-        Color[] colors = {
-            new Color(216, 246, 229),
-            new Color(227, 236, 255),
-            new Color(255, 234, 214),
-            new Color(236, 240, 247)
-        };
-        for (int i = 0; i < rankings[index].length && i < 4; i++) {
-            RoundedSurface player = new RoundedSurface(colors[i], 17);
-            player.setLayout(new BorderLayout(0, 5));
-            player.setPreferredSize(new Dimension(187, 80));
-            player.setBorder(new EmptyBorder(12, 15, 10, 15));
-
-            JLabel position = new JLabel(i == 0 ? "★  " + places[i] + " PLACE" : places[i] + " PLACE");
-            position.setFont(new Font("Segoe UI", Font.BOLD, 11));
-            position.setForeground(i == 0 ? new Color(23, 124, 77) : new Color(76, 86, 113));
-            player.add(position, BorderLayout.NORTH);
-
-            JLabel name = new JLabel(rankings[index][i]);
-            name.setFont(new Font("Segoe UI", Font.BOLD, 17));
-            name.setForeground(i == 0 ? new Color(19, 97, 63) : NAVY);
-            player.add(name, BorderLayout.CENTER);
-            rankingCards.add(player);
-        }
-        rankingCards.revalidate();
-        rankingCards.repaint();
+        // History is intentionally empty until persistent storage is implemented.
     }
 
     private JComponent createFooter() {
         JPanel footer = new JPanel(new BorderLayout());
         footer.setOpaque(false);
-        JLabel note = new JLabel("PROTOTYPE PREVIEW   ·   SAMPLE DATA ONLY");
+        JLabel note = new JLabel("No completed games to display.");
         note.setForeground(MUTED);
         note.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         footer.add(note, BorderLayout.WEST);

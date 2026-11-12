@@ -9,8 +9,7 @@ import java.awt.geom.Ellipse2D;
 import java.awt.geom.RoundRectangle2D;
 
 /**
- * End-of-game screen for the interactive Ludo prototype.
- * The ranking follows the supplied demo order; results are not persisted.
+ * End-of-game screen for the current game.
  */
 public class EndGameScreen extends JPanel {
 
@@ -79,7 +78,7 @@ public class EndGameScreen extends JPanel {
         }
 
         card.add(Box.createVerticalGlue());
-        JLabel note = label("PROTOTYPE PREVIEW  |  Rankings are illustrative and not saved", 10, Font.PLAIN, MUTED);
+        JLabel note = label("Game history is not available yet.", 10, Font.PLAIN, MUTED);
         note.setAlignmentX(Component.CENTER_ALIGNMENT);
         card.add(note);
         card.add(Box.createVerticalStrut(10));
