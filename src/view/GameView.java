@@ -9,6 +9,7 @@ import java.util.Random;
 import controller.GameController;
 import enums.RollAction;
 import model.Game;
+import model.Player;
 
 public class GameView extends JPanel {
 
@@ -18,8 +19,7 @@ public class GameView extends JPanel {
     private static final Color INK = new Color(14, 23, 55);
     private static final Color LIGHT = new Color(244, 247, 254);
 
-    private final String[] names;
-    private final String[] colors;
+    private final Player[] players;
     private final String difficulty;
 
     private final BoardPanel board;
@@ -36,16 +36,10 @@ public class GameView extends JPanel {
     private int secondsElapsed = 0;
     private final GameController controller;
 
-    /** Default constructor kept for two-player compatibility. */
-    public GameView() {
-        this(new String[]{"Player 1", "Player 2"}, new String[]{"Red", "Blue"}, "Easy");
-    }
-
-    public GameView(String[] names, String[] colors, String difficulty) {
-        this.names = names;
-        this.colors = colors;
+    public GameView(Player[] players, String difficulty) {
+        this.players = players.clone();
         this.difficulty = difficulty == null ? "Easy" : difficulty;
-        Game game = new Game(names, colors, this.difficulty);
+        Game game = new Game(this.players, this.difficulty);
         this.controller = new GameController(game);
 
         setOpaque(false);
@@ -114,7 +108,7 @@ public class GameView extends JPanel {
         boardCaption.add(legendButton, BorderLayout.EAST);
         boardCard.add(boardCaption, BorderLayout.NORTH);
 
-        board = new BoardPanel(this.difficulty, colors);
+        board = new BoardPanel(this.difficulty, playerColors());
         board.setOpaque(false);
         board.setPieceClickListener(new BoardPanel.PieceClickListener() {
             @Override public void castlePieceClicked(int slot) { onCastlePieceClicked(slot); }
@@ -203,8 +197,16 @@ public class GameView extends JPanel {
         arena.add(side, BorderLayout.EAST);
 
         refreshPlayers();
-        setStatus(names[0] + "'s turn. Click Roll Dice to start.");
+        setStatus(players[0].getName() + "'s turn. Click Roll Dice to start.");
         startTimer();
+    }
+
+    private String[] playerColors() {
+        String[] colors = new String[players.length];
+        for (int i = 0; i < players.length; i++) {
+            colors[i] = players[i].getColor();
+        }
+        return colors;
     }
 
     @Override
@@ -813,7 +815,7 @@ public class GameView extends JPanel {
         gameTimer.stop();
         JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(this);
         if (frame != null) {
-            frame.setContentPane(new EndGameScreen(names, colors, difficulty, formatTime(secondsElapsed)));
+            frame.setContentPane(new EndGameScreen(players, difficulty, formatTime(secondsElapsed)));
             frame.setSize(700, 600);
             frame.setLocationRelativeTo(null);
             frame.revalidate();
@@ -849,20 +851,20 @@ public class GameView extends JPanel {
     private void refreshPlayers() {
         playersPanel.removeAll();
         int currentPlayer = controller.getCurrentPlayer();
-        turnLabel.setText(names[currentPlayer] + "'s turn");
-        for (int i = 0; i < names.length; i++) {
+        turnLabel.setText(players[currentPlayer].getName() + "'s turn");
+        for (int i = 0; i < players.length; i++) {
             final boolean current = i == currentPlayer;
             JPanel chip = new RoundedPanel(current ? new Color(235, 240, 255) : LIGHT, 15);
             chip.setLayout(new BorderLayout(9, 0));
             chip.setBorder(new EmptyBorder(3, 10, 3, 10));
             chip.setMaximumSize(new Dimension(Integer.MAX_VALUE, 29));
             chip.setPreferredSize(new Dimension(285, 29));
-            Color pieceColor = BoardPanel.colorOf(colors[i]);
+            Color pieceColor = BoardPanel.colorOf(players[i].getColor());
             JLabel dot = new JLabel("●");
             dot.setFont(new Font("Dialog", Font.BOLD, 19));
             dot.setForeground(pieceColor);
             chip.add(dot, BorderLayout.WEST);
-            JLabel name = new JLabel(names[i]);
+            JLabel name = new JLabel(players[i].getName());
             name.setFont(new Font("Segoe UI", current ? Font.BOLD : Font.PLAIN, 13));
             name.setForeground(INK);
             chip.add(name, BorderLayout.CENTER);
@@ -873,7 +875,7 @@ public class GameView extends JPanel {
                 chip.add(playing, BorderLayout.EAST);
             }
             playersPanel.add(chip);
-            if (i < names.length - 1) playersPanel.add(Box.createVerticalStrut(3));
+            if (i < players.length - 1) playersPanel.add(Box.createVerticalStrut(3));
         }
         playersPanel.revalidate();
         playersPanel.repaint();
