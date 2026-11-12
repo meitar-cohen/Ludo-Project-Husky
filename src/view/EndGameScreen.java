@@ -1,5 +1,7 @@
 package view;
 
+import model.Player;
+
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
@@ -20,12 +22,14 @@ public class EndGameScreen extends JPanel {
     private static final int CARD_WIDTH = 630;
     private static final int CONTENT_WIDTH = 555;
 
-    public EndGameScreen(String[] names, String[] colors, String difficulty, String duration) {
+    public EndGameScreen(Player[] players, String difficulty, String duration) {
         setLayout(new GridBagLayout());
         setOpaque(true);
 
-        String winner = (names != null && names.length > 0) ? names[0] : "Player 1";
-        String winnerColor = (colors != null && colors.length > 0) ? colors[0] : "Blue";
+        String winner = (players != null && players.length > 0)
+                ? players[0].getName() : "Player 1";
+        String winnerColor = (players != null && players.length > 0)
+                ? players[0].getColor() : "Blue";
         String level = difficulty == null ? "Easy" : difficulty;
         String elapsed = duration == null ? "00:00:00" : duration;
 
@@ -68,10 +72,10 @@ public class EndGameScreen extends JPanel {
         card.add(Box.createVerticalStrut(6));
 
         String[] places = {"1ST", "2ND", "3RD", "4TH"};
-        int count = names == null ? 0 : Math.min(places.length, names.length);
+        int count = players == null ? 0 : Math.min(places.length, players.length);
         for (int i = 0; i < count; i++) {
-            String c = (colors != null && i < colors.length) ? colors[i] : "Blue";
-            RankingRow row = new RankingRow(places[i], names[i], c, i == 0);
+            RankingRow row = new RankingRow(places[i], players[i].getName(),
+                    players[i].getColor(), i == 0);
             sized(row, CONTENT_WIDTH, 31);
             card.add(row);
             if (i < count - 1) card.add(Box.createVerticalStrut(4));
@@ -104,6 +108,7 @@ public class EndGameScreen extends JPanel {
         });
         add(card);
     }
+
 
     private static JLabel label(String text, int size, int style, Color color) {
         JLabel result = new JLabel(text);
