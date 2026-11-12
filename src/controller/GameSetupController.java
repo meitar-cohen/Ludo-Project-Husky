@@ -3,6 +3,7 @@ package controller;
 
 import java.util.HashSet;
 import java.util.Set;
+import model.Player;
 
 /**
  * Controller of the new-game setup.
@@ -23,16 +24,19 @@ public final class GameSetupController {
      * בדיקת שמות וצבעים של המשתתפים.
      * מחזירה את השגיאה הראשונה או null אם הקלט תקין.
      */
-    public static ValidationError validatePlayers(
-            String[] names, String[] colors) {
-
+    public static ValidationError validatePlayers(Player[] players) {
+        if (players == null) {
+            return new ValidationError(0, Field.NAME, "Players are required.");
+        }
         Set<String> usedNames = new HashSet<>();
         Set<String> usedColors = new HashSet<>();
 
-        for (int i = 0; i < names.length; i++) {
+        for (int i = 0; i < players.length; i++) {
+            Player player = players[i];
 
             // בדיקה שהשם אינו ריק
-            String name = names[i] == null ? "" : names[i].trim();
+            String name = player == null || player.getName() == null
+                    ? "" : player.getName().trim();
 
             if (name.isEmpty()) {
                 return new ValidationError(
@@ -52,7 +56,8 @@ public final class GameSetupController {
             }
 
             // בדיקה שאין צבע כפול או צבע שלא נבחר
-            if (colors[i] == null || !usedColors.add(colors[i])) {
+            if (player.getColor() == null
+                    || !usedColors.add(player.getColor())) {
                 return new ValidationError(
                     i,
                     Field.COLOR,
