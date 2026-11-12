@@ -518,8 +518,26 @@ public class GameView extends JPanel {
     // המשך התור לאחר שהכלי סיים את התנועה
     private void finishPieceMovement(int pieceIndex) {
 
+        // דרישה 3.2.4.3.2 - בדיקת מעבר למסלול הפנימי דרך חץ תואם.
         // בדיקות האכילה והחסימה ישולבו כאן
         // במסגרת דרישות 3.2.5
+
+        Color arrowColor = board.getArrowColorAtStep(
+                pieceIndex, controller.getPieceStep(pieceIndex));
+        Color pieceColor = BoardPanel.colorOf(
+                controller.getCurrentPlayerColor());
+
+        if (controller.enterInnerPathFromArrow(
+                arrowColor, pieceColor, 0)) {
+            if (!board.showActivePieceInInnerPath(pieceIndex, 0)) {
+                throw new IllegalStateException(
+                        "Inner path view is out of sync");
+            }
+
+            setStatus("Matching arrow! Piece entered the inner path.");
+            endTurnOrExtraTurn();
+            return;
+        }
 
         // בדיקת המשבצת שבה הכלי נעצר
         String event = board.getSquareEventAtStep(
