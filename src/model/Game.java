@@ -10,47 +10,57 @@ public class Game {
     
 
     // SRS 3.2.4.3.1 - Stores the state and position of each player's pieces.
-    private final boolean[][] piecesOnBoard;
-    private final int[][] pieceSteps;
-    private final boolean[][] piecesInHomePath;
+    private boolean[][] piecesOnBoard;
+    private int[][] pieceSteps;
+    private boolean[][] piecesInHomePath;
     // SRS 3.2.4.3.4 - שמירת הכלים שהגיעו לבית הסיום
-    private final boolean[][] finishedPieces;
+    private boolean[][] finishedPieces;
     private int selectedPieceIndex;
 
     // SRS 3.2.4.3.2 -Stores whether each piece is on an inner path.
-    private final boolean[][] piecesInInnerPath;
-    private final String[] names;
-    private final String[] colors;
+    private boolean[][] piecesInInnerPath;
+    private final Player[] players;
     private final String difficulty;
 
     // SRS 3.2.1.3.3 - opening state and game clock
     public static final int PIECES_PER_PLAYER = 4;
-    private final int[] piecesInCastleByPlayer;
+    private int[] piecesInCastleByPlayer;
     
  // SRS 3.2.3.3.6 - שמירת המשתתפים שכבר סיימו את המשחק
-    private final boolean[] finishedPlayers;
+    private boolean[] finishedPlayers;
     private long startTimeMillis = -1;   // -1 = the clock has not started yet
 
     // SRS 3.2.3.3.5 - extra turn and three sixes in a row
     private int lastStepDie;
     private int consecutiveSixes;
 
-    public Game(String[] names, String[] colors, String difficulty) {
-        this.names = names;
-        this.colors = colors;
+    public Game(Player[] players, String difficulty) {
+        if (players == null || players.length == 0) {
+            throw new IllegalArgumentException("At least one player is required");
+        }
+        this.players = players.clone();
+        for (Player player : this.players) {
+            if (player == null) {
+                throw new IllegalArgumentException("Players cannot contain null values");
+            }
+        }
         this.difficulty = difficulty;
+        initializePlayerState();
+    }
+
+    private void initializePlayerState() {
         // SRS 3.2.1.3.3 - all four pieces of every player start in the castle.
         // The game clock starts with the first roll (see startClock).
-        this.piecesInCastleByPlayer = new int[names.length];
-        this.finishedPlayers = new boolean[names.length];
-        for (int i = 0; i < names.length; i++) {
+        this.piecesInCastleByPlayer = new int[players.length];
+        this.finishedPlayers = new boolean[players.length];
+        for (int i = 0; i < players.length; i++) {
             piecesInCastleByPlayer[i] = PIECES_PER_PLAYER;
         }
-        this.piecesOnBoard = new boolean[names.length][PIECES_PER_PLAYER];
-        this.pieceSteps = new int[names.length][PIECES_PER_PLAYER];
-        this.piecesInHomePath = new boolean[names.length][PIECES_PER_PLAYER];
-        this.finishedPieces = new boolean[names.length][PIECES_PER_PLAYER];
-        this.piecesInInnerPath = new boolean[names.length][PIECES_PER_PLAYER];
+        this.piecesOnBoard = new boolean[players.length][PIECES_PER_PLAYER];
+        this.pieceSteps = new int[players.length][PIECES_PER_PLAYER];
+        this.piecesInHomePath = new boolean[players.length][PIECES_PER_PLAYER];
+        this.finishedPieces = new boolean[players.length][PIECES_PER_PLAYER];
+        this.piecesInInnerPath = new boolean[players.length][PIECES_PER_PLAYER];
         this.selectedPieceIndex = 0;
     }
 
@@ -119,11 +129,11 @@ public class Game {
     }
 
     public String getCurrentPlayerName() {
-        return names[currentPlayer];
+        return players[currentPlayer].getName();
     }
 
     public String getCurrentPlayerColor() {
-        return colors[currentPlayer];
+        return players[currentPlayer].getColor();
     }
 
     public String getDifficulty() {
@@ -131,7 +141,15 @@ public class Game {
     }
 
     public int getPlayerCount() {
-        return names.length;
+        return players.length;
+    }
+
+    public Player getPlayer(int playerIndex) {
+        return players[playerIndex];
+    }
+
+    public Player[] getPlayers() {
+        return players.clone();
     }
 
     public boolean isFirstTurnPulsePending() {
