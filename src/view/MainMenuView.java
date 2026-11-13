@@ -85,7 +85,7 @@ public class MainMenuView extends JFrame {
 
         newGameButton = createButton("New Game", 0, 0);
         gameHistoryButton = createButton("Game History", 1, 1);
-        gameHistoryButton.setVisible(false); // Hidden from the main menu for iteration 1.
+        // SRS 3.2.8.3.4 - the game history screen reads the saved games from the history file.
         questionManagementButton = createButton("Question Management", 1, 2);
         questionManagementButton.setVisible(false); // Hidden from the main menu for iteration 1.
         exitButton = createButton("Exit", 2, 3);

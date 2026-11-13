@@ -34,6 +34,10 @@ public class GameView extends JPanel {
 
     private Timer gameTimer;
     private int secondsElapsed = 0;
+
+    // SRS 3.2.8 - the finished game is saved once; the message is shown on the end screen
+    private boolean gameOverHandled;
+    private String historyNote = "";
     private final GameController controller;
 
     public GameView(Player[] players, String difficulty) {
@@ -789,6 +793,11 @@ public class GameView extends JPanel {
         // אם המשחק הסתיים, מאפשרים מעבר למסך הסיום
         endGameButton.setEnabled(controller.getStage() == enums.Stage.DONE);
 
+        // SRS 3.2.8.3.2 - שמירת המשחק שהסתיים בקובץ ההיסטוריה
+        if (controller.getStage() == enums.Stage.DONE) {
+            handleGameOver();
+        }
+
         board.clearHighlight();
         refreshPlayers();
 
@@ -811,11 +820,31 @@ public class GameView extends JPanel {
     // Navigation
     // ------------------------------------------------------------------
 
+    /**
+     * SRS 3.2.8.3.2 - 3.2.8.3.3 - the game is over: the controller saves it to the history file.
+     * If saving fails, an error message is shown and the game continues normally.
+     */
+    private void handleGameOver() {
+        if (gameOverHandled) {
+            return;
+        }
+        gameOverHandled = true;
+        String error = controller.saveGameToHistory();
+        if (error != null) {
+            historyNote = error;
+            JOptionPane.showMessageDialog(this, error, "Game history", JOptionPane.ERROR_MESSAGE);
+        } else if (controller.isGameSavedToHistory()) {
+            historyNote = "This game was saved to the game history.";
+        }
+    }
+
     private void showEndScreen() {
         gameTimer.stop();
         JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(this);
         if (frame != null) {
-            frame.setContentPane(new EndGameScreen(players, difficulty, formatTime(secondsElapsed)));
+            // SRS 3.2.8.3.1 - the end screen shows the players by final place
+            frame.setContentPane(new EndGameScreen(controller.getRankedPlayers(), difficulty,
+                    controller.getElapsedTime(), historyNote));
             frame.setSize(700, 600);
             frame.setLocationRelativeTo(null);
             frame.revalidate();

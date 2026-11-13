@@ -2,6 +2,9 @@ package model;
 
 import enums.Stage;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class Game {
     private Stage stage = Stage.ROLL;
     private int currentPlayer;
@@ -29,6 +32,12 @@ public class Game {
  // SRS 3.2.3.3.6 - שמירת המשתתפים שכבר סיימו את המשחק
     private boolean[] finishedPlayers;
     private long startTimeMillis = -1;   // -1 = the clock has not started yet
+    private long endTimeMillis = -1;     // -1 = the game has not ended yet
+
+    // SRS 3.2.8.3.1 - the order in which players brought all four pieces to the finish
+    private final List<Integer> finishOrder = new ArrayList<>();
+    // SRS 3.2.8.3.2 - a finished game is written to the history file once
+    private boolean savedToHistory;
 
     // SRS 3.2.3.3.5 - extra turn and three sixes in a row
     private int lastStepDie;
@@ -80,12 +89,20 @@ public class Game {
         return startTimeMillis >= 0;
     }
 
+    /** SRS 3.2.8 - stops the game clock when the game is over. */
+    public void stopClock() {
+        if (startTimeMillis >= 0 && endTimeMillis < 0) {
+            endTimeMillis = System.currentTimeMillis();
+        }
+    }
+
     /** SRS 3.2.1.3.3 - game duration in seconds since the first roll (0 before the first roll). */
     public long getElapsedSeconds() {
         if (startTimeMillis < 0) {
             return 0;
         }
-        return (System.currentTimeMillis() - startTimeMillis) / 1000;
+        long end = endTimeMillis >= 0 ? endTimeMillis : System.currentTimeMillis();
+        return (end - startTimeMillis) / 1000;
     }
 
     public int getLastStepDie() {
@@ -168,6 +185,43 @@ public class Game {
     // עדכון מצב סיום של משתתף
     public void setPlayerFinished(int playerIndex, boolean finished) {
         finishedPlayers[playerIndex] = finished;
+        if (finished) {
+            recordFinish(playerIndex);
+        } else {
+            finishOrder.remove(Integer.valueOf(playerIndex));
+        }
+    }
+
+    // SRS 3.2.8.3.1 - שמירת הסדר שבו המשתתפים סיימו
+    private void recordFinish(int playerIndex) {
+        if (!finishOrder.contains(playerIndex)) {
+            finishOrder.add(playerIndex);
+        }
+    }
+
+    /**
+     * SRS 3.2.8.3.1 - the final ranking: players in the order they finished,
+     * then the players who did not finish (the last remaining player gets the last place).
+     */
+    public Player[] getRanking() {
+        List<Player> ranking = new ArrayList<>();
+        for (int index : finishOrder) {
+            ranking.add(players[index]);
+        }
+        for (int i = 0; i < players.length; i++) {
+            if (!finishOrder.contains(i)) {
+                ranking.add(players[i]);
+            }
+        }
+        return ranking.toArray(new Player[0]);
+    }
+
+    public boolean isSavedToHistory() {
+        return savedToHistory;
+    }
+
+    public void markSavedToHistory() {
+        savedToHistory = true;
     }
     // בדיקה אם לשחקן הפעיל נותרו כלים בטירה
     public boolean hasPieceInCastle() {
@@ -286,6 +340,7 @@ public class Game {
         // משתתף מסיים לאחר שכל ארבעת הכלים הגיעו לבית הסיום
         if (getFinishedPieceCount(currentPlayer) == PIECES_PER_PLAYER) {
             finishedPlayers[currentPlayer] = true;
+            recordFinish(currentPlayer);
         }
 
         return true;
