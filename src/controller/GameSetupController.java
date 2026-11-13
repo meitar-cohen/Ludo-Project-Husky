@@ -44,6 +44,15 @@ public final class GameSetupController {
                 );
             }
 
+            // SRS 3.2.1.3.2 - בדיקה שהשם כולל לפחות אות אחת
+            if (!containsLetter(name)) {
+                return new ValidationError(
+                    i,
+                    Field.NAME,
+                    "Player " + (i + 1) + "'s name must contain at least one letter."
+                );
+            }
+
             // בדיקה שאין שם כפול
             if (!usedNames.add(name.toLowerCase())) {
                 return new ValidationError(
@@ -65,6 +74,16 @@ public final class GameSetupController {
 
         // כל פרטי המשתתפים תקינים
         return null;
+    }
+
+    /** True when the text has at least one letter (in any language, e.g. English or Hebrew). */
+    static boolean containsLetter(String text) {
+        for (int i = 0; i < text.length(); i++) {
+            if (Character.isLetter(text.charAt(i))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static Player[] createPlayers(String[] names, String[] colors) {
