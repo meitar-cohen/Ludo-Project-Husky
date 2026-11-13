@@ -5,16 +5,46 @@ import java.util.Random;
 import enums.RollAction;
 import enums.Stage;
 import model.Game;
+import model.Player;
 
 public class GameController {
     private final Game game;
     private final Random random = new Random();
+    private final HistoryController history;
 
     public GameController(Game game) {
+        this(game, new HistoryController());
+    }
+
+    public GameController(Game game, HistoryController history) {
         if (game == null) {
             throw new IllegalArgumentException("Game cannot be null");
         }
+        if (history == null) {
+            throw new IllegalArgumentException("History controller cannot be null");
+        }
         this.game = game;
+        this.history = history;
+    }
+
+    /**
+     * SRS 3.2.8.3.2 - 3.2.8.3.3 - the game is over: stop the clock and save the game
+     * to the history file.
+     *
+     * @return null on success, otherwise an error message for the user
+     */
+    public String saveGameToHistory() {
+        game.stopClock();
+        return history.saveFinishedGame(game);
+    }
+
+    public boolean isGameSavedToHistory() {
+        return game.isSavedToHistory();
+    }
+
+    /** SRS 3.2.8.3.1 - players by final place. */
+    public Player[] getRankedPlayers() {
+        return game.getRanking();
     }
 
     public Stage getStage() {

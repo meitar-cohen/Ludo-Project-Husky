@@ -23,6 +23,14 @@ public class EndGameScreen extends JPanel {
     private static final int CONTENT_WIDTH = 555;
 
     public EndGameScreen(Player[] players, String difficulty, String duration) {
+        this(players, difficulty, duration, "");
+    }
+
+    /**
+     * @param players    the players by final place (index 0 = winner)
+     * @param historyNote message about saving the game to the history file
+     */
+    public EndGameScreen(Player[] players, String difficulty, String duration, String historyNote) {
         setLayout(new GridBagLayout());
         setOpaque(true);
 
@@ -82,7 +90,8 @@ public class EndGameScreen extends JPanel {
         }
 
         card.add(Box.createVerticalGlue());
-        JLabel note = label("Game history is not available yet.", 10, Font.PLAIN, MUTED);
+        JLabel note = label(historyNote == null || historyNote.isEmpty() ? " " : historyNote,
+                10, Font.PLAIN, MUTED);
         note.setAlignmentX(Component.CENTER_ALIGNMENT);
         card.add(note);
         card.add(Box.createVerticalStrut(10));

@@ -1,5 +1,8 @@
 package view;
 
+import controller.HistoryController;
+import model.GameRecord;
+
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -11,6 +14,7 @@ import java.awt.geom.RoundRectangle2D;
 
 /**
  * Game history screen.
+ * SRS 3.2.8.3.4 - shows the games saved in the history file (through HistoryController).
  */
 public class GameHistoryView extends JFrame {
 
@@ -22,8 +26,18 @@ public class GameHistoryView extends JFrame {
 
     private final JPanel rankingCards = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 2));
     private final JLabel rankingGameLabel = new JLabel();
+    private final HistoryController.HistoryResult history;
+    private final String historyFileName;
+    private JTable table;
 
     public GameHistoryView() {
+        this(new HistoryController());
+    }
+
+    public GameHistoryView(HistoryController controller) {
+        // SRS 3.2.8.3.4 - the saved games are read from the history file
+        this.history = controller.loadHistory();
+        this.historyFileName = controller.getHistoryFileName();
         setTitle("Ludo - Game History");
         setSize(1090, 730);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -51,6 +65,10 @@ public class GameHistoryView extends JFrame {
         main.add(createFooter(), BorderLayout.SOUTH);
 
         setContentPane(background);
+
+        if (!history.isEmpty()) {
+            table.setRowSelectionInterval(0, 0);   // show the standings of the newest game
+        }
     }
 
     private JPanel createHeader() {
@@ -82,7 +100,9 @@ public class GameHistoryView extends JFrame {
         headings.add(subtitle);
         header.add(headings, BorderLayout.CENTER);
 
-        JLabel count = new JLabel("  NO SAVED GAMES  ");
+        int saved = history.getGames().size();
+        JLabel count = new JLabel(saved == 0 ? "  NO SAVED GAMES  "
+                : "  " + saved + (saved == 1 ? " SAVED GAME  " : " SAVED GAMES  "));
         count.setFont(new Font("Segoe UI", Font.BOLD, 12));
         count.setForeground(BLUE);
         count.setOpaque(true);
@@ -106,8 +126,17 @@ public class GameHistoryView extends JFrame {
         DefaultTableModel model = new DefaultTableModel(new Object[0][columns.length], columns) {
             @Override public boolean isCellEditable(int row, int column) { return false; }
         };
+        for (GameRecord game : history.getGames()) {
+            model.addRow(new Object[] {
+                "#" + game.getGameId(),
+                game.getTimestamp().replace(";", "  "),
+                HistoryController.toDisplayDifficulty(game.getDifficulty()),
+                game.getWinner(),
+                game.getDuration()
+            });
+        }
 
-        JTable table = new JTable(model);
+        table = new JTable(model);
         table.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         table.setRowHeight(49);
         table.setShowGrid(false);
@@ -134,7 +163,7 @@ public class GameHistoryView extends JFrame {
         scroll.setBorder(BorderFactory.createEmptyBorder());
         scroll.getViewport().setBackground(Color.WHITE);
         scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-        scroll.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER);
+        scroll.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
         container.add(scroll, BorderLayout.CENTER);
 
         table.getSelectionModel().addListSelectionListener(e -> {
@@ -175,14 +204,56 @@ public class GameHistoryView extends JFrame {
         return panel;
     }
 
+    /** Shows the final standings of the selected game. */
     private void showRanking(int index) {
-        // History is intentionally empty until persistent storage is implemented.
+        if (index < 0 || index >= history.getGames().size()) {
+            return;
+        }
+        GameRecord game = history.getGames().get(index);
+        rankingGameLabel.setText("Game #" + game.getGameId() + "  |  "
+                + HistoryController.toDisplayDifficulty(game.getDifficulty()) + "  |  " + game.getDuration());
+        rankingCards.removeAll();
+        String[] places = {"1ST", "2ND", "3RD", "4TH"};
+        String[] names = game.getPlaceNames();
+        for (int i = 0; i < names.length; i++) {
+            if (names[i].isEmpty()) {
+                continue;   // fewer than 4 players
+            }
+            RoundedSurface card = new RoundedSurface(i == 0 ? new Color(232, 237, 255) : Color.WHITE, 16);
+            card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+            card.setBorder(new EmptyBorder(10, 16, 10, 16));
+            card.setPreferredSize(new Dimension(195, 66));
+            JLabel place = new JLabel(places[i]);
+            place.setFont(new Font("Segoe UI", Font.BOLD, 11));
+            place.setForeground(i == 0 ? BLUE : MUTED);
+            JLabel name = new JLabel(names[i]);
+            name.setFont(new Font("Segoe UI", Font.BOLD, 16));
+            name.setForeground(NAVY);
+            card.add(place);
+            card.add(Box.createVerticalStrut(4));
+            card.add(name);
+            rankingCards.add(card);
+        }
+        rankingCards.revalidate();
+        rankingCards.repaint();
     }
 
     private JComponent createFooter() {
         JPanel footer = new JPanel(new BorderLayout());
         footer.setOpaque(false);
-        JLabel note = new JLabel("No completed games to display.");
+        // SRS 3.2.8.3.4 - message when there are no games, when rows were skipped or the file failed
+        String text;
+        if (history.getError() != null) {
+            text = history.getError();
+        } else if (history.isEmpty()) {
+            text = "No completed games to display.";
+        } else {
+            text = "Games are read from " + historyFileName + ".";
+        }
+        if (history.getSkippedRows() > 0) {
+            text += "  " + history.getSkippedRows() + " damaged row(s) were skipped.";
+        }
+        JLabel note = new JLabel(text);
         note.setForeground(MUTED);
         note.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         footer.add(note, BorderLayout.WEST);
