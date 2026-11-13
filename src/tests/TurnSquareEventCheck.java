@@ -1,6 +1,6 @@
 package tests;
 
-import view.BoardPanel;
+import View.BoardPanel;
 
 public class TurnSquareEventCheck {
 

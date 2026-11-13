@@ -1,6 +1,6 @@
 package tests;
 
-import model.Player;
+import Model.Player;
 
 final class TestPlayers {
     private TestPlayers() {

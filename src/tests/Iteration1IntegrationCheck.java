@@ -6,8 +6,8 @@ import javax.swing.SwingUtilities;
 
 import controller.GameController;
 import enums.RollAction;
-import model.Game;
-import view.BoardPanel;
+import Model.Game;
+import View.BoardPanel;
 
 public class Iteration1IntegrationCheck {
 

@@ -1,4 +1,4 @@
-package model;
+package Model;
 
 /**
  * SRS 3.2.8.3.2 - one row of the game history file (one finished game).

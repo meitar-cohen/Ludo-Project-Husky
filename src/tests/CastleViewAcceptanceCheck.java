@@ -7,12 +7,13 @@ import javax.swing.JButton;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
-import controller.GameController;
+import controller.TurnController;
+import controller.MovementController;
 import enums.RollAction;
 import enums.Stage;
-import model.Game;
-import view.BoardPanel;
-import view.GameView;
+import Model.Game;
+import View.BoardPanel;
+import View.GameView;
 
 public class CastleViewAcceptanceCheck {
 
@@ -44,11 +45,9 @@ public class CastleViewAcceptanceCheck {
                 // יצירת מסך המשחק
                 view = new GameView(TestPlayers.of(new String[]{"A", "B"}, new String[]{"Red", "Blue"}), level);
 
-                GameController controller =
-                        (GameController) field(view, "controller");
-
-                Game game =
-                        (Game) field(controller, "game");
+                Game game = (Game) field(view, "game");
+                TurnController controller =
+                        new TurnController(game, new MovementController(game));
 
                 BoardPanel board =
                         (BoardPanel) field(view, "board");

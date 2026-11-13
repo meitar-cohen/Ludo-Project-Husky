@@ -1,6 +1,8 @@
-package view;
+package View;
 
 import javax.swing.*;
+import enums.ButtonStyle;
+import Model.Question;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
@@ -9,7 +11,6 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.RoundRectangle2D;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 /** Ludo question management screen. */
@@ -30,8 +31,8 @@ public class QuestionManagementView extends JFrame {
     private final JLabel countLabel = new JLabel();
     private final JLabel previewTitle = new JLabel();
     private final JLabel[] previewAnswers = new JLabel[4];
-    private final RoundedButton editButton = new RoundedButton("Edit Question", Style.SECONDARY);
-    private final RoundedButton deleteButton = new RoundedButton("Delete Question", Style.DANGER);
+    private final RoundedButton editButton = new RoundedButton("Edit Question", ButtonStyle.SECONDARY);
+    private final RoundedButton deleteButton = new RoundedButton("Delete Question", ButtonStyle.DANGER);
 
     public QuestionManagementView() {
         setTitle("Ludo - Question Management");
@@ -109,7 +110,7 @@ public class QuestionManagementView extends JFrame {
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 9, 0));
         buttons.setOpaque(false);
-        RoundedButton addButton = new RoundedButton("+  Add Question", Style.PRIMARY);
+        RoundedButton addButton = new RoundedButton("+  Add Question", ButtonStyle.PRIMARY);
         addButton.addActionListener(e -> showQuestionForm(-1));
         editButton.addActionListener(e -> {
             int index = selectedQuestionIndex();
@@ -190,7 +191,7 @@ public class QuestionManagementView extends JFrame {
     private JPanel createFooter() {
         JPanel footer = new JPanel(new BorderLayout());
         footer.setOpaque(false);
-        RoundedButton back = new RoundedButton("Back to Main Menu", Style.PRIMARY);
+        RoundedButton back = new RoundedButton("Back to Main Menu", ButtonStyle.PRIMARY);
         back.setPreferredSize(new Dimension(225, 45));
         back.addActionListener(e -> {
             new MainMenuView().setVisible(true);
@@ -253,7 +254,8 @@ public class QuestionManagementView extends JFrame {
         tableModel.setRowCount(0);
         for (int i = 0; i < questions.size(); i++) {
             Question q = questions.get(i);
-            tableModel.addRow(new Object[]{i + 1, q.text, q.difficulty, q.options[q.correctIndex]});
+            tableModel.addRow(new Object[]{i + 1, q.getText(), q.getDifficulty(),
+                    q.getOptions()[q.getCorrectIndex()]});
         }
         countLabel.setText(questions.size() + "  questions");
         if (!questions.isEmpty() && selectIndex >= 0) {
@@ -282,11 +284,11 @@ public class QuestionManagementView extends JFrame {
             return;
         }
         Question q = questions.get(idx);
-        previewTitle.setText(q.text);
+        previewTitle.setText(q.getText());
         for (int i = 0; i < previewAnswers.length; i++) {
             JLabel cell = previewAnswers[i];
-            boolean correct = i == q.correctIndex;
-            cell.setText((char) ('A' + i) + "    " + q.options[i]);
+            boolean correct = i == q.getCorrectIndex();
+            cell.setText((char) ('A' + i) + "    " + q.getOptions()[i]);
             cell.setForeground(correct ? new Color(25, 125, 85) : NAVY);
             cell.setBackground(correct ? new Color(217, 246, 232) : Color.WHITE);
             cell.setFont(new Font("Segoe UI", correct ? Font.BOLD : Font.PLAIN, 13));
@@ -310,13 +312,13 @@ public class QuestionManagementView extends JFrame {
         header.add(Box.createVerticalStrut(8));
         header.add(label("Are you sure?", 26, Font.BOLD, NAVY));
         header.add(Box.createVerticalStrut(8));
-        JLabel question = label(shorten(q.text, 62), 14, Font.PLAIN, MUTED);
+        JLabel question = label(shorten(q.getText(), 62), 14, Font.PLAIN, MUTED);
         header.add(question);
         card.add(header, BorderLayout.CENTER);
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         actions.setOpaque(false);
-        RoundedButton cancel = new RoundedButton("Cancel", Style.SECONDARY);
-        RoundedButton delete = new RoundedButton("Delete", Style.DANGER);
+        RoundedButton cancel = new RoundedButton("Cancel", ButtonStyle.SECONDARY);
+        RoundedButton delete = new RoundedButton("Delete", ButtonStyle.DANGER);
         cancel.addActionListener(e -> dialog.dispose());
         delete.addActionListener(e -> {
             questions.remove(idx);
@@ -356,12 +358,12 @@ public class QuestionManagementView extends JFrame {
         gbc.anchor = GridBagConstraints.WEST;
         gbc.insets = new Insets(0, 0, 7, 0);
 
-        JTextField questionField = field(existing == null ? "" : existing.text);
+        JTextField questionField = field(existing == null ? "" : existing.getText());
         addFormRow(form, gbc, "QUESTION", questionField, 0);
 
         JTextField[] answerFields = new JTextField[4];
         for (int i = 0; i < 4; i++) {
-            answerFields[i] = field(existing == null ? "" : existing.options[i]);
+            answerFields[i] = field(existing == null ? "" : existing.getOptions()[i]);
             addFormRow(form, gbc, "ANSWER " + (i + 1), answerFields[i], i + 1);
         }
 
@@ -373,8 +375,8 @@ public class QuestionManagementView extends JFrame {
         styleCombo(correctBox);
         styleCombo(difficultyBox);
         if (existing != null) {
-            correctBox.setSelectedIndex(existing.correctIndex);
-            difficultyBox.setSelectedItem(existing.difficulty);
+            correctBox.setSelectedIndex(existing.getCorrectIndex());
+            difficultyBox.setSelectedItem(existing.getDifficulty());
         }
         selectors.add(labeledInput("CORRECT ANSWER", correctBox));
         selectors.add(labeledInput("DIFFICULTY", difficultyBox));
@@ -389,8 +391,8 @@ public class QuestionManagementView extends JFrame {
         footer.add(error, BorderLayout.NORTH);
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 11, 0));
         actions.setOpaque(false);
-        RoundedButton cancel = new RoundedButton("Cancel", Style.SECONDARY);
-        RoundedButton save = new RoundedButton(editing ? "Save Changes" : "Add Question", Style.PRIMARY);
+        RoundedButton cancel = new RoundedButton("Cancel", ButtonStyle.SECONDARY);
+        RoundedButton save = new RoundedButton(editing ? "Save Changes" : "Add Question", ButtonStyle.PRIMARY);
         cancel.addActionListener(e -> dialog.dispose());
         save.addActionListener(e -> {
             String text = questionField.getText().trim();
@@ -440,7 +442,7 @@ public class QuestionManagementView extends JFrame {
         card.add(body, BorderLayout.CENTER);
         JPanel controls = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         controls.setOpaque(false);
-        RoundedButton ok = new RoundedButton("OK", Style.PRIMARY);
+        RoundedButton ok = new RoundedButton("OK", ButtonStyle.PRIMARY);
         ok.addActionListener(e -> dialog.dispose());
         controls.add(ok);
         card.add(controls, BorderLayout.SOUTH);
@@ -518,35 +520,20 @@ public class QuestionManagementView extends JFrame {
         return text.length() <= max ? text : text.substring(0, max - 3) + "...";
     }
 
-    private static final class Question {
-        final String text;
-        final String[] options;
-        final int correctIndex;
-        final String difficulty;
-        Question(String text, String[] options, int correctIndex, String difficulty) {
-            this.text = text;
-            this.options = Arrays.copyOf(options, options.length);
-            this.correctIndex = correctIndex;
-            this.difficulty = difficulty;
-        }
-    }
-
-    private enum Style { PRIMARY, SECONDARY, DANGER }
-
     private static final class RoundedButton extends JButton {
-        private final Style style;
+        private final ButtonStyle style;
         private boolean hovering;
-        RoundedButton(String text, Style style) {
+        RoundedButton(String text, ButtonStyle style) {
             super(text);
             this.style = style;
             setFont(new Font("Segoe UI", Font.BOLD, 13));
-            setForeground(style == Style.SECONDARY ? BLUE : Color.WHITE);
+            setForeground(style == ButtonStyle.SECONDARY ? BLUE : Color.WHITE);
             setOpaque(false);
             setContentAreaFilled(false);
             setBorderPainted(false);
             setFocusPainted(false);
             setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            setPreferredSize(new Dimension(style == Style.PRIMARY ? 170 : 157, 43));
+            setPreferredSize(new Dimension(style == ButtonStyle.PRIMARY ? 170 : 157, 43));
             setBorder(new EmptyBorder(8, 13, 8, 13));
             addMouseListener(new MouseAdapter() {
                 @Override public void mouseEntered(MouseEvent e) { hovering = true; repaint(); }
@@ -556,9 +543,9 @@ public class QuestionManagementView extends JFrame {
         @Override protected void paintComponent(Graphics g) {
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            Color base = style == Style.PRIMARY ? BLUE : style == Style.DANGER ? RED : new Color(231, 237, 254);
-            if (hovering) base = style == Style.PRIMARY ? new Color(55, 88, 229) :
-                    style == Style.DANGER ? new Color(184, 50, 75) : new Color(215, 224, 251);
+            Color base = style == ButtonStyle.PRIMARY ? BLUE : style == ButtonStyle.DANGER ? RED : new Color(231, 237, 254);
+            if (hovering) base = style == ButtonStyle.PRIMARY ? new Color(55, 88, 229) :
+                    style == ButtonStyle.DANGER ? new Color(184, 50, 75) : new Color(215, 224, 251);
             if (getModel().isPressed()) base = base.darker();
             g2.setColor(base);
             g2.fill(new RoundRectangle2D.Double(0, 0, getWidth(), getHeight(), 16, 16));

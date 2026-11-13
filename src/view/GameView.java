@@ -1,4 +1,4 @@
-package view;
+package View;
 
 import javax.swing.*;
 import java.awt.*;
@@ -6,10 +6,12 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import javax.swing.border.EmptyBorder;
 import java.util.Random;
-import controller.GameController;
+import controller.HistoryController;
+import controller.MovementController;
+import controller.TurnController;
 import enums.RollAction;
-import model.Game;
-import model.Player;
+import Model.Game;
+import Model.Player;
 
 public class GameView extends JPanel {
 
@@ -38,13 +40,18 @@ public class GameView extends JPanel {
     // SRS 3.2.8 - the finished game is saved once; the message is shown on the end screen
     private boolean gameOverHandled;
     private String historyNote = "";
-    private final GameController controller;
+    private final Game game;
+    private final HistoryController history;
+    private final MovementController pieces;
+    private final TurnController turns;
 
     public GameView(Player[] players, String difficulty) {
         this.players = players.clone();
         this.difficulty = difficulty == null ? "Easy" : difficulty;
-        Game game = new Game(this.players, this.difficulty);
-        this.controller = new GameController(game);
+        this.game = new Game(this.players, this.difficulty);
+        this.history = new HistoryController();
+        this.pieces = new MovementController(game);
+        this.turns = new TurnController(game, pieces);
 
         setOpaque(false);
         setLayout(new BorderLayout(0, 14));
@@ -114,10 +121,8 @@ public class GameView extends JPanel {
 
         board = new BoardPanel(this.difficulty, playerColors());
         board.setOpaque(false);
-        board.setPieceClickListener(new BoardPanel.PieceClickListener() {
-            @Override public void castlePieceClicked(int slot) { onCastlePieceClicked(slot); }
-            @Override public void boardPieceClicked(int pieceIndex) { onBoardPieceClicked(pieceIndex); }
-        });
+        board.setCastlePieceClickListener(this::onCastlePieceClicked);
+        board.setBoardPieceClickListener(this::onBoardPieceClicked);
         boardCard.add(board, BorderLayout.CENTER);
         arena.add(boardCard, BorderLayout.CENTER);
 
@@ -151,8 +156,9 @@ public class GameView extends JPanel {
 
         stack.add(leftAligned(sectionLabel("DICE")));
         stack.add(Box.createVerticalStrut(4));
-        dice = new DicePanel(!controller.isEasyGame(), "Hard".equals(this.difficulty) ? "ULTRA BOOST" : "BOOST",
-        	    controller.getBoostDieFaces());
+        dice = new DicePanel(!"Easy".equals(this.difficulty),
+                "Hard".equals(this.difficulty) ? "ULTRA BOOST" : "BOOST",
+                turns.getBoostDieFaces());
         stack.add(leftAligned(dice));
         formulaLabel = new JLabel(" ");
         formulaLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
@@ -229,17 +235,17 @@ public class GameView extends JPanel {
     }
 
     private void onRoll() {
-        if (!controller.canRoll()) return;
+        if (!turns.canRoll()) return;
         if ("Next Turn".equals(rollButton.getText())) {
             passTurn();
             return;
         }
 
         // SRS 3.2.1.3.3 - the game clock starts with the first roll.
-        controller.startGameClock();
-        board.setActivePlayerColor(controller.getCurrentPlayerColor());
-        int stepDie = controller.rollStepDie();
-        int boostDie = controller.rollBoostDie();
+        turns.startGameClock();
+        board.setActivePlayerColor(game.getCurrentPlayerColor());
+        int stepDie = turns.rollStepDie();
+        int boostDie = turns.rollBoostDie();
         formulaLabel.setText(" ");
         rollButton.setEnabled(false);
         rollButton.setText("Rolling...");
@@ -250,31 +256,31 @@ public class GameView extends JPanel {
     private void finishRoll(int stepDie, int boostDie) {
 
         // בדיקה אם התקבלו שלוש שישיות ברצף
-        if (controller.registerRollAndCheckThirdSix(stepDie)) {
-            String player = controller.getCurrentPlayerName();
+        if (turns.registerRollAndCheckThirdSix(stepDie)) {
+            String player = game.getCurrentPlayerName();
             passTurn();
 
             setStatus("Third 6 in a row for " + player
                 + "! The roll is cancelled. "
-                + controller.getCurrentPlayerName()
+                + game.getCurrentPlayerName()
                 + "'s turn. Click Roll Dice.");
             return;
         }
 
         // קביעת הפעולה האפשרית בעקבות ההטלה
-        RollAction action = controller.finishRoll(stepDie, boostDie);
+        RollAction action = turns.finishRoll(stepDie, boostDie);
 
         // אם הוטל 6 ויש כלי על הלוח, מציגים אפשרות בחירה
         if (action == RollAction.TAKE_OUT
-                && controller.canChooseBoardMoveInsteadOfTakeOut()
-                && controller.hasAnyLegalMove(getCurrentRouteSizes())) {
+                && pieces.canChooseBoardMoveInsteadOfTakeOut()
+                && pieces.hasAnyLegalMove(getCurrentRouteSizes())) {
 
         	int choice = GameDialogs.chooseMove(this);
 
 
             // בחירה בהזזת כלי קיים במקום הוצאת כלי
             if (choice == 1
-                    && controller.chooseBoardMoveInsteadOfTakeOut()) {
+                    && pieces.chooseBoardMoveInsteadOfTakeOut()) {
                 action = RollAction.MOVE;
             }
         }
@@ -286,7 +292,7 @@ public class GameView extends JPanel {
             );
 
             board.highlightCastlePieces(
-                controller.consumeFirstTurnPulse()
+                turns.consumeFirstTurnPulse()
             );
 
             rollButton.setEnabled(false);
@@ -296,12 +302,12 @@ public class GameView extends JPanel {
         } else if (action == RollAction.MOVE) {
 
             // בודקים אם לפחות אחד מארבעת הכלים יכול לזוז
-            if (!controller.hasAnyLegalMove(getCurrentRouteSizes())) {
+            if (!pieces.hasAnyLegalMove(getCurrentRouteSizes())) {
                 passWhenNoLegalMove();
                 return;
             }
 
-            if (controller.getPendingSteps() == 0) {
+            if (game.getPendingSteps() == 0) {
 
                 setStatus(
                     "Boost result is 0. Select a home-path piece to move "
@@ -311,14 +317,14 @@ public class GameView extends JPanel {
             } else {
 
                 setStatus(
-                    "Move " + controller.getPendingSteps()
+                    "Move " + game.getPendingSteps()
                     + " squares on the shared path, or "
                     + stepDie
                     + " in the home path. Select a piece."
                 );
             }
             board.highlightBoardPiece(
-                controller.consumeFirstTurnPulse()
+                turns.consumeFirstTurnPulse()
             );
 
             rollButton.setEnabled(false);
@@ -326,16 +332,16 @@ public class GameView extends JPanel {
 
 
          // SRS 3.2.3.3.3 - טיפול בתוצאה 0 ללא מהלך חוקי
-        } else if (controller.getPendingSteps() == 0) {
+        } else if (game.getPendingSteps() == 0) {
 
         	// בהטלת 6 אין להעביר את התור לשחקן הבא
-            if (controller.hasExtraTurn()) {
+            if (turns.hasExtraTurn()) {
                 passWhenNoLegalMove();
                 return;
             }
         	
             // שמירת שם השחקן שלא יכול לבצע מהלך
-            String previousPlayer = controller.getCurrentPlayerName();
+            String previousPlayer = game.getCurrentPlayerName();
 
             // העברת התור לשחקן הבא באופן אוטומטי
             passTurn();
@@ -343,7 +349,7 @@ public class GameView extends JPanel {
             // הצגת הסיבה למעבר התור
             setStatus("Boost result is 0. " + previousPlayer
                     + " has no legal move. "
-                    + controller.getCurrentPlayerName()
+                    + game.getCurrentPlayerName()
                     + "'s turn. Click Roll Dice.");
 
         } else {
@@ -369,12 +375,12 @@ public class GameView extends JPanel {
     // SRS 3.2.3.3.6 - טיפול במצב ללא מהלך חוקי
     private void passWhenNoLegalMove() {
 
-        String previousPlayer = controller.getCurrentPlayerName();
+        String previousPlayer = game.getCurrentPlayerName();
 
         // הטלת 6 מעניקה תור נוסף גם כשאין מהלך חוקי
-        if (controller.hasExtraTurn()) {
+        if (turns.hasExtraTurn()) {
 
-            controller.grantExtraTurn();
+            turns.grantExtraTurn();
             board.clearHighlight();
 
             rollButton.setEnabled(true);
@@ -389,16 +395,16 @@ public class GameView extends JPanel {
         // בהטלה רגילה מעבירים את התור לשחקן הבא
         passTurn();
 
-        if (controller.canRoll()) {
+        if (turns.canRoll()) {
 
             String reason =
-                    controller.getPendingSteps() == 0
-                    && !controller.isEasyGame()
+                    game.getPendingSteps() == 0
+                    && !"Easy".equals(difficulty)
                     ? "Boost result is 0. " : "";
 
             setStatus(reason + previousPlayer
                     + " has no legal move. "
-                    + controller.getCurrentPlayerName()
+                    + game.getCurrentPlayerName()
                     + "'s turn. Click Roll Dice.");
         }
     }
@@ -406,7 +412,7 @@ public class GameView extends JPanel {
     private void onCastlePieceClicked(int slot) {
 
         // בדיקת חוקיות לפני שינוי התצוגה
-        if (!controller.canTakeOutActivePiece(slot)) {
+        if (!pieces.canTakeOutActivePiece(slot)) {
             return;
         }
 
@@ -416,7 +422,7 @@ public class GameView extends JPanel {
         }
 
         // עדכון מצב הכלי והטירה במודל
-        if (!controller.takeOutActivePiece(slot)) {
+        if (!pieces.takeOutActivePiece(slot)) {
             throw new IllegalStateException(
                     "Castle state is out of sync");
         }
@@ -432,9 +438,8 @@ public class GameView extends JPanel {
 
     /**
      * SRS 3.2.4.3.1 -
-     * Handles the user's selection of the active board piece.
-     * Game-rule validation and movement decisions are delegated
-     * to GameController.
+     * מטפל בבחירת כלי פעיל על הלוח.
+     * אימות חוקי המשחק והחלטות התנועה מתבצעים בבקר הכלים.
      */
     private void onBoardPieceClicked(int pieceIndex) {
 
@@ -443,7 +448,7 @@ public class GameView extends JPanel {
 
 
         // SRS 3.2.4.3.4 - בדיקת כניסה מדויקת לבית הסיום
-        if (controller.tryFinishPiece(pieceIndex, routeSize)) {
+        if (pieces.tryFinishPiece(pieceIndex, routeSize)) {
 
             // סנכרון התצוגה עם המודל
             if (!board.showActivePieceFinished(pieceIndex)) {
@@ -451,19 +456,19 @@ public class GameView extends JPanel {
                         "Finish state is out of sync");
             }
 
-            String player = controller.getCurrentPlayerName();
+            String player = game.getCurrentPlayerName();
             int finished = board.getActiveFinishedPieceCount();
 
             setStatus(player + ": piece reached the goal ("
                     + finished + "/4).");
 
-            if (controller.isCurrentPlayerFinished()) {
+            if (pieces.isCurrentPlayerFinished()) {
 
                 // משתתף שסיים את כל כליו אינו מקבל תור נוסף
                 passTurn();
 
                 // אם לא נותרה תחרות פעילה, מאפשרים מסך סיום
-                if (controller.getStage() == enums.Stage.DONE) {
+                if (game.getStage() == enums.Stage.DONE) {
                     endGameButton.setEnabled(true);
 
                     setStatus(
@@ -480,10 +485,10 @@ public class GameView extends JPanel {
         }
 
         // בדיקה האם המהלך מכניס את הכלי למסלול הבית
-        if (controller.tryEnterHomePath(pieceIndex, routeSize)) {
+        if (pieces.tryEnterHomePath(pieceIndex, routeSize)) {
 
             // קבלת המיקום שחושב ונשמר במודל
-            int homeStep = controller.getPieceStep(pieceIndex);
+            int homeStep = pieces.getPieceStep(pieceIndex);
 
             // עדכון מיקום הכלי בתצוגת הלוח
             if (!board.showActivePieceInHomePath(pieceIndex, homeStep)) {
@@ -500,15 +505,15 @@ public class GameView extends JPanel {
         }
 
         // אם אין כניסה למסלול הבית, בודקים תנועה רגילה
-        int targetStep = controller.validatePieceMove(pieceIndex, routeSize);
+        int targetStep = pieces.validatePieceMove(pieceIndex, routeSize);
         if (targetStep < 0) {
             setStatus("The selected piece cannot make this move.");
             return;
         }
 
-        int startStep = controller.getPieceStep(pieceIndex);
+        int startStep = pieces.getPieceStep(pieceIndex);
 
-        if (!controller.movePiece(pieceIndex, targetStep, routeSize)) {
+        if (!pieces.movePiece(pieceIndex, targetStep, routeSize)) {
             setStatus("The selected move is not legal.");
             return;
         }
@@ -529,11 +534,11 @@ public class GameView extends JPanel {
         // במסגרת דרישות 3.2.5
 
         Color arrowColor = board.getArrowColorAtStep(
-                pieceIndex, controller.getPieceStep(pieceIndex));
+                pieceIndex, pieces.getPieceStep(pieceIndex));
         Color pieceColor = BoardPanel.colorOf(
-                controller.getCurrentPlayerColor());
+                game.getCurrentPlayerColor());
 
-        if (controller.enterInnerPathFromArrow(
+        if (pieces.enterInnerPathFromArrow(
                 arrowColor, pieceColor, 0)) {
             if (!board.showActivePieceInInnerPath(pieceIndex, 0)) {
                 throw new IllegalStateException(
@@ -547,7 +552,7 @@ public class GameView extends JPanel {
 
         // בדיקת המשבצת שבה הכלי נעצר
         String event = board.getSquareEventAtStep(
-                pieceIndex, controller.getPieceStep(pieceIndex));
+                pieceIndex, pieces.getPieceStep(pieceIndex));
 
         // הפעלת שאלה רק בנחיתה על משבצת שאלה
         if ("QUESTION".equals(event)) {
@@ -563,7 +568,7 @@ public class GameView extends JPanel {
 
         // אם אין אירוע, מסיימים את המהלך
         setStatus("Moved "
-                + controller.getMoveStepsForSelectedPiece()
+                + pieces.getMoveStepsForSelectedPiece()
                 + " squares.");
 
         endTurnOrExtraTurn();
@@ -577,9 +582,9 @@ public class GameView extends JPanel {
 
         boolean correct = dialog.isCorrect();
 
-        int startStep = controller.getPieceStep(pieceIndex);
+        int startStep = pieces.getPieceStep(pieceIndex);
 
-        int targetStep = controller.getAnswerMoveTarget(
+        int targetStep = pieces.getAnswerMoveTarget(
             correct,
             board.getActiveRouteSize(pieceIndex)
         );
@@ -590,7 +595,7 @@ public class GameView extends JPanel {
         );
 
         // שמירת התנועה מהשאלה גם במודל
-        if (!controller.applyEventMovement(
+        if (!pieces.applyEventMovement(
                 pieceIndex,
                 targetStep,
                 board.getActiveRouteSize(pieceIndex))) {
@@ -738,14 +743,14 @@ public class GameView extends JPanel {
         dialog.setVisible(true);
 
      // קבלת מיקום הכלי לפני הפעלת ההפתעה
-        int startStep = controller.getPieceStep(pieceIndex);
+        int startStep = pieces.getPieceStep(pieceIndex);
 
         // חישוב התנועה אחורה
-        int targetStep = controller.getSurpriseMoveTarget(
+        int targetStep = pieces.getSurpriseMoveTarget(
                 board.getActiveRouteSize(pieceIndex));
 
         // עדכון המודל
-        if (!controller.applyEventMovement(
+        if (!pieces.applyEventMovement(
                 pieceIndex,
                 targetStep,
                 board.getActiveRouteSize(pieceIndex))) {
@@ -767,12 +772,12 @@ public class GameView extends JPanel {
     }
 
     private void endTurnOrExtraTurn() {
-        if (controller.hasExtraTurn()) {
-            controller.grantExtraTurn();
+        if (turns.hasExtraTurn()) {
+            turns.grantExtraTurn();
             board.clearHighlight();
             rollButton.setEnabled(true);
             rollButton.setText("Roll Again");
-            setStatus(controller.getCurrentPlayerName() + " rolled a 6 - roll again!");
+            setStatus(game.getCurrentPlayerName() + " rolled a 6 - roll again!");
         } else {
             passTurn();
         }
@@ -781,20 +786,20 @@ public class GameView extends JPanel {
     private void passTurn() {
 
         // מעבר למשתתף הבא שלא סיים
-        controller.passTurn();
+        turns.passTurn();
 
         // ניקוי מצב ההטלה והלוח
         formulaLabel.setText(" ");
 
         // מאפשרים הטלה רק אם נותר משחק פעיל
-        rollButton.setEnabled(controller.canRoll());
+        rollButton.setEnabled(turns.canRoll());
         rollButton.setText("Roll Dice");
 
         // אם המשחק הסתיים, מאפשרים מעבר למסך הסיום
-        endGameButton.setEnabled(controller.getStage() == enums.Stage.DONE);
+        endGameButton.setEnabled(game.getStage() == enums.Stage.DONE);
 
         // SRS 3.2.8.3.2 - שמירת המשחק שהסתיים בקובץ ההיסטוריה
-        if (controller.getStage() == enums.Stage.DONE) {
+        if (game.getStage() == enums.Stage.DONE) {
             handleGameOver();
         }
 
@@ -802,14 +807,14 @@ public class GameView extends JPanel {
         refreshPlayers();
 
         // הודעה לפי מצב המשחק
-        setStatus(controller.canRoll()
-                ? controller.getCurrentPlayerName()
+        setStatus(turns.canRoll()
+                ? game.getCurrentPlayerName()
                     + "'s turn. Click Roll Dice."
                 : "Game finished: no active turns remain.");
     }
 
     private void finishScenario() {
-        controller.finishGame();
+        game.setStage(enums.Stage.DONE);
         rollButton.setEnabled(false);
         endGameButton.setEnabled(true);
         setStatus("Game complete! Click End Game to see the results.");
@@ -829,11 +834,12 @@ public class GameView extends JPanel {
             return;
         }
         gameOverHandled = true;
-        String error = controller.saveGameToHistory();
+        turns.stopGameClock();
+        String error = history.saveFinishedGame(game, turns);
         if (error != null) {
             historyNote = error;
             JOptionPane.showMessageDialog(this, error, "Game history", JOptionPane.ERROR_MESSAGE);
-        } else if (controller.isGameSavedToHistory()) {
+        } else if (game.isSavedToHistory()) {
             historyNote = "This game was saved to the game history.";
         }
     }
@@ -843,8 +849,8 @@ public class GameView extends JPanel {
         JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(this);
         if (frame != null) {
             // SRS 3.2.8.3.1 - the end screen shows the players by final place
-            frame.setContentPane(new EndGameScreen(controller.getRankedPlayers(), difficulty,
-                    controller.getElapsedTime(), historyNote));
+            frame.setContentPane(new EndGameScreen(turns.getRanking(), difficulty,
+                    turns.getElapsedTime(), historyNote));
             frame.setSize(700, 600);
             frame.setLocationRelativeTo(null);
             frame.revalidate();
@@ -879,7 +885,7 @@ public class GameView extends JPanel {
 
     private void refreshPlayers() {
         playersPanel.removeAll();
-        int currentPlayer = controller.getCurrentPlayer();
+        int currentPlayer = game.getCurrentPlayer();
         turnLabel.setText(players[currentPlayer].getName() + "'s turn");
         for (int i = 0; i < players.length; i++) {
             final boolean current = i == currentPlayer;
@@ -929,7 +935,7 @@ public class GameView extends JPanel {
         legend.add(legendRow("★", new Color(255, 230, 150), "Protection square"));
         legend.add(legendRow("→", new Color(225, 230, 239), "Arrow to inner path"));
         legend.add(legendRow("", new Color(215, 230, 255), "Home path"));
-        if (!controller.isEasyGame()) {
+        if (!"Easy".equals(difficulty)) {
             legend.add(legendRow("?", BoardPanel.Q_EASY, "Question square"));
             legend.add(legendRow("!", BoardPanel.SURPRISE, "Surprise square"));
         }
@@ -1030,8 +1036,8 @@ public class GameView extends JPanel {
         // SRS 3.2.1.3.3 - the game clock is kept by the model; the view only shows it.
         // It shows 00:00:00 until the first roll and then counts the game time.
         gameTimer = new Timer(1000, e -> {
-            secondsElapsed = (int) controller.getElapsedSeconds();
-            timerLabel.setText(controller.getElapsedTime());
+            secondsElapsed = (int) turns.getElapsedSeconds();
+            timerLabel.setText(turns.getElapsedTime());
         });
         gameTimer.start();
     }

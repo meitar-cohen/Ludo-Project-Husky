@@ -10,9 +10,9 @@ import javax.swing.Timer;
 
 import controller.GameController;
 import enums.RollAction;
-import model.Game;
-import view.BoardPanel;
-import view.GameView;
+import Model.Game;
+import View.BoardPanel;
+import View.GameView;
 
 public class Iteration1UiRegressionCheck {
 

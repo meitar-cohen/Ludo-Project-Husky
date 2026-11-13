@@ -1,7 +1,7 @@
-package view;
+package View;
 
 import controller.HistoryController;
-import model.GameRecord;
+import Model.GameRecord;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -11,6 +11,7 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.RoundRectangle2D;
+import java.util.List;
 
 /**
  * Game history screen.
@@ -26,7 +27,9 @@ public class GameHistoryView extends JFrame {
 
     private final JPanel rankingCards = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 2));
     private final JLabel rankingGameLabel = new JLabel();
-    private final HistoryController.HistoryResult history;
+    private final List<GameRecord> history;
+    private final int skippedRows;
+    private final String historyError;
     private final String historyFileName;
     private JTable table;
 
@@ -37,6 +40,8 @@ public class GameHistoryView extends JFrame {
     public GameHistoryView(HistoryController controller) {
         // SRS 3.2.8.3.4 - the saved games are read from the history file
         this.history = controller.loadHistory();
+        this.skippedRows = controller.getSkippedRows();
+        this.historyError = controller.getLastError();
         this.historyFileName = controller.getHistoryFileName();
         setTitle("Ludo - Game History");
         setSize(1090, 730);
@@ -100,7 +105,7 @@ public class GameHistoryView extends JFrame {
         headings.add(subtitle);
         header.add(headings, BorderLayout.CENTER);
 
-        int saved = history.getGames().size();
+        int saved = history.size();
         JLabel count = new JLabel(saved == 0 ? "  NO SAVED GAMES  "
                 : "  " + saved + (saved == 1 ? " SAVED GAME  " : " SAVED GAMES  "));
         count.setFont(new Font("Segoe UI", Font.BOLD, 12));
@@ -126,7 +131,7 @@ public class GameHistoryView extends JFrame {
         DefaultTableModel model = new DefaultTableModel(new Object[0][columns.length], columns) {
             @Override public boolean isCellEditable(int row, int column) { return false; }
         };
-        for (GameRecord game : history.getGames()) {
+        for (GameRecord game : history) {
             model.addRow(new Object[] {
                 "#" + game.getGameId(),
                 game.getTimestamp().replace(";", "  "),
@@ -206,10 +211,10 @@ public class GameHistoryView extends JFrame {
 
     /** Shows the final standings of the selected game. */
     private void showRanking(int index) {
-        if (index < 0 || index >= history.getGames().size()) {
+        if (index < 0 || index >= history.size()) {
             return;
         }
-        GameRecord game = history.getGames().get(index);
+        GameRecord game = history.get(index);
         rankingGameLabel.setText("Game #" + game.getGameId() + "  |  "
                 + HistoryController.toDisplayDifficulty(game.getDifficulty()) + "  |  " + game.getDuration());
         rankingCards.removeAll();
@@ -243,15 +248,15 @@ public class GameHistoryView extends JFrame {
         footer.setOpaque(false);
         // SRS 3.2.8.3.4 - message when there are no games, when rows were skipped or the file failed
         String text;
-        if (history.getError() != null) {
-            text = history.getError();
+        if (historyError != null) {
+            text = historyError;
         } else if (history.isEmpty()) {
             text = "No completed games to display.";
         } else {
             text = "Games are read from " + historyFileName + ".";
         }
-        if (history.getSkippedRows() > 0) {
-            text += "  " + history.getSkippedRows() + " damaged row(s) were skipped.";
+        if (skippedRows > 0) {
+            text += "  " + skippedRows + " damaged row(s) were skipped.";
         }
         JLabel note = new JLabel(text);
         note.setForeground(MUTED);

@@ -7,11 +7,10 @@ import java.awt.image.BufferedImage;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
-import controller.GameController;
-import model.Game;
+import Model.Game;
 import enums.Stage;
-import view.GameView;
-import view.BoardPanel;
+import View.GameView;
+import View.BoardPanel;
 
 public class ExactHomeFinishViewCheck {
 
@@ -42,11 +41,7 @@ public class ExactHomeFinishViewCheck {
                 // יצירת מסך המשחק
                 view = new GameView(TestPlayers.of(new String[]{"A", "B"}, new String[]{"Red", "Blue"}), level);
 
-                GameController controller =
-                        (GameController) field(view, "controller");
-
-                Game game =
-                        (Game) field(controller, "game");
+                Game game = (Game) field(view, "game");
 
                 BoardPanel board =
                         (BoardPanel) field(view, "board");

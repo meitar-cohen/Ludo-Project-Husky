@@ -2,11 +2,12 @@ package tests;
 
 import controller.GameController;
 import controller.HistoryController;
+import controller.MovementController;
+import controller.TurnController;
 import enums.Stage;
-import model.Game;
-import model.GameHistoryRepository;
-import model.GameRecord;
-import model.Player;
+import Model.Game;
+import Model.GameRecord;
+import Model.Player;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
@@ -34,26 +35,28 @@ public class GameHistoryCheck {
         File dir = Files.createTempDirectory("ludo-history").toFile();
 
         // 1. הקובץ נוצר עם שורת הכותרת של התבנית אם אינו קיים
-        File missing = new File(new File(dir, "data"), GameHistoryRepository.FILE_NAME);
-        GameHistoryRepository repo = new GameHistoryRepository(missing);
-        check("missing file means no games", repo.readGames().getGames().isEmpty());
-        repo.appendGame("easy", "01/11/2026;10:00:00", new String[] {"Dana", "Avi", "", ""}, "00:12:30");
+        File missing = new File(new File(dir, "data"), HistoryController.HISTORY_FILE_NAME);
+        HistoryController historyController = new HistoryController(missing);
+        check("missing file means no games", historyController.readGames().isEmpty());
+        historyController.appendRecord(new GameRecord(1, "easy", "01/11/2026;10:00:00",
+                new String[] {"Dana", "Avi", "", ""}, "00:12:30"));
         String content = read(missing);
         check("file created with the template header",
-                content.startsWith(GameHistoryRepository.HEADER + "\r\n"));
+                content.startsWith(HistoryController.HISTORY_HEADER + "\r\n"));
         check("row written in template column order",
                 content.contains("1,easy,01/11/2026;10:00:00,Dana,Avi,,,00:12:30\r\n"));
 
         // 2. הוספה לקובץ התבנית של הקורס (שאינו מסתיים בירידת שורה)
         File template = new File(dir, "template.csv");
-        Files.write(template.toPath(), (GameHistoryRepository.HEADER
+        Files.write(template.toPath(), (HistoryController.HISTORY_HEADER
                 + "\r\n1,hard,19/10/2026;12:01:00 ,Mor,Noy,Safa,Muhammed,01:05:04")
                 .getBytes(StandardCharsets.UTF_8));
-        GameHistoryRepository templateRepo = new GameHistoryRepository(template);
-        GameRecord added = templateRepo.appendGame("medium", "02/11/2026;18:30:05",
+        HistoryController templateController = new HistoryController(template);
+        GameRecord added = new GameRecord(2, "medium", "02/11/2026;18:30:05",
                 new String[] {"Noa", "Tal", "Maor", ""}, "00:40:00");
+        templateController.appendRecord(added);
         check("next game ID is a running number", added.getGameId() == 2);
-        List<GameRecord> games = templateRepo.readGames().getGames();
+        List<GameRecord> games = templateController.readGames();
         check("template row and new row are both read", games.size() == 2);
         check("template sample row is kept", "Mor".equals(games.get(0).getWinner())
                 && "hard".equals(games.get(0).getDifficulty()));
@@ -63,14 +66,15 @@ public class GameHistoryCheck {
         // 3. שורות פגומות מדולגות
         Files.write(template.toPath(), "\r\nnot,a,valid,row\r\nx,easy,a,b,c,d,e,f\r\n"
                 .getBytes(StandardCharsets.UTF_8), java.nio.file.StandardOpenOption.APPEND);
-        GameHistoryRepository.ReadResult read = templateRepo.readGames();
+        List<GameRecord> read = templateController.readGames();
         check("damaged rows are skipped and counted",
-                read.getGames().size() == 2 && read.getSkippedRows() == 2);
+                read.size() == 2 && templateController.getSkippedRows() == 2);
 
         // 4. שם עם פסיק נשמר ונקרא נכון
-        GameRecord comma = templateRepo.appendGame("easy", "03/11/2026;09:00:00",
+        GameRecord comma = new GameRecord(3, "easy", "03/11/2026;09:00:00",
                 new String[] {"Cohen, Dana", "Avi", "", ""}, "00:05:00");
-        List<GameRecord> afterComma = templateRepo.readGames().getGames();
+        templateController.appendRecord(comma);
+        List<GameRecord> afterComma = templateController.readGames();
         check("name with a comma is kept",
                 "Cohen, Dana".equals(afterComma.get(afterComma.size() - 1).getWinner())
                 && comma.getGameId() == 3);
@@ -80,7 +84,9 @@ public class GameHistoryCheck {
                 new String[] {"Red", "Blue", "Green"}), "Medium");
         game.setPlayerFinished(2, true);
         game.setPlayerFinished(0, true);
-        Player[] ranking = game.getRanking();
+        TurnController turns = new TurnController(
+                game, new MovementController(game));
+        Player[] ranking = turns.getRanking();
         check("ranking follows the finish order",
                 "C".equals(ranking[0].getName()) && "A".equals(ranking[1].getName())
                 && "B".equals(ranking[2].getName()));
@@ -88,14 +94,14 @@ public class GameHistoryCheck {
         // 6. שמירת משחק שהסתיים דרך הבקר, פעם אחת בלבד
         File gameFile = new File(dir, "games.csv");
         GameController controller = new GameController(game,
-                new HistoryController(new GameHistoryRepository(gameFile)));
+                new HistoryController(gameFile));
         controller.startGameClock();
         controller.passTurn();
         check("game is over", controller.getStage() == Stage.DONE);
         check("save succeeds", controller.saveGameToHistory() == null
                 && controller.isGameSavedToHistory());
         controller.saveGameToHistory();
-        List<GameRecord> saved = new GameHistoryRepository(gameFile).readGames().getGames();
+        List<GameRecord> saved = new HistoryController(gameFile).readGames();
         check("game saved exactly once", saved.size() == 1);
         GameRecord row = saved.get(0);
         check("saved row: medium, places by ranking, empty 4th place",
@@ -109,7 +115,10 @@ public class GameHistoryCheck {
         Game unplayed = new Game(TestPlayers.of(new String[] {"A", "B"},
                 new String[] {"Red", "Blue"}), "Easy");
         File unplayedFile = new File(dir, "unplayed.csv");
-        new HistoryController(new GameHistoryRepository(unplayedFile)).saveFinishedGame(unplayed);
+        TurnController unplayedTurns = new TurnController(
+                unplayed, new MovementController(unplayed));
+        new HistoryController(unplayedFile).saveFinishedGame(
+                unplayed, unplayedTurns);
         check("a game without any roll is not saved", !unplayedFile.exists());
 
         // 8. כשל בכתיבה מחזיר הודעת שגיאה במקום קריסה
@@ -117,15 +126,19 @@ public class GameHistoryCheck {
         check("create blocking folder", blocked.mkdir());
         Game failing = new Game(TestPlayers.of(new String[] {"A", "B"},
                 new String[] {"Red", "Blue"}), "Easy");
-        failing.startClock();
-        String error = new HistoryController(new GameHistoryRepository(blocked)).saveFinishedGame(failing);
+        TurnController failingTurns = new TurnController(
+                failing, new MovementController(failing));
+        failingTurns.startGameClock();
+        String error = new HistoryController(blocked).saveFinishedGame(
+                failing, failingTurns);
         check("write failure returns an error message", error != null && !failing.isSavedToHistory());
 
         // 9. טעינת ההיסטוריה למסך: המשחק החדש ראשון
-        HistoryController.HistoryResult result =
-                new HistoryController(templateRepo).loadHistory();
+        HistoryController loadedHistory = new HistoryController(template);
+        List<GameRecord> result = loadedHistory.loadHistory();
         check("history is loaded newest first",
-                result.getGames().get(0).getGameId() == 3 && result.getSkippedRows() == 2);
+                result.get(0).getGameId() == 3
+                && loadedHistory.getSkippedRows() == 2);
 
         System.out.println("All game history checks passed.");
     }

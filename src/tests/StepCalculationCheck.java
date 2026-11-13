@@ -1,7 +1,7 @@
 package tests;
 
 import controller.GameController;
-import model.Game;
+import Model.Game;
 
 public class StepCalculationCheck {
 

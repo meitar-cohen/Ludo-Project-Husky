@@ -3,7 +3,7 @@ import java.awt.Color;
 import java.lang.reflect.Field;
 import java.util.Map;
 
-import view.BoardPanel;
+import View.BoardPanel;
 
 public class SpecialSquaresCountCheck {
 

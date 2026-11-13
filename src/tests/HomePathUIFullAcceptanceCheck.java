@@ -4,11 +4,12 @@ import java.lang.reflect.Method;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
-import controller.GameController;
+import controller.TurnController;
+import controller.MovementController;
 import enums.Stage;
-import model.Game;
-import view.GameView;
-import view.BoardPanel;
+import Model.Game;
+import View.GameView;
+import View.BoardPanel;
 
 public class HomePathUIFullAcceptanceCheck {
 
@@ -44,11 +45,9 @@ public class HomePathUIFullAcceptanceCheck {
                     // יצירת מסך משחק לפי רמת הקושי
                     view[0] = new GameView(TestPlayers.of(new String[]{"A", "B"}, new String[]{"Red", "Blue"}), level);
 
-                    GameController controller =
-                            (GameController) getField(
-                                    view[0], "controller");
-
-                    game[0] = (Game) getField(controller, "game");
+                    game[0] = (Game) getField(view[0], "game");
+                    TurnController controller = new TurnController(
+                            game[0], new MovementController(game[0]));
                     board[0] = (BoardPanel) getField(view[0], "board");
 
                     board[0].setActivePlayerColor("Red");

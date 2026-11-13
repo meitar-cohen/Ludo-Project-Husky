@@ -1,4 +1,4 @@
-package model;
+package Model;
 
 import enums.Stage;
 
@@ -12,34 +12,22 @@ public class Game {
     private boolean firstTurnPulsePending = true;
     
 
-    // SRS 3.2.4.3.1 - Stores the state and position of each player's pieces.
-    private boolean[][] piecesOnBoard;
-    private int[][] pieceSteps;
-    private boolean[][] piecesInHomePath;
-    // SRS 3.2.4.3.4 - שמירת הכלים שהגיעו לבית הסיום
-    private boolean[][] finishedPieces;
     private int selectedPieceIndex;
-
-    // SRS 3.2.4.3.2 -Stores whether each piece is on an inner path.
-    private boolean[][] piecesInInnerPath;
     private final Player[] players;
     private final String difficulty;
 
-    // SRS 3.2.1.3.3 - opening state and game clock
+    // מספר הכלים בתחילת המשחק ושעון המשחק
     public static final int PIECES_PER_PLAYER = 4;
     private int[] piecesInCastleByPlayer;
     
- // SRS 3.2.3.3.6 - שמירת המשתתפים שכבר סיימו את המשחק
+    // שמירת המשתתפים שכבר סיימו את המשחק
     private boolean[] finishedPlayers;
-    private long startTimeMillis = -1;   // -1 = the clock has not started yet
-    private long endTimeMillis = -1;     // -1 = the game has not ended yet
-
-    // SRS 3.2.8.3.1 - the order in which players brought all four pieces to the finish
+    // הסדר שבו המשתתפים סיימו את המשחק
     private final List<Integer> finishOrder = new ArrayList<>();
-    // SRS 3.2.8.3.2 - a finished game is written to the history file once
+    // משחק שהסתיים נכתב להיסטוריה פעם אחת בלבד
     private boolean savedToHistory;
 
-    // SRS 3.2.3.3.5 - extra turn and three sixes in a row
+    // תור נוסף ושלוש שישיות ברצף
     private int lastStepDie;
     private int consecutiveSixes;
 
@@ -58,52 +46,21 @@ public class Game {
     }
 
     private void initializePlayerState() {
-        // SRS 3.2.1.3.3 - all four pieces of every player start in the castle.
-        // The game clock starts with the first roll (see startClock).
+        // כל ארבעת הכלים של כל משתתף מתחילים בטירה.
+        // שעון המשחק מתחיל בהטלה הראשונה.
         this.piecesInCastleByPlayer = new int[players.length];
         this.finishedPlayers = new boolean[players.length];
         for (int i = 0; i < players.length; i++) {
             piecesInCastleByPlayer[i] = PIECES_PER_PLAYER;
         }
-        this.piecesOnBoard = new boolean[players.length][PIECES_PER_PLAYER];
-        this.pieceSteps = new int[players.length][PIECES_PER_PLAYER];
-        this.piecesInHomePath = new boolean[players.length][PIECES_PER_PLAYER];
-        this.finishedPieces = new boolean[players.length][PIECES_PER_PLAYER];
-        this.piecesInInnerPath = new boolean[players.length][PIECES_PER_PLAYER];
         this.selectedPieceIndex = 0;
     }
 
-    /** SRS 3.2.1.3.3 - number of pieces of a player that are still in the castle. */
+    /** מספר הכלים של המשתתף שעדיין נמצאים בטירה. */
     public int getPiecesInCastle(int playerIndex) {
         return piecesInCastleByPlayer[playerIndex];
     }
 
-    /** SRS 3.2.1.3.3 - starts the game clock. Called once, at the first roll; later calls do nothing. */
-    public void startClock() {
-        if (startTimeMillis < 0) {
-            startTimeMillis = System.currentTimeMillis();
-        }
-    }
-
-    public boolean isClockStarted() {
-        return startTimeMillis >= 0;
-    }
-
-    /** SRS 3.2.8 - stops the game clock when the game is over. */
-    public void stopClock() {
-        if (startTimeMillis >= 0 && endTimeMillis < 0) {
-            endTimeMillis = System.currentTimeMillis();
-        }
-    }
-
-    /** SRS 3.2.1.3.3 - game duration in seconds since the first roll (0 before the first roll). */
-    public long getElapsedSeconds() {
-        if (startTimeMillis < 0) {
-            return 0;
-        }
-        long end = endTimeMillis >= 0 ? endTimeMillis : System.currentTimeMillis();
-        return (end - startTimeMillis) / 1000;
-    }
 
     public int getLastStepDie() {
         return lastStepDie;
@@ -169,6 +126,10 @@ public class Game {
         return players.clone();
     }
 
+    public List<Integer> getFinishOrder() {
+        return new ArrayList<>(finishOrder);
+    }
+
     public boolean isFirstTurnPulsePending() {
         return firstTurnPulsePending;
     }
@@ -199,23 +160,6 @@ public class Game {
         }
     }
 
-    /**
-     * SRS 3.2.8.3.1 - the final ranking: players in the order they finished,
-     * then the players who did not finish (the last remaining player gets the last place).
-     */
-    public Player[] getRanking() {
-        List<Player> ranking = new ArrayList<>();
-        for (int index : finishOrder) {
-            ranking.add(players[index]);
-        }
-        for (int i = 0; i < players.length; i++) {
-            if (!finishOrder.contains(i)) {
-                ranking.add(players[i]);
-            }
-        }
-        return ranking.toArray(new Player[0]);
-    }
-
     public boolean isSavedToHistory() {
         return savedToHistory;
     }
@@ -235,11 +179,11 @@ public class Game {
 
 
     public boolean hasPieceOnBoard() {
-        return piecesOnBoard[currentPlayer][selectedPieceIndex];
+        return getSelectedPiece().isOnBoard();
     }
 
     public int getPieceStep() {
-        return pieceSteps[currentPlayer][selectedPieceIndex];
+        return getSelectedPiece().getSteps();
     }
 
 
@@ -256,32 +200,42 @@ public class Game {
 
 
     public void setPieceOnBoard(boolean pieceOnBoard) {
-        piecesOnBoard[currentPlayer][selectedPieceIndex] = pieceOnBoard;
+        Piece piece = getSelectedPiece();
+        if (pieceOnBoard) {
+            piece.setState(enums.PieceState.BOARD);
+        } else {
+            piece.setState(enums.PieceState.CASTLE);
+        }
     }
 
     public void setPieceStep(int pieceStep) {
-        pieceSteps[currentPlayer][selectedPieceIndex] = pieceStep;
+        getSelectedPiece().setSteps(pieceStep);
     }
 
     public void setPieceInHomePath(boolean pieceInHomePath) {
-        piecesInHomePath[currentPlayer][selectedPieceIndex] = pieceInHomePath;
+        Piece piece = getSelectedPiece();
+        if (pieceInHomePath) {
+            piece.setState(enums.PieceState.HOME_PATH);
+        } else if (!piece.isFinished()) {
+            piece.setState(enums.PieceState.BOARD);
+        }
     }
 
     public boolean isPieceInHomePath() {
-        return piecesInHomePath[currentPlayer][selectedPieceIndex];
+        return getSelectedPiece().isInHomePath();
     }
 
-    // SRS 3.2.4.3.2 - Returns whether the active piece is currently on an inner path.
+    // מחזיר האם הכלי הפעיל נמצא במסלול הפנימי.
     public boolean isPieceInInnerPath() {
-        return piecesInInnerPath[currentPlayer][selectedPieceIndex];
+        return getSelectedPiece().isInInnerPath();
     }
 
-    // SRS 3.2.4.3.2 - Updates whether the active piece is currently on an inner path.
+    // מעדכן האם הכלי הפעיל נמצא במסלול הפנימי.
     public void setPieceInInnerPath(boolean pieceInInnerPath) {
-        piecesInInnerPath[currentPlayer][selectedPieceIndex] = pieceInInnerPath;
+        getSelectedPiece().setInInnerPath(pieceInInnerPath);
     }
 
-    // SRS 3.2.4.3.1 - Selects one of the active player's four pieces.
+    // בוחר אחד מארבעת הכלים של המשתתף הפעיל.
     public boolean selectPiece(int pieceIndex) {
         if (pieceIndex < 0 || pieceIndex >= PIECES_PER_PLAYER) {
             return false;
@@ -296,72 +250,38 @@ public class Game {
     }
 
     public boolean isPieceOnBoard(int playerIndex, int pieceIndex) {
-        return piecesOnBoard[playerIndex][pieceIndex];
+        return players[playerIndex].getPiece(pieceIndex).isOnBoard();
     }
 
     public int getPieceStep(int playerIndex, int pieceIndex) {
-        return pieceSteps[playerIndex][pieceIndex];
+        return players[playerIndex].getPiece(pieceIndex).getSteps();
     }
 
 
     // בדיקה אם כלי של משתתף מסוים כבר הגיע לבית הסיום
     public boolean isPieceFinished(int playerIndex, int pieceIndex) {
-        return finishedPieces[playerIndex][pieceIndex];
+        return players[playerIndex].getPiece(pieceIndex).isFinished();
     }
 
     // מספר הכלים שהגיעו לבית הסיום אצל משתתף מסוים
     public int getFinishedPieceCount(int playerIndex) {
-
-        int count = 0;
-
-        for (int piece = 0; piece < PIECES_PER_PLAYER; piece++) {
-            if (finishedPieces[playerIndex][piece]) {
-                count++;
-            }
-        }
-
-        return count;
+        return players[playerIndex].getFinishedPieceCount();
     }
 
-    // סימון הכלי שנבחר כסיים
-    public boolean finishSelectedPiece() {
-
-        if (!hasPieceOnBoard()
-                || finishedPieces[currentPlayer][selectedPieceIndex]) {
-            return false;
-        }
-
-        // סימון הכלי כסיים והוצאתו ממסלולי התנועה
-        finishedPieces[currentPlayer][selectedPieceIndex] = true;
-        piecesOnBoard[currentPlayer][selectedPieceIndex] = false;
-        piecesInHomePath[currentPlayer][selectedPieceIndex] = true;
-        pieceSteps[currentPlayer][selectedPieceIndex] = 6;
-
-        // משתתף מסיים לאחר שכל ארבעת הכלים הגיעו לבית הסיום
-        if (getFinishedPieceCount(currentPlayer) == PIECES_PER_PLAYER) {
-            finishedPlayers[currentPlayer] = true;
-            recordFinish(currentPlayer);
-        }
-
-        return true;
-    }
-
-    
     public boolean isPieceInHomePath(int playerIndex, int pieceIndex) {
-        return piecesInHomePath[playerIndex][pieceIndex];
+        return players[playerIndex].getPiece(pieceIndex).isInHomePath();
     }
 
     public boolean isPieceInInnerPath(int playerIndex, int pieceIndex) {
-        return piecesInInnerPath[playerIndex][pieceIndex];
+        return players[playerIndex].getPiece(pieceIndex).isInInnerPath();
     }
 
-    // SRS 3.2.4.3.1 - Returns whether the current player has at least one piece on the board.
+    // בודק האם למשתתף הפעיל יש לפחות כלי אחד על הלוח.
     public boolean hasAnyPieceOnBoard() {
-        for (int pieceIndex = 0; pieceIndex < PIECES_PER_PLAYER; pieceIndex++) {
-            if (piecesOnBoard[currentPlayer][pieceIndex]) {
-                return true;
-            }
-        }
-        return false;
+        return players[currentPlayer].hasPieceOnBoard();
+    }
+
+    private Piece getSelectedPiece() {
+        return players[currentPlayer].getPiece(selectedPieceIndex);
     }
 }

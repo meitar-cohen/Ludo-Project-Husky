@@ -8,11 +8,13 @@ import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
+import controller.TurnController;
+import controller.MovementController;
 import controller.GameController;
 import enums.RollAction;
 import enums.Stage;
-import model.Game;
-import view.GameView;
+import Model.Game;
+import View.GameView;
 
 public class StepZeroAcceptanceCheck {
 
@@ -183,11 +185,9 @@ public class StepZeroAcceptanceCheck {
 
                 view = new GameView(TestPlayers.of(new String[]{"A", "B"}, new String[]{"Red", "Blue"}), level);
 
-                GameController controller =
-                        (GameController) field(view, "controller");
-
-                Game game =
-                        (Game) field(controller, "game");
+                Game game = (Game) field(view, "game");
+                TurnController controller =
+                        new TurnController(game, new MovementController(game));
 
                 // בדיקה גם עם כלי במסלול המשותף
                 if (hasSharedPiece) {

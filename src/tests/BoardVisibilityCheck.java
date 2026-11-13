@@ -1,7 +1,7 @@
 package tests;
 
 import java.awt.image.BufferedImage;
-import view.BoardPanel;
+import View.BoardPanel;
 
 public class BoardVisibilityCheck {
 

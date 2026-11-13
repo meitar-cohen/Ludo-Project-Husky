@@ -1,7 +1,7 @@
-package view;
+package View;
 
-import controller.GameSetupController;
-import model.Player;
+import controller.SetupController;
+import Model.Player;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -13,8 +13,8 @@ import java.awt.event.MouseEvent;
 import java.awt.geom.Ellipse2D;
 
 /**
- * Player details screen for game setup.
- * Uses only Java Swing; keeps all original validation and game navigation.
+ * מסך פרטי שחקנים להגדרת משחק.
+ * משתמש ב־Swing בלבד ושומר על אימות הקלט וניווט המשחק.
  */
 public class PlayerDetailsScreen extends JPanel {
 
@@ -235,7 +235,7 @@ public class PlayerDetailsScreen extends JPanel {
     /**
      * SRS 3.2.1.3.1 -
      * Collects the selected game settings and starts the game after
-     * validation by GameSetupController.
+     * האימות מתבצע באמצעות SetupController.
      */
     private void handleStartGame() {
         errorLabel.setForeground(new Color(211, 65, 90));
@@ -246,20 +246,21 @@ public class PlayerDetailsScreen extends JPanel {
             colors[i] = (String) colorSelectors[i].getSelectedItem();
         }
 
-        GameSetupController.ValidationError error =
-                GameSetupController.validatePlayers(names, colors);
+        String error =
+                SetupController.validatePlayers(names, colors);
         if (error != null) {
-            // SRS 3.2.1.3.2 - show the message and move the cursor to the wrong name field.
-            errorLabel.setText(error.getMessage());
-            if (error.getField() == GameSetupController.Field.NAME) {
-                nameFields[error.getPlayerIndex()].requestFocusInWindow();
+            errorLabel.setText(error);
+            int invalidNameIndex =
+                    SetupController.findInvalidNameIndex(names);
+            if (invalidNameIndex >= 0) {
+                nameFields[invalidNameIndex].requestFocusInWindow();
             }
             return;
         }
 
         errorLabel.setForeground(new Color(25, 150, 112));
         errorLabel.setText("Success! Loading game...");
-        Player[] players = GameSetupController.createPlayers(names, colors);
+        Player[] players = SetupController.createPlayers(names, colors);
 
         Window window = SwingUtilities.getWindowAncestor(this);
         if (window instanceof JFrame) {

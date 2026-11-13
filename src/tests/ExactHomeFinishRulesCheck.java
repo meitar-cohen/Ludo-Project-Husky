@@ -1,6 +1,6 @@
 package tests;
 
-import model.Game;
+import Model.Game;
 import controller.GameController;
 import enums.Stage;
 

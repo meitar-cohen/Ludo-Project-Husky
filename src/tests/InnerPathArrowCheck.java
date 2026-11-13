@@ -4,8 +4,8 @@ import java.awt.Color;
 
 import controller.GameController;
 import enums.Stage;
-import model.Game;
-import view.BoardPanel;
+import Model.Game;
+import View.BoardPanel;
 
 public class InnerPathArrowCheck {
 

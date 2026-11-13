@@ -4,11 +4,13 @@ import java.lang.reflect.Method;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
+import controller.TurnController;
+import controller.MovementController;
 import controller.GameController;
 import enums.Stage;
-import model.Game;
-import view.BoardPanel;
-import view.GameView;
+import Model.Game;
+import View.BoardPanel;
+import View.GameView;
 
 public class TurnFlowAcceptanceCheck {
 
@@ -76,10 +78,9 @@ public class TurnFlowAcceptanceCheck {
 
                 view[0] = new GameView(TestPlayers.of(new String[]{"A", "B"}, new String[]{"Green", "Red"}), level);
 
-                GameController controller =
-                        (GameController) field(view[0], "controller");
-
-                game[0] = (Game) field(controller, "game");
+                game[0] = (Game) field(view[0], "game");
+                TurnController controller = new TurnController(
+                        game[0], new MovementController(game[0]));
                 board[0] = (BoardPanel) field(view[0], "board");
 
                 board[0].setActivePlayerColor("Green");

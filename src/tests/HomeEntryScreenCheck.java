@@ -3,10 +3,9 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import javax.swing.SwingUtilities;
 
-import view.GameView;
-import view.BoardPanel;
-import controller.GameController;
-import model.Game;
+import View.GameView;
+import View.BoardPanel;
+import Model.Game;
 import enums.Stage;
 
 public class HomeEntryScreenCheck {
@@ -31,11 +30,7 @@ public class HomeEntryScreenCheck {
                 BoardPanel board = (BoardPanel)
                     getField(view, "board");
 
-                GameController controller = (GameController)
-                    getField(view, "controller");
-
-                Game game = (Game)
-                    getField(controller, "game");
+                Game game = (Game) getField(view, "game");
 
                 // הכנת כלי לקראת סוף המסלול המשותף
                 board.placeActivePieceOnStart(0);

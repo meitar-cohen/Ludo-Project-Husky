@@ -2,7 +2,7 @@ package tests;
 import controller.GameController;
 import enums.RollAction;
 import enums.Stage;
-import model.Game;
+import Model.Game;
 
 public class HomePathZeroRollCheck {
 
