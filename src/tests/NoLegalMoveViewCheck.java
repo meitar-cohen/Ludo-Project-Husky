@@ -1,4 +1,4 @@
-package tests;
+package Tests;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
@@ -7,12 +7,12 @@ import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
-import controller.TurnController;
-import controller.MovementController;
-import enums.Stage;
+import Controllers.GameController;
+import Controllers.MovementController;
+import Enums.Stage;
 import Model.Game;
 import View.BoardPanel;
-import View.GameView;
+import View.GameScreen;
 
 public class NoLegalMoveViewCheck {
 
@@ -37,14 +37,14 @@ public class NoLegalMoveViewCheck {
 
         SwingUtilities.invokeAndWait(() -> {
 
-            GameView view = null;
+            GameScreen view = null;
 
             try {
-                view = new GameView(TestPlayers.of(new String[]{"A", "B", "C"}, new String[]{"Red", "Blue", "Green"}), level);
+                view = new GameScreen(TestPlayers.of(new String[]{"A", "B", "C"}, new String[]{"Red", "Blue", "Green"}), level);
 
                 Game game = (Game) field(view, "game");
-                TurnController controller =
-                        new TurnController(game, new MovementController(game));
+                GameController controller =
+                        new GameController(game, new MovementController(game));
 
                 BoardPanel board =
                         (BoardPanel) field(view, "board");
@@ -129,7 +129,7 @@ public class NoLegalMoveViewCheck {
                 }
 
                 // הפעלת סיום ההטלה מתוך מסך המשחק
-                Method finish = GameView.class.getDeclaredMethod(
+                Method finish = GameScreen.class.getDeclaredMethod(
                         "finishRoll", int.class, int.class);
 
                 finish.setAccessible(true);
@@ -242,7 +242,7 @@ public class NoLegalMoveViewCheck {
         }
 
         System.out.println(
-                "PASS - SRS 3.2.3.3.6 GameView tests");
+                "PASS - SRS 3.2.3.3.6 GameScreen tests");
 
         System.exit(0);
     }

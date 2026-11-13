@@ -1,6 +1,6 @@
-package tests;
-import controller.GameController;
-import enums.Stage;
+package Tests;
+import Tests.Controllers.GameController;
+import Enums.Stage;
 import Model.Game;
 
 public class HomeEntryRuleCheck {

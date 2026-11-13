@@ -1,10 +1,12 @@
-package controller;
+package Tests.Controllers;
 
 import java.awt.Color;
-import enums.RollAction;
-import enums.Stage;
+import Enums.RollAction;
+import Enums.Stage;
 import Model.Game;
 import Model.Player;
+import Controllers.HistoryController;
+import Controllers.MovementController;
 
 /**
  * מתאם תאימות לקוד קיים. מסך המשחק עובד ישירות מול הבקרים הייעודיים.
@@ -14,7 +16,7 @@ public class GameController {
     private final Game game;
     private final HistoryController history;
     private final MovementController pieces;
-    private final TurnController turns;
+    private final Controllers.GameController turns;
 
     public GameController(Game game) {
         this(game, new HistoryController());
@@ -27,7 +29,7 @@ public class GameController {
         this.game = game;
         this.history = history;
         this.pieces = new MovementController(game);
-        this.turns = new TurnController(game, pieces);
+        this.turns = new Controllers.GameController(game, pieces);
     }
 
     public String saveGameToHistory() {

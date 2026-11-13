@@ -1,16 +1,15 @@
-package tests;
+package Tests;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
-import controller.TurnController;
-import controller.MovementController;
-import controller.GameController;
-import enums.Stage;
+import Controllers.MovementController;
+import Tests.Controllers.GameController;
+import Enums.Stage;
 import Model.Game;
 import View.BoardPanel;
-import View.GameView;
+import View.GameScreen;
 
 public class TurnFlowAcceptanceCheck {
 
@@ -68,7 +67,7 @@ public class TurnFlowAcceptanceCheck {
     // בדיקת תור רגיל דרך מסך המשחק
     private static void testTurn(String level) throws Exception {
 
-        final GameView[] view = new GameView[1];
+        final GameScreen[] view = new GameScreen[1];
         final Game[] game = new Game[1];
         final BoardPanel[] board = new BoardPanel[1];
         final Throwable[] error = {null};
@@ -76,11 +75,12 @@ public class TurnFlowAcceptanceCheck {
         SwingUtilities.invokeAndWait(() -> {
             try {
 
-                view[0] = new GameView(TestPlayers.of(new String[]{"A", "B"}, new String[]{"Green", "Red"}), level);
+                view[0] = new GameScreen(TestPlayers.of(new String[]{"A", "B"}, new String[]{"Green", "Red"}), level);
 
                 game[0] = (Game) field(view[0], "game");
-                TurnController controller = new TurnController(
-                        game[0], new MovementController(game[0]));
+                Controllers.GameController controller =
+                        new Controllers.GameController(
+                                game[0], new MovementController(game[0]));
                 board[0] = (BoardPanel) field(view[0], "board");
 
                 board[0].setActivePlayerColor("Green");
@@ -95,7 +95,7 @@ public class TurnFlowAcceptanceCheck {
                 game[0].setPendingSteps(1);
 
                 // הדמיית בחירת כלי לאחר הטלת קובייה
-                Method click = GameView.class.getDeclaredMethod(
+                Method click = GameScreen.class.getDeclaredMethod(
                         "onBoardPieceClicked", int.class);
 
                 click.setAccessible(true);

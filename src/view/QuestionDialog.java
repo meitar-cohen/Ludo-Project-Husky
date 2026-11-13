@@ -3,31 +3,26 @@ package View;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.awt.geom.RoundRectangle2D;
 
-/**
- * Modern Ludo question popup with no external libraries.
- * Keeps the existing fixed question, answer logic and isCorrect() contract.
- */
+
 public class QuestionDialog extends JDialog {
 
-    private static final String QUESTION =
+    static final String QUESTION =
         "Which document defines the software requirements according to IEEE Std 830?";
-    private static final String[] ANSWERS = {
+    static final String[] ANSWERS = {
         "SRS - Software Requirements Specification",
         "SDP - Software Development Plan",
         "STD - Software Test Document",
         "SDD - Software Design Description"
     };
-    private static final int CORRECT_INDEX = 0;
+    static final int CORRECT_INDEX = 0;
 
-    private static final Color NAVY = new Color(18, 27, 61);
-    private static final Color PRIMARY = new Color(75, 110, 248);
-    private static final Color MUTED = new Color(111, 125, 153);
-    private static final Color SUCCESS = new Color(27, 148, 107);
-    private static final Color ERROR = new Color(207, 70, 87);
+    static final Color NAVY = new Color(18, 27, 61);
+    static final Color PRIMARY = new Color(75, 110, 248);
+    static final Color MUTED = new Color(111, 125, 153);
+    static final Color SUCCESS = new Color(27, 148, 107);
+    static final Color ERROR = new Color(207, 70, 87);
 
     private int selected = -1;
     private boolean correct = false;
@@ -37,21 +32,17 @@ public class QuestionDialog extends JDialog {
         super(owner, "Ludo - Question Challenge", ModalityType.APPLICATION_MODAL);
         setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
         setResizable(false);
-
-        JPanel root = new GradientBackground();
+        JPanel root = new QuestionBackgroundPanel();
         root.setLayout(new GridBagLayout());
         root.setBorder(new EmptyBorder(16, 16, 16, 16));
         root.setPreferredSize(new Dimension(710, 680));
-
-        RoundedPanel card = new RoundedPanel(Color.WHITE, 27);
+        QuestionCardPanel card = new QuestionCardPanel(Color.WHITE, 27);
         card.setLayout(new BorderLayout(0, 0));
         card.setPreferredSize(new Dimension(650, 640));
         card.setBorder(new EmptyBorder(20, 31, 16, 31));
-
         JPanel content = new JPanel();
         content.setOpaque(false);
         content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
-
         JPanel topLine = new JPanel(new BorderLayout());
         topLine.setOpaque(false);
         topLine.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -68,22 +59,19 @@ public class QuestionDialog extends JDialog {
         topLine.add(level, BorderLayout.EAST);
         content.add(topLine);
         content.add(Box.createVerticalStrut(9));
-
         JLabel title = new JLabel("Question time!");
         title.setFont(new Font("Segoe UI", Font.BOLD, 31));
         title.setForeground(NAVY);
         title.setAlignmentX(Component.LEFT_ALIGNMENT);
         content.add(title);
         content.add(Box.createVerticalStrut(5));
-
         JLabel subtitle = new JLabel("Choose carefully - your next move depends on it.");
         subtitle.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         subtitle.setForeground(MUTED);
         subtitle.setAlignmentX(Component.LEFT_ALIGNMENT);
         content.add(subtitle);
         content.add(Box.createVerticalStrut(14));
-
-        RoundedPanel questionCard = new RoundedPanel(new Color(241, 245, 255), 17);
+        QuestionCardPanel questionCard = new QuestionCardPanel(new Color(241, 245, 255), 17);
         questionCard.setLayout(new BorderLayout());
         questionCard.setBorder(new EmptyBorder(14, 16, 14, 16));
         questionCard.setPreferredSize(new Dimension(582, 87));
@@ -101,19 +89,16 @@ public class QuestionDialog extends JDialog {
         questionCard.setAlignmentX(Component.LEFT_ALIGNMENT);
         content.add(questionCard);
         content.add(Box.createVerticalStrut(14));
-
         JLabel choose = new JLabel("SELECT ONE ANSWER");
         choose.setFont(new Font("Segoe UI", Font.BOLD, 12));
         choose.setForeground(MUTED);
         choose.setAlignmentX(Component.LEFT_ALIGNMENT);
         content.add(choose);
         content.add(Box.createVerticalStrut(9));
-
         ActionButton confirm = new ActionButton("Check answer", PRIMARY);
         confirm.setEnabled(false);
         ActionButton cont = new ActionButton("Continue", SUCCESS);
         cont.setVisible(false);
-
         for (int i = 0; i < ANSWERS.length; i++) {
             final int idx = i;
             AnswerButton button = new AnswerButton(i, ANSWERS[i]);
@@ -129,9 +114,8 @@ public class QuestionDialog extends JDialog {
             content.add(button);
             if (i != ANSWERS.length - 1) content.add(Box.createVerticalStrut(7));
         }
-
         content.add(Box.createVerticalStrut(11));
-        RoundedPanel feedbackPanel = new RoundedPanel(new Color(241, 245, 255), 15);
+        QuestionCardPanel feedbackPanel = new QuestionCardPanel(new Color(241, 245, 255), 15);
         feedbackPanel.setLayout(new BorderLayout());
         feedbackPanel.setBorder(new EmptyBorder(11, 14, 11, 14));
         feedbackPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 56));
@@ -142,9 +126,7 @@ public class QuestionDialog extends JDialog {
         feedback.setForeground(new Color(67, 83, 126));
         feedbackPanel.add(feedback, BorderLayout.CENTER);
         content.add(feedbackPanel);
-
         card.add(content, BorderLayout.CENTER);
-
         JPanel footer = new JPanel(new BorderLayout(8, 0));
         footer.setOpaque(false);
         JLabel rule = new JLabel("Correct: +1 square    |    Wrong: -1 square");
@@ -158,7 +140,6 @@ public class QuestionDialog extends JDialog {
         actions.add(cont, "CONTINUE");
         footer.add(actions, BorderLayout.EAST);
         card.add(footer, BorderLayout.SOUTH);
-
         confirm.addActionListener(e -> {
             if (selected < 0) return;
             correct = selected == CORRECT_INDEX;
@@ -181,7 +162,6 @@ public class QuestionDialog extends JDialog {
         });
         cont.addActionListener(e -> dispose());
         getRootPane().setDefaultButton(confirm);
-
         root.add(card);
         setContentPane(root);
         pack();
@@ -192,49 +172,12 @@ public class QuestionDialog extends JDialog {
         return correct;
     }
 
-    private static void quality(Graphics2D g) {
+    static void quality(Graphics2D g) {
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
     }
 
-    private static class GradientBackground extends JPanel {
-        @Override
-        protected void paintComponent(Graphics graphics) {
-            super.paintComponent(graphics);
-            Graphics2D g = (Graphics2D) graphics.create();
-            quality(g);
-            g.setPaint(new GradientPaint(0, 0, new Color(14, 22, 54),
-                getWidth(), getHeight(), new Color(47, 41, 112)));
-            g.fillRect(0, 0, getWidth(), getHeight());
-            g.setColor(new Color(115, 113, 239, 47));
-            g.fillOval(-110, -110, 360, 360);
-            g.setColor(new Color(92, 156, 242, 34));
-            g.fillOval(360, 310, 440, 440);
-            g.dispose();
-        }
-    }
-
-    private static class RoundedPanel extends JPanel {
-        private Color fill;
-        private final int radius;
-        RoundedPanel(Color fill, int radius) {
-            this.fill = fill;
-            this.radius = radius;
-            setOpaque(false);
-        }
-        void setFill(Color fill) { this.fill = fill; repaint(); }
-        @Override
-        protected void paintComponent(Graphics graphics) {
-            Graphics2D g = (Graphics2D) graphics.create();
-            quality(g);
-            g.setColor(fill);
-            g.fill(new RoundRectangle2D.Double(0, 0, getWidth(), getHeight(), radius, radius));
-            g.dispose();
-            super.paintComponent(graphics);
-        }
-    }
-
-    private static class ActionButton extends JButton {
+    static class ActionButton extends JButton {
         private final Color fill;
         ActionButton(String label, Color fill) {
             super(label);
@@ -261,7 +204,7 @@ public class QuestionDialog extends JDialog {
         }
     }
 
-    private static class AnswerButton extends JButton {
+    static class AnswerButton extends JButton {
         private final int index;
         private final String answer;
         private int visualState; // 0 normal, 1 selected, 2 correct, 3 incorrect, 4 dimmed
@@ -330,5 +273,42 @@ public class QuestionDialog extends JDialog {
             g.drawString(display, 64, (getHeight() + fm.getAscent() - fm.getDescent()) / 2);
             g.dispose();
         }
+    }
+
+    private static class QuestionBackgroundPanel extends JPanel {
+            @Override
+            protected void paintComponent(Graphics graphics) {
+                super.paintComponent(graphics);
+                Graphics2D g = (Graphics2D) graphics.create();
+                QuestionDialog.quality(g);
+                g.setPaint(new GradientPaint(0, 0, new Color(14, 22, 54),
+                    getWidth(), getHeight(), new Color(47, 41, 112)));
+                g.fillRect(0, 0, getWidth(), getHeight());
+                g.setColor(new Color(115, 113, 239, 47));
+                g.fillOval(-110, -110, 360, 360);
+                g.setColor(new Color(92, 156, 242, 34));
+                g.fillOval(360, 310, 440, 440);
+                g.dispose();
+            }
+    }
+
+    private static class QuestionCardPanel extends JPanel {
+            private Color fill;
+            private final int radius;
+            QuestionCardPanel(Color fill, int radius) {
+                this.fill = fill;
+                this.radius = radius;
+                setOpaque(false);
+            }
+            void setFill(Color fill) { this.fill = fill; repaint(); }
+            @Override
+            protected void paintComponent(Graphics graphics) {
+                Graphics2D g = (Graphics2D) graphics.create();
+                QuestionDialog.quality(g);
+                g.setColor(fill);
+                g.fill(new RoundRectangle2D.Double(0, 0, getWidth(), getHeight(), radius, radius));
+                g.dispose();
+                super.paintComponent(graphics);
+            }
     }
 }

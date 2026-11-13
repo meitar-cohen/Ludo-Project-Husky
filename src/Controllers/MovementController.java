@@ -1,7 +1,7 @@
-package controller;
+package Controllers;
 
 import java.awt.Color;
-import enums.Stage;
+import Enums.Stage;
 import Model.Game;
 import Model.Piece;
 import Model.Player;

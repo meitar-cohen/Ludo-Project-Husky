@@ -1,4 +1,4 @@
-package enums;
+package Enums;
 
 /**
  * סוגי המשבצות המיוחדות בלוח.

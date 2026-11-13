@@ -1,6 +1,6 @@
 package Model;
 
-import enums.PieceState;
+import Enums.PieceState;
 
 /**
  * מייצג כלי יחיד במשחק.

@@ -1,14 +1,14 @@
-package tests;
+package Tests;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
-import controller.TurnController;
-import controller.MovementController;
-import enums.Stage;
+import Controllers.GameController;
+import Controllers.MovementController;
+import Enums.Stage;
 import Model.Game;
-import View.GameView;
+import View.GameScreen;
 import View.BoardPanel;
 
 public class HomePathUIFullAcceptanceCheck {
@@ -35,7 +35,7 @@ public class HomePathUIFullAcceptanceCheck {
 
         for (String level : levels) {
 
-            final GameView[] view = new GameView[1];
+            final GameScreen[] view = new GameScreen[1];
             final Game[] game = new Game[1];
             final BoardPanel[] board = new BoardPanel[1];
             final Throwable[] error = new Throwable[1];
@@ -43,10 +43,10 @@ public class HomePathUIFullAcceptanceCheck {
             SwingUtilities.invokeAndWait(() -> {
                 try {
                     // יצירת מסך משחק לפי רמת הקושי
-                    view[0] = new GameView(TestPlayers.of(new String[]{"A", "B"}, new String[]{"Red", "Blue"}), level);
+                    view[0] = new GameScreen(TestPlayers.of(new String[]{"A", "B"}, new String[]{"Red", "Blue"}), level);
 
                     game[0] = (Game) getField(view[0], "game");
-                    TurnController controller = new TurnController(
+                    GameController controller = new GameController(
                             game[0], new MovementController(game[0]));
                     board[0] = (BoardPanel) getField(view[0], "board");
 
@@ -74,8 +74,8 @@ public class HomePathUIFullAcceptanceCheck {
                     game[0].setStage(Stage.MOVE);
                     controller.registerRollAndCheckThirdSix(3);
 
-                    // הפעלת בחירת הכלי מתוך GameView
-                    Method click = GameView.class.getDeclaredMethod(
+                    // הפעלת בחירת הכלי מתוך GameScreen
+                    Method click = GameScreen.class.getDeclaredMethod(
                             "onBoardPieceClicked", int.class);
 
                     click.setAccessible(true);

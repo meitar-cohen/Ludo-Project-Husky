@@ -1,4 +1,4 @@
-package tests;
+package Tests;
 import java.awt.Color;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -8,11 +8,11 @@ import java.util.Map;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
-import controller.GameController;
-import enums.RollAction;
+import Tests.Controllers.GameController;
+import Enums.RollAction;
 import Model.Game;
 import View.BoardPanel;
-import View.GameView;
+import View.GameScreen;
 
 public class Iteration1UiRegressionCheck {
 
@@ -39,10 +39,10 @@ public class Iteration1UiRegressionCheck {
 
         SwingUtilities.invokeAndWait(() -> {
 
-            GameView view = null;
+            GameScreen view = null;
 
             try {
-                view = new GameView(TestPlayers.of(new String[]{"A", "B"}, new String[]{"Red", "Blue"}), "Medium");
+                view = new GameScreen(TestPlayers.of(new String[]{"A", "B"}, new String[]{"Red", "Blue"}), "Medium");
 
                 Object dice = field(view, "dice");
 
@@ -53,7 +53,7 @@ public class Iteration1UiRegressionCheck {
                 show.invoke(dice, 2, 2);
 
                 Method passTurn =
-                        GameView.class.getDeclaredMethod("passTurn");
+                        GameScreen.class.getDeclaredMethod("passTurn");
 
                 passTurn.setAccessible(true);
                 passTurn.invoke(view);
@@ -103,15 +103,15 @@ public class Iteration1UiRegressionCheck {
 
             BoardPanel board = new BoardPanel(levels[i], colors);
 
-            Map<?, ?> specials =
-                    (Map<?, ?>) field(board, "specials");
+            Map<?, ?> squares =
+                    (Map<?, ?>) field(board, "squares");
 
             int starts = 0;
             int arrows = 0;
 
             Map<Color, Integer> startColors = new HashMap<>();
 
-            for (Object special : specials.values()) {
+            for (Object special : squares.values()) {
 
                 String kind =
                         field(special, "type").toString();

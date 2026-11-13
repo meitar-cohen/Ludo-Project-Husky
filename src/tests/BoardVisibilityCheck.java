@@ -1,4 +1,4 @@
-package tests;
+package Tests;
 
 import java.awt.image.BufferedImage;
 import View.BoardPanel;

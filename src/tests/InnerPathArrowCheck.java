@@ -1,9 +1,9 @@
-package tests;
+package Tests;
 
 import java.awt.Color;
 
-import controller.GameController;
-import enums.Stage;
+import Tests.Controllers.GameController;
+import Enums.Stage;
 import Model.Game;
 import View.BoardPanel;
 

@@ -1,6 +1,6 @@
 package Model;
 
-import enums.Stage;
+import Enums.Stage;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -202,9 +202,9 @@ public class Game {
     public void setPieceOnBoard(boolean pieceOnBoard) {
         Piece piece = getSelectedPiece();
         if (pieceOnBoard) {
-            piece.setState(enums.PieceState.BOARD);
+            piece.setState(Enums.PieceState.BOARD);
         } else {
-            piece.setState(enums.PieceState.CASTLE);
+            piece.setState(Enums.PieceState.CASTLE);
         }
     }
 
@@ -215,9 +215,9 @@ public class Game {
     public void setPieceInHomePath(boolean pieceInHomePath) {
         Piece piece = getSelectedPiece();
         if (pieceInHomePath) {
-            piece.setState(enums.PieceState.HOME_PATH);
+            piece.setState(Enums.PieceState.HOME_PATH);
         } else if (!piece.isFinished()) {
-            piece.setState(enums.PieceState.BOARD);
+            piece.setState(Enums.PieceState.BOARD);
         }
     }
 

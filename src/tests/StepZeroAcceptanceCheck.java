@@ -1,4 +1,4 @@
-package tests;
+package Tests;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -8,13 +8,12 @@ import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
-import controller.TurnController;
-import controller.MovementController;
-import controller.GameController;
-import enums.RollAction;
-import enums.Stage;
+import Controllers.MovementController;
+import Tests.Controllers.GameController;
+import Enums.RollAction;
+import Enums.Stage;
 import Model.Game;
-import View.GameView;
+import View.GameScreen;
 
 public class StepZeroAcceptanceCheck {
 
@@ -179,15 +178,16 @@ public class StepZeroAcceptanceCheck {
 
         SwingUtilities.invokeAndWait(() -> {
 
-            GameView view = null;
+            GameScreen view = null;
 
             try {
 
-                view = new GameView(TestPlayers.of(new String[]{"A", "B"}, new String[]{"Red", "Blue"}), level);
+                view = new GameScreen(TestPlayers.of(new String[]{"A", "B"}, new String[]{"Red", "Blue"}), level);
 
                 Game game = (Game) field(view, "game");
-                TurnController controller =
-                        new TurnController(game, new MovementController(game));
+                Controllers.GameController controller =
+                        new Controllers.GameController(
+                                game, new MovementController(game));
 
                 // בדיקה גם עם כלי במסלול המשותף
                 if (hasSharedPiece) {
@@ -196,7 +196,7 @@ public class StepZeroAcceptanceCheck {
                 }
 
                 // הפעלת סיום הטלה עם תוצאה 0
-                Method finish = GameView.class.getDeclaredMethod(
+                Method finish = GameScreen.class.getDeclaredMethod(
                         "finishRoll", int.class, int.class);
 
                 finish.setAccessible(true);

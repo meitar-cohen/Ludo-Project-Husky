@@ -1,6 +1,6 @@
-package tests;
+package Tests;
 
-import controller.SetupController;
+import Controllers.GameController;
 
 /**
  * בדיקת אימות פרטי שחקנים.
@@ -11,7 +11,7 @@ public class PlayerValidationCheck {
 
     private static void expectError(String label, String[] names, String[] colors,
                                     int player) {
-        String error = SetupController.validatePlayers(names, colors);
+        String error = GameController.validatePlayers(names, colors);
         if (error == null) {
             throw new AssertionError(label + ": expected an error on player "
                     + (player + 1));
@@ -20,7 +20,7 @@ public class PlayerValidationCheck {
     }
 
     private static void expectValid(String label, String[] names, String[] colors) {
-        String error = SetupController.validatePlayers(names, colors);
+        String error = GameController.validatePlayers(names, colors);
         if (error != null) {
             throw new AssertionError(label + ": expected valid input, got " + error);
         }

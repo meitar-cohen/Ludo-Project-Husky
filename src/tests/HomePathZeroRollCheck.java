@@ -1,7 +1,7 @@
-package tests;
-import controller.GameController;
-import enums.RollAction;
-import enums.Stage;
+package Tests;
+import Tests.Controllers.GameController;
+import Enums.RollAction;
+import Enums.Stage;
 import Model.Game;
 
 public class HomePathZeroRollCheck {

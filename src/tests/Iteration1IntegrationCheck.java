@@ -1,11 +1,11 @@
-package tests;
+package Tests;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import javax.swing.SwingUtilities;
 
-import controller.GameController;
-import enums.RollAction;
+import Tests.Controllers.GameController;
+import Enums.RollAction;
 import Model.Game;
 import View.BoardPanel;
 

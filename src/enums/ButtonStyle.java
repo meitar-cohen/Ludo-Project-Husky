@@ -1,4 +1,4 @@
-package enums;
+package Enums;
 
 /**
  * סגנון כפתור במסכי הניהול.

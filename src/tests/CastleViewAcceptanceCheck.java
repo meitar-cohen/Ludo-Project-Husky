@@ -1,4 +1,4 @@
-package tests;
+package Tests;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -7,13 +7,13 @@ import javax.swing.JButton;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
-import controller.TurnController;
-import controller.MovementController;
-import enums.RollAction;
-import enums.Stage;
+import Controllers.GameController;
+import Controllers.MovementController;
+import Enums.RollAction;
+import Enums.Stage;
 import Model.Game;
 import View.BoardPanel;
-import View.GameView;
+import View.GameScreen;
 
 public class CastleViewAcceptanceCheck {
 
@@ -38,16 +38,16 @@ public class CastleViewAcceptanceCheck {
 
         SwingUtilities.invokeAndWait(() -> {
 
-            GameView view = null;
+            GameScreen view = null;
 
             try {
 
                 // יצירת מסך המשחק
-                view = new GameView(TestPlayers.of(new String[]{"A", "B"}, new String[]{"Red", "Blue"}), level);
+                view = new GameScreen(TestPlayers.of(new String[]{"A", "B"}, new String[]{"Red", "Blue"}), level);
 
                 Game game = (Game) field(view, "game");
-                TurnController controller =
-                        new TurnController(game, new MovementController(game));
+                GameController controller =
+                        new GameController(game, new MovementController(game));
 
                 BoardPanel board =
                         (BoardPanel) field(view, "board");
@@ -56,7 +56,7 @@ public class CastleViewAcceptanceCheck {
                         (JButton) field(view, "rollButton");
 
                 Method castleClick =
-                        GameView.class.getDeclaredMethod(
+                        GameScreen.class.getDeclaredMethod(
                                 "onCastlePieceClicked", int.class);
 
                 castleClick.setAccessible(true);

@@ -1,4 +1,4 @@
-package enums;
+package Enums;
 
 /**
  * מצבו של כלי במהלך המשחק.

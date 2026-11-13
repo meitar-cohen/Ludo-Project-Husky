@@ -1,4 +1,4 @@
-package tests;
+package Tests;
 
 import java.awt.Color;
 import java.awt.Point;
@@ -12,7 +12,7 @@ import java.util.Map;
 import java.util.Set;
 import View.BoardPanel;
 
-public class RandomSpecialSquaresCheck {
+public class RandomSquaresCheck {
 
     private static final String[] COLORS = {
             "Green", "Yellow", "Blue", "Red"
@@ -37,7 +37,7 @@ public class RandomSpecialSquaresCheck {
     private static Map<Point, Object> squares(BoardPanel board)
             throws Exception {
 
-        return (Map<Point, Object>) value(board, "specials");
+        return (Map<Point, Object>) value(board, "squares");
     }
 
     @SuppressWarnings("unchecked")

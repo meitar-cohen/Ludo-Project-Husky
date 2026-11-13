@@ -1,12 +1,12 @@
-package tests;
+package Tests;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import javax.swing.SwingUtilities;
 
-import View.GameView;
+import View.GameScreen;
 import View.BoardPanel;
 import Model.Game;
-import enums.Stage;
+import Enums.Stage;
 
 public class HomeEntryScreenCheck {
 
@@ -25,7 +25,7 @@ public class HomeEntryScreenCheck {
         SwingUtilities.invokeAndWait(() -> {
             try {
                 // יצירת מסך משחק ברמה קלה
-                GameView view = new GameView(TestPlayers.of(new String[]{"Player1", "Player2"}, new String[]{"Red", "Blue"}), "Easy");
+                GameScreen view = new GameScreen(TestPlayers.of(new String[]{"Player1", "Player2"}, new String[]{"Red", "Blue"}), "Easy");
 
                 BoardPanel board = (BoardPanel)
                     getField(view, "board");
@@ -40,7 +40,7 @@ public class HomeEntryScreenCheck {
                 game.setStage(Stage.MOVE);
 
                 // הדמיית לחיצה על הכלי במסך המשחק
-                Method click = GameView.class.getDeclaredMethod(
+                Method click = GameScreen.class.getDeclaredMethod(
                     "onBoardPieceClicked", int.class
                 );
                 click.setAccessible(true);

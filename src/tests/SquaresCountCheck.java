@@ -1,11 +1,11 @@
-package tests;
+package Tests;
 import java.awt.Color;
 import java.lang.reflect.Field;
 import java.util.Map;
 
 import View.BoardPanel;
 
-public class SpecialSquaresCountCheck {
+public class SquaresCountCheck {
 
     // קריאת שדה פרטי לצורך בדיקת קבלה בלבד
     private static Object readField(Object object, String fieldName)
@@ -47,8 +47,8 @@ public class SpecialSquaresCountCheck {
             BoardPanel board = new BoardPanel(level, colors);
 
             // אוסף המשבצות המיוחדות של הלוח
-            Map<?, ?> specials =
-                    (Map<?, ?>) readField(board, "specials");
+            Map<?, ?> squares =
+                    (Map<?, ?>) readField(board, "squares");
 
             int stars = 0;
             int arrows = 0;
@@ -60,7 +60,7 @@ public class SpecialSquaresCountCheck {
             int hardQuestions = 0;
 
             // ספירת כל סוגי המשבצות
-            for (Object special : specials.values()) {
+            for (Object special : squares.values()) {
 
                 String type = readField(special, "type").toString();
 
@@ -133,7 +133,7 @@ public class SpecialSquaresCountCheck {
                     + expectedSurprises;
 
             checkCount(level, "Total special squares",
-                    specials.size(), expectedTotal);
+                    squares.size(), expectedTotal);
         }
 
         System.out.println(

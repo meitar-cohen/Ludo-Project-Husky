@@ -9,50 +9,43 @@ import java.awt.geom.RoundRectangle2D;
 import java.util.Arrays;
 
 /** Administrator entry screen. */
-public class AdminLoginView extends JFrame {
+public class AdminLoginScreen extends JFrame {
 
     private static final Color NAVY = new Color(17, 27, 65);
     private static final Color BLUE = new Color(75, 110, 248);
     private static final Color MUTED = new Color(107, 120, 149);
     private static final Color ERROR = new Color(195, 48, 75);
 
-    public AdminLoginView(Runnable onLoginSuccess) {
+    public AdminLoginScreen(Runnable onLoginSuccess) {
         setTitle("Ludo - Admin Access");
         setSize(1020, 680);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         setResizable(false);
-
-        JPanel background = new GradientBackground();
+        JPanel background = new LoginBackgroundPanel();
         background.setLayout(new GridBagLayout());
         background.setBorder(new EmptyBorder(26, 26, 26, 26));
-
         JPanel layout = new JPanel(new GridLayout(1, 2, 30, 0));
         layout.setOpaque(false);
         layout.setPreferredSize(new Dimension(950, 570));
         layout.add(new HeroPanel());
         layout.add(createLoginCard(onLoginSuccess));
-
         background.add(layout);
         setContentPane(background);
     }
 
     private JPanel createLoginCard(Runnable onLoginSuccess) {
-        JPanel card = new RoundedCard();
+        JPanel card = new LoginCardPanel();
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setBorder(new EmptyBorder(39, 38, 36, 42));
-
         LockBadge lockBadge = new LockBadge();
         lockBadge.setAlignmentX(Component.LEFT_ALIGNMENT);
         lockBadge.setPreferredSize(new Dimension(60, 60));
         lockBadge.setMaximumSize(new Dimension(60, 60));
-
         JLabel eyebrow = label("RESTRICTED ACCESS", 12, Font.BOLD, BLUE);
         JLabel title = label("Welcome back", 32, Font.BOLD, NAVY);
         JLabel subtitle = label("Sign in to manage game questions.", 15, Font.PLAIN, MUTED);
-
         JLabel passwordLabel = label("ADMIN PASSWORD", 12, Font.BOLD, NAVY);
-
         JPasswordField passwordField = new JPasswordField();
         passwordField.setFont(new Font("Segoe UI", Font.PLAIN, 17));
         passwordField.setForeground(NAVY);
@@ -60,7 +53,6 @@ public class AdminLoginView extends JFrame {
         passwordField.setBorder(new EmptyBorder(8, 12, 8, 5));
         passwordField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
         char defaultEcho = passwordField.getEchoChar();
-
         JButton showPassword = new JButton("Show");
         showPassword.setFont(new Font("Segoe UI", Font.BOLD, 12));
         showPassword.setForeground(BLUE);
@@ -74,7 +66,6 @@ public class AdminLoginView extends JFrame {
             showPassword.setText(hidden ? "Hide" : "Show");
             passwordField.requestFocusInWindow();
         });
-
         JPanel fieldBox = new RoundedFieldPanel();
         fieldBox.setLayout(new BorderLayout());
         fieldBox.setMaximumSize(new Dimension(Integer.MAX_VALUE, 52));
@@ -82,13 +73,10 @@ public class AdminLoginView extends JFrame {
         fieldBox.setAlignmentX(Component.LEFT_ALIGNMENT);
         fieldBox.add(passwordField, BorderLayout.CENTER);
         fieldBox.add(showPassword, BorderLayout.EAST);
-
         JLabel errorLabel = label(" ", 13, Font.PLAIN, ERROR);
         errorLabel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
-
         RoundedButton loginButton = new RoundedButton("Login to Dashboard", true);
         RoundedButton backButton = new RoundedButton("Back to Main Menu", false);
-
         loginButton.addActionListener(e -> {
             char[] enteredPassword = passwordField.getPassword();
             if (enteredPassword.length == 0) {
@@ -101,15 +89,12 @@ public class AdminLoginView extends JFrame {
             }
             Arrays.fill(enteredPassword, '\0');
         });
-
         backButton.addActionListener(e -> {
-            new MainMenuView().setVisible(true);
+            new MainMenuScreen().setVisible(true);
             dispose();
         });
-
         // Enter submits the password, including when the password field has focus.
         getRootPane().setDefaultButton(loginButton);
-
         JLabel demoLabel = label("ADMIN ACCESS", 11, Font.BOLD, BLUE);
         JLabel hintLabel = label("Enter your password to continue.", 14, Font.PLAIN, MUTED);
         JPanel hint = new RoundedHintPanel();
@@ -120,7 +105,6 @@ public class AdminLoginView extends JFrame {
         hint.add(demoLabel);
         hint.add(Box.createVerticalStrut(4));
         hint.add(hintLabel);
-
         card.add(lockBadge);
         card.add(Box.createVerticalStrut(17));
         card.add(eyebrow);
@@ -157,7 +141,7 @@ public class AdminLoginView extends JFrame {
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
     }
 
-    private static class GradientBackground extends JPanel {
+    private static class LoginBackgroundPanel extends JPanel {
         @Override
         protected void paintComponent(Graphics graphics) {
             super.paintComponent(graphics);
@@ -176,7 +160,6 @@ public class AdminLoginView extends JFrame {
 
     private static class HeroPanel extends JPanel {
         HeroPanel() { setOpaque(false); }
-
         @Override
         protected void paintComponent(Graphics graphics) {
             super.paintComponent(graphics);
@@ -185,17 +168,14 @@ public class AdminLoginView extends JFrame {
             g.setColor(new Color(168, 182, 245));
             g.setFont(new Font("Segoe UI", Font.BOLD, 13));
             g.drawString("LUDO  /  ADMIN AREA", 28, 81);
-
             g.setColor(Color.WHITE);
             g.setFont(new Font("Segoe UI", Font.BOLD, 43));
             g.drawString("Keep the", 26, 157);
             g.drawString("game smart.", 26, 209);
-
             g.setFont(new Font("Segoe UI", Font.PLAIN, 17));
             g.setColor(new Color(205, 216, 245));
             g.drawString("Your question bank, one place.", 30, 258);
             g.drawString("Create. Review. Improve.", 30, 286);
-
             // A padlock illustration, without external images or logos.
             int x = 97, y = 326;
             g.setColor(new Color(4, 10, 29, 50));
@@ -214,8 +194,8 @@ public class AdminLoginView extends JFrame {
         }
     }
 
-    private static class RoundedCard extends JPanel {
-        RoundedCard() { setOpaque(false); }
+    private static class LoginCardPanel extends JPanel {
+        LoginCardPanel() { setOpaque(false); }
         @Override
         protected void paintComponent(Graphics graphics) {
             Graphics2D g = (Graphics2D) graphics.create();
@@ -278,7 +258,6 @@ public class AdminLoginView extends JFrame {
     private static class RoundedButton extends JButton {
         private final boolean primary;
         private boolean hovered;
-
         RoundedButton(String text, boolean primary) {
             super(text);
             this.primary = primary;
@@ -296,7 +275,6 @@ public class AdminLoginView extends JFrame {
                 @Override public void mouseExited(MouseEvent e) { hovered = false; repaint(); }
             });
         }
-
         @Override
         protected void paintComponent(Graphics graphics) {
             Graphics2D g = (Graphics2D) graphics.create();

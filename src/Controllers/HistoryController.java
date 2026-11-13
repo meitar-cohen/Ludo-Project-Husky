@@ -1,4 +1,4 @@
-package controller;
+package Controllers;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -54,7 +54,7 @@ public class HistoryController {
      *
      * @return null when the game was saved or did not need saving, otherwise an error message
      */
-    public String saveFinishedGame(Game game, TurnController turns) {
+    public String saveFinishedGame(Game game, GameController turns) {
         if (game == null || turns == null || game.isSavedToHistory()
                 || !turns.isGameClockStarted()) {
             return null;

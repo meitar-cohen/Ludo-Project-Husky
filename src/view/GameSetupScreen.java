@@ -7,10 +7,8 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.RoundRectangle2D;
 
-/** Modern Ludo game setup screen. Pure Java Swing; no external libraries. */
-public class GameSetupView extends JFrame {
+public class GameSetupScreen extends JFrame {
 
-    // Keep the original combo-box API: selection cards synchronize with these models.
     private final JComboBox<Integer> playerCountComboBox =
             new JComboBox<>(new Integer[]{2, 3, 4});
     private final JComboBox<String> difficultyComboBox =
@@ -26,25 +24,21 @@ public class GameSetupView extends JFrame {
     private static final Color MUTED = new Color(111, 123, 151);
     private static final Color TEXT_LIGHT = new Color(203, 213, 248);
 
-    public GameSetupView() {
+    public GameSetupScreen() {
         setTitle("Ludo - New Game");
         setSize(1120, 690);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         setResizable(false);
-
-        JPanel background = new GradientBackground();
+        JPanel background = new SetupBackgroundPanel();
         background.setLayout(new GridBagLayout());
-
         JPanel layout = new JPanel(new GridLayout(1, 2, 28, 0));
         layout.setOpaque(false);
         layout.setPreferredSize(new Dimension(1020, 565));
-        layout.add(new SetupHero());
+        layout.add(new SetupHeroPanel());
         layout.add(buildSetupCard());
-
         background.add(layout);
         setContentPane(background);
-
         // Keep selection state in sync, including external use of the original getters.
         playerCountComboBox.addActionListener(e -> refreshSelectedCards());
         difficultyComboBox.addActionListener(e -> refreshSelectedCards());
@@ -52,38 +46,32 @@ public class GameSetupView extends JFrame {
     }
 
     private JPanel buildSetupCard() {
-        JPanel card = new RoundedCard();
+        JPanel card = new SetupCardPanel();
         card.setLayout(new BorderLayout());
         card.setBorder(new EmptyBorder(30, 35, 22, 35));
-
         JPanel form = new JPanel();
         form.setOpaque(false);
         form.setLayout(new BoxLayout(form, BoxLayout.Y_AXIS));
-
         JLabel eyebrow = new JLabel("STEP 01  /  GAME SETUP");
         eyebrow.setFont(new Font("Segoe UI", Font.BOLD, 12));
         eyebrow.setForeground(BLUE);
         eyebrow.setAlignmentX(Component.LEFT_ALIGNMENT);
         form.add(eyebrow);
         form.add(Box.createVerticalStrut(9));
-
         JLabel heading = new JLabel("Make it your game");
         heading.setFont(new Font("Segoe UI", Font.BOLD, 29));
         heading.setForeground(NAVY);
         heading.setAlignmentX(Component.LEFT_ALIGNMENT);
         form.add(heading);
         form.add(Box.createVerticalStrut(4));
-
         JLabel subheading = new JLabel("A few quick choices, then you're off!");
         subheading.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         subheading.setForeground(MUTED);
         subheading.setAlignmentX(Component.LEFT_ALIGNMENT);
         form.add(subheading);
         form.add(Box.createVerticalStrut(20));
-
         form.add(fieldTitle("01", "HOW MANY PLAYERS?"));
         form.add(Box.createVerticalStrut(11));
-
         JPanel playerOptions = createChoiceRow();
         playerCards = new ChoiceCard[]{
             new ChoiceCard("2", "DUEL"),
@@ -99,10 +87,8 @@ public class GameSetupView extends JFrame {
         }
         form.add(playerOptions);
         form.add(Box.createVerticalStrut(19));
-
         form.add(fieldTitle("02", "CHOOSE YOUR DIFFICULTY"));
         form.add(Box.createVerticalStrut(11));
-
         JPanel difficultyOptions = createChoiceRow();
         difficultyCards = new ChoiceCard[]{
             new ChoiceCard("Easy", "RELAXED"),
@@ -118,48 +104,40 @@ public class GameSetupView extends JFrame {
             difficultyOptions.add(difficultyCards[i]);
         }
         form.add(difficultyOptions);
-
         card.add(form, BorderLayout.CENTER);
-
         JPanel actions = new JPanel();
         actions.setOpaque(false);
         actions.setLayout(new BoxLayout(actions, BoxLayout.Y_AXIS));
-
         continueButton = new ActionButton("Continue", true);
         continueButton.addActionListener(e -> openPlayerDetails());
-
         backButton = new ActionButton("Back to Menu", false);
         backButton.addActionListener(e -> {
-            new MainMenuView().setVisible(true);
+            new MainMenuScreen().setVisible(true);
             dispose();
         });
-
         actions.add(continueButton);
         actions.add(Box.createVerticalStrut(11));
         actions.add(backButton);
         actions.add(Box.createVerticalStrut(10));
-
         card.add(actions, BorderLayout.SOUTH);
-
         return card;
     }
 
     /**
      * SRS 3.2.1.3.1 -
-     * Opens the player-details screen using the selected player count
+     * Opens the player setup panel using the selected player count
      * and difficulty.
      */
     private void openPlayerDetails() {
         Integer count = (Integer) playerCountComboBox.getSelectedItem();
         String difficulty = (String) difficultyComboBox.getSelectedItem();
         if (count == null || difficulty == null) return;
-
-        JFrame detailsFrame = new JFrame("Ludo - Player Details");
+        JFrame detailsFrame = new JFrame("Ludo - Player Setup");
         detailsFrame.setSize(700, 600);
         detailsFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         detailsFrame.setLocationRelativeTo(null);
         detailsFrame.setResizable(false);
-        detailsFrame.setContentPane(new PlayerDetailsScreen(count, difficulty));
+        detailsFrame.setContentPane(new PlayerSetupPanel(count, difficulty));
         detailsFrame.setVisible(true);
         dispose();
     }
@@ -207,7 +185,7 @@ public class GameSetupView extends JFrame {
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
     }
 
-    private static class GradientBackground extends JPanel {
+    private static class SetupBackgroundPanel extends JPanel {
         @Override protected void paintComponent(Graphics graphics) {
             super.paintComponent(graphics);
             Graphics2D g = (Graphics2D) graphics.create();
@@ -225,30 +203,24 @@ public class GameSetupView extends JFrame {
         }
     }
 
-
     // Visual illustration in the same style as the new main menu.
-    private static class SetupHero extends JPanel {
-        SetupHero() { setOpaque(false); }
-
+    private static class SetupHeroPanel extends JPanel {
+        SetupHeroPanel() { setOpaque(false); }
         @Override protected void paintComponent(Graphics graphics) {
             super.paintComponent(graphics);
             Graphics2D g = (Graphics2D) graphics.create();
             quality(g);
-
             g.setColor(new Color(177, 186, 240));
             g.setFont(new Font("Segoe UI", Font.BOLD, 13));
             g.drawString("THE FUN STARTS HERE", 39, 75);
-
             g.setColor(Color.WHITE);
             g.setFont(new Font("Segoe UI", Font.BOLD, 58));
             g.drawString("Your game.", 35, 148);
             g.drawString("Your rules.", 35, 211);
-
             g.setFont(new Font("Segoe UI", Font.PLAIN, 17));
             g.setColor(TEXT_LIGHT);
             g.drawString("Pick your crew, set the challenge,", 39, 257);
             g.drawString("and get ready to roll!", 39, 284);
-
             // Draw a mini Ludo-inspired board; no external assets needed.
             int bx = 110, by = 320, size = 210, half = size / 2;
             g.setColor(new Color(4, 9, 29, 65));
@@ -263,12 +235,10 @@ public class GameSetupView extends JFrame {
             g.fillRoundRect(bx, by + half, half, half, 13, 13);
             g.setColor(new Color(255, 195, 78));
             g.fillRoundRect(bx + half, by + half, half, half, 13, 13);
-
             drawHome(g, bx, by, half);
             drawHome(g, bx + half, by, half);
             drawHome(g, bx, by + half, half);
             drawHome(g, bx + half, by + half, half);
-
             g.setColor(new Color(248, 249, 255));
             g.fillRoundRect(bx + half - 27, by + half - 27, 54, 54, 17, 17);
             g.setColor(new Color(92, 101, 185));
@@ -279,7 +249,6 @@ public class GameSetupView extends JFrame {
             g.fillPolygon(diamond);
             g.dispose();
         }
-
         private void drawHome(Graphics2D g, int x, int y, int square) {
             g.setColor(new Color(255, 255, 255, 215));
             g.fillRoundRect(x + 17, y + 17, square - 34, square - 34, 17, 17);
@@ -302,8 +271,8 @@ public class GameSetupView extends JFrame {
         }
     }
 
-    private static class RoundedCard extends JPanel {
-        RoundedCard() { setOpaque(false); }
+    private static class SetupCardPanel extends JPanel {
+        SetupCardPanel() { setOpaque(false); }
         @Override protected void paintComponent(Graphics graphics) {
             Graphics2D g = (Graphics2D) graphics.create();
             quality(g);
@@ -322,7 +291,6 @@ public class GameSetupView extends JFrame {
         private final String caption;
         private boolean selectedState;
         private boolean hovered;
-
         ChoiceCard(String label, String caption) {
             this.label = label;
             this.caption = caption;
@@ -337,12 +305,10 @@ public class GameSetupView extends JFrame {
                 @Override public void mouseExited(MouseEvent e) { hovered = false; repaint(); }
             });
         }
-
         void setSelectedState(boolean selectedState) {
             this.selectedState = selectedState;
             repaint();
         }
-
         @Override protected void paintComponent(Graphics graphics) {
             Graphics2D g = (Graphics2D) graphics.create();
             quality(g);
@@ -353,7 +319,6 @@ public class GameSetupView extends JFrame {
             g.setColor(selectedState ? BLUE : new Color(225, 230, 242));
             g.setStroke(new BasicStroke(selectedState ? 2.3f : 1.2f));
             g.drawRoundRect(3, 3, w - 7, h - 7, 18, 18);
-
             g.setColor(selectedState ? BLUE : NAVY);
             Font mainFont = new Font("Segoe UI", Font.BOLD, label.length() >= 5 ? 19 : 25);
             g.setFont(mainFont);
@@ -375,7 +340,6 @@ public class GameSetupView extends JFrame {
     private static class ActionButton extends JButton {
         private final boolean primary;
         private boolean hovered;
-
         ActionButton(String label, boolean primary) {
             super(label);
             this.primary = primary;
@@ -393,7 +357,6 @@ public class GameSetupView extends JFrame {
                 @Override public void mouseExited(MouseEvent e) { hovered = false; repaint(); }
             });
         }
-
         @Override protected void paintComponent(Graphics graphics) {
             Graphics2D g = (Graphics2D) graphics.create();
             quality(g);
@@ -427,8 +390,4 @@ public class GameSetupView extends JFrame {
         }
     }
 
-    public JComboBox<Integer> getPlayerCountComboBox() { return playerCountComboBox; }
-    public JComboBox<String> getDifficultyComboBox() { return difficultyComboBox; }
-    public JButton getContinueButton() { return continueButton; }
-    public JButton getBackButton() { return backButton; }
 }

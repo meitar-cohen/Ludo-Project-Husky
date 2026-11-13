@@ -1,4 +1,4 @@
-package tests;
+package Tests;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -8,8 +8,8 @@ import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
 import Model.Game;
-import enums.Stage;
-import View.GameView;
+import Enums.Stage;
+import View.GameScreen;
 import View.BoardPanel;
 
 public class ExactHomeFinishViewCheck {
@@ -34,12 +34,12 @@ public class ExactHomeFinishViewCheck {
 
         SwingUtilities.invokeAndWait(() -> {
 
-            GameView view = null;
+            GameScreen view = null;
 
             try {
 
                 // יצירת מסך המשחק
-                view = new GameView(TestPlayers.of(new String[]{"A", "B"}, new String[]{"Red", "Blue"}), level);
+                view = new GameScreen(TestPlayers.of(new String[]{"A", "B"}, new String[]{"Red", "Blue"}), level);
 
                 Game game = (Game) field(view, "game");
 
@@ -63,7 +63,7 @@ public class ExactHomeFinishViewCheck {
                         level + ": home setup");
 
                 // הפעלת בחירת הכלי דרך מסך המשחק
-                Method click = GameView.class.getDeclaredMethod(
+                Method click = GameScreen.class.getDeclaredMethod(
                         "onBoardPieceClicked", int.class
                 );
 
@@ -132,7 +132,7 @@ public class ExactHomeFinishViewCheck {
         }
 
         System.out.println(
-                "PASS - " + level + " exact finish in GameView");
+                "PASS - " + level + " exact finish in GameScreen");
     }
 
     public static void main(String[] args) throws Exception {

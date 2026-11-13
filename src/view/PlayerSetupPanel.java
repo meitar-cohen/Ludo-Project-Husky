@@ -1,8 +1,7 @@
 package View;
 
-import controller.SetupController;
+import Controllers.GameController;
 import Model.Player;
-
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
@@ -13,51 +12,48 @@ import java.awt.event.MouseEvent;
 import java.awt.geom.Ellipse2D;
 
 /**
- * מסך פרטי שחקנים להגדרת משחק.
- * משתמש ב־Swing בלבד ושומר על אימות הקלט וניווט המשחק.
+ * Collects player names and colors before the game starts.
  */
-public class PlayerDetailsScreen extends JPanel {
+public class PlayerSetupPanel extends JPanel {
 
-    private final int numPlayers;
+    final int numPlayers;
     private final String difficulty;
     private final JTextField[] nameFields;
     private final JComboBox<String>[] colorSelectors;
     private JLabel errorLabel;
 
-    private static final Color NAVY = new Color(12, 20, 49);
-    private static final Color BLUE = new Color(75, 110, 248);
-    private static final Color MUTED = new Color(111, 123, 151);
-    private static final Color[] PLAYER_COLORS = {
+    static final Color NAVY = new Color(12, 20, 49);
+    static final Color BLUE = new Color(75, 110, 248);
+    static final Color MUTED = new Color(111, 123, 151);
+    static final Color[] PLAYER_COLORS = {
         new Color(255, 99, 124), new Color(77, 126, 250),
         new Color(46, 191, 147), new Color(255, 190, 75)
     };
-    private static final String[] COLOR_NAMES = {"Red", "Blue", "Green", "Yellow"};
+    static final String[] COLOR_NAMES = {"Red", "Blue", "Green", "Yellow"};
 
-    public PlayerDetailsScreen(int selectedPlayers, String difficulty) {
+    public PlayerSetupPanel(int selectedPlayers, String difficulty) {
         this.numPlayers = Math.max(2, Math.min(4, selectedPlayers));
         this.difficulty = difficulty == null ? "Easy" : difficulty;
         this.nameFields = new JTextField[this.numPlayers];
         @SuppressWarnings("unchecked")
         JComboBox<String>[] selectors = (JComboBox<String>[]) new JComboBox<?>[this.numPlayers];
         this.colorSelectors = selectors;
-
         setLayout(new GridBagLayout());
         setOpaque(false);
-
         JPanel content = new JPanel(new GridLayout(1, 2, 28, 0));
         content.setOpaque(false);
         content.setPreferredSize(new Dimension(1020, 574));
-        content.add(new PlayerHero());
+        content.add(new PlayerHeroPanel(this));
         content.add(buildDetailsCard());
         add(content);
     }
 
-    public PlayerDetailsScreen(int selectedPlayers) {
+    public PlayerSetupPanel(int selectedPlayers) {
         this(selectedPlayers, "Easy");
     }
 
-    // GameSetupView currently creates a 700x600 host window. Enlarge it for this
-    // matching two-column layout without requiring edits to GameSetupView.java.
+    // GameSetupScreen currently creates a 700x600 host window. Enlarge it for this
+    // matching two-column layout without requiring edits to GameSetupScreen.java.
     @Override
     public void addNotify() {
         super.addNotify();
@@ -86,40 +82,34 @@ public class PlayerDetailsScreen extends JPanel {
     }
 
     private JPanel buildDetailsCard() {
-        JPanel card = new RoundedCard();
+        JPanel card = new PlayerDetailsCardPanel();
         card.setLayout(new BorderLayout(0, 0));
         card.setBorder(new EmptyBorder(23, 28, 17, 28));
-
         JPanel header = new JPanel();
         header.setOpaque(false);
         header.setLayout(new BoxLayout(header, BoxLayout.Y_AXIS));
         header.setBorder(new EmptyBorder(0, 0, 15, 0));
-
         JLabel eyebrow = new JLabel("STEP 02  /  PLAYER DETAILS");
         eyebrow.setFont(new Font("Segoe UI", Font.BOLD, 12));
         eyebrow.setForeground(BLUE);
         eyebrow.setAlignmentX(Component.LEFT_ALIGNMENT);
         header.add(eyebrow);
         header.add(Box.createVerticalStrut(7));
-
         JLabel title = new JLabel("Create Your Players");
         title.setFont(new Font("Segoe UI", Font.BOLD, 28));
         title.setForeground(NAVY);
         title.setAlignmentX(Component.LEFT_ALIGNMENT);
         header.add(title);
         header.add(Box.createVerticalStrut(5));
-
         JLabel subtitle = new JLabel("Pick names & colors for your crew.");
         subtitle.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         subtitle.setForeground(MUTED);
         subtitle.setAlignmentX(Component.LEFT_ALIGNMENT);
         header.add(subtitle);
         card.add(header, BorderLayout.NORTH);
-
         JPanel players = new JPanel();
         players.setOpaque(false);
         players.setLayout(new BoxLayout(players, BoxLayout.Y_AXIS));
-
         for (int i = 0; i < numPlayers; i++) {
             JPanel row = buildPlayerRow(i);
             row.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -127,45 +117,38 @@ public class PlayerDetailsScreen extends JPanel {
             if (i < numPlayers - 1) players.add(Box.createVerticalStrut(8));
         }
         card.add(players, BorderLayout.CENTER);
-
         JPanel footer = new JPanel();
         footer.setOpaque(false);
         footer.setLayout(new BoxLayout(footer, BoxLayout.Y_AXIS));
         footer.setBorder(new EmptyBorder(12, 0, 0, 0));
-
         errorLabel = new JLabel(" ");
         errorLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         errorLabel.setForeground(new Color(211, 65, 90));
         errorLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         footer.add(errorLabel);
         footer.add(Box.createVerticalStrut(6));
-
         JPanel actions = new JPanel(new GridLayout(1, 2, 11, 0));
         actions.setOpaque(false);
         actions.setAlignmentX(Component.LEFT_ALIGNMENT);
         actions.setMaximumSize(new Dimension(Integer.MAX_VALUE, 51));
         actions.setPreferredSize(new Dimension(430, 51));
-
         JButton backButton = new ActionButton("Back", false);
         backButton.addActionListener(e -> {
             Window window = SwingUtilities.getWindowAncestor(this);
-            new GameSetupView().setVisible(true);
+            new GameSetupScreen().setVisible(true);
             if (window != null) window.dispose();
         });
-
         JButton startButton = new ActionButton("Start Game", true);
         startButton.addActionListener(e -> handleStartGame());
         actions.add(backButton);
         actions.add(startButton);
         footer.add(actions);
         footer.add(Box.createVerticalStrut(10));
-
         JLabel note = new JLabel("Each player needs a unique name and color.");
         note.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         note.setForeground(MUTED);
         note.setAlignmentX(Component.CENTER_ALIGNMENT);
         footer.add(note);
-
         card.add(footer, BorderLayout.SOUTH);
         return card;
     }
@@ -175,18 +158,16 @@ public class PlayerDetailsScreen extends JPanel {
      * Creates the name field and color selection controls for one player.
      */
     private JPanel buildPlayerRow(int index) {
-        JPanel row = new PlayerCard();
+        JPanel row = new PlayerCardPanel();
         row.setLayout(new BorderLayout(12, 0));
         row.setBorder(new EmptyBorder(8, 12, 8, 12));
         row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 83));
         row.setPreferredSize(new Dimension(430, 83));
-
         JLabel number = new JLabel(String.format("%02d", index + 1), SwingConstants.CENTER);
         number.setFont(new Font("Segoe UI", Font.BOLD, 17));
         number.setForeground(PLAYER_COLORS[index].darker());
         number.setPreferredSize(new Dimension(38, 55));
         row.add(number, BorderLayout.WEST);
-
         JPanel nameBlock = new JPanel(new BorderLayout(0, 5));
         nameBlock.setOpaque(false);
         JLabel playerLabel = new JLabel("PLAYER " + (index + 1));
@@ -197,7 +178,6 @@ public class PlayerDetailsScreen extends JPanel {
         nameFields[index] = field;
         nameBlock.add(field, BorderLayout.CENTER);
         row.add(nameBlock, BorderLayout.CENTER);
-
         JPanel colorBlock = new JPanel(new BorderLayout(0, 5));
         colorBlock.setOpaque(false);
         colorBlock.setPreferredSize(new Dimension(148, 55));
@@ -205,7 +185,6 @@ public class PlayerDetailsScreen extends JPanel {
         colorLabel.setFont(new Font("Segoe UI", Font.BOLD, 10));
         colorLabel.setForeground(MUTED);
         colorBlock.add(colorLabel, BorderLayout.NORTH);
-
         JPanel choices = new JPanel(new GridLayout(1, 4, 4, 0));
         choices.setOpaque(false);
         ColorChip[] chips = new ColorChip[COLOR_NAMES.length];
@@ -235,7 +214,7 @@ public class PlayerDetailsScreen extends JPanel {
     /**
      * SRS 3.2.1.3.1 -
      * Collects the selected game settings and starts the game after
-     * האימות מתבצע באמצעות SetupController.
+     * validating the setup values.
      */
     private void handleStartGame() {
         errorLabel.setForeground(new Color(211, 65, 90));
@@ -245,68 +224,42 @@ public class PlayerDetailsScreen extends JPanel {
             names[i] = nameFields[i].getText().trim();
             colors[i] = (String) colorSelectors[i].getSelectedItem();
         }
-
         String error =
-                SetupController.validatePlayers(names, colors);
+                GameController.validatePlayers(names, colors);
         if (error != null) {
             errorLabel.setText(error);
             int invalidNameIndex =
-                    SetupController.findInvalidNameIndex(names);
+                    GameController.findInvalidNameIndex(names);
             if (invalidNameIndex >= 0) {
                 nameFields[invalidNameIndex].requestFocusInWindow();
             }
             return;
         }
-
         errorLabel.setForeground(new Color(25, 150, 112));
         errorLabel.setText("Success! Loading game...");
-        Player[] players = SetupController.createPlayers(names, colors);
-
+        Player[] players = GameController.createPlayers(names, colors);
         Window window = SwingUtilities.getWindowAncestor(this);
-        if (window instanceof JFrame) {
-            JFrame frame = (JFrame) window;
-            frame.setTitle("Ludo - Game");
-            frame.setContentPane(new GameView(players, difficulty));
-            frame.setSize(1150, 800);
-            frame.setLocationRelativeTo(null);
-            frame.revalidate();
-            frame.repaint();
+        if (!(window instanceof JFrame)) {
+            errorLabel.setForeground(new Color(211, 65, 90));
+            errorLabel.setText("Unable to open the game window.");
+            return;
         }
+        JFrame frame = (JFrame) window;
+        frame.setTitle("Ludo - Game");
+        frame.setContentPane(new GameScreen(players, difficulty));
+        frame.setSize(1150, 800);
+        frame.setLocationRelativeTo(null);
+        frame.revalidate();
+        frame.repaint();
+        frame.setVisible(true);
     }
 
-    private static void quality(Graphics2D g) {
+    static void quality(Graphics2D g) {
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
     }
 
-    private static class RoundedCard extends JPanel {
-        RoundedCard() { setOpaque(false); }
-        @Override protected void paintComponent(Graphics graphics) {
-            Graphics2D g = (Graphics2D) graphics.create();
-            quality(g);
-            g.setColor(new Color(0, 0, 0, 28));
-            g.fillRoundRect(4, 8, getWidth() - 7, getHeight() - 10, 28, 28);
-            g.setColor(new Color(249, 250, 255));
-            g.fillRoundRect(0, 0, getWidth() - 6, getHeight() - 8, 27, 27);
-            g.dispose();
-        }
-    }
-
-    private static class PlayerCard extends JPanel {
-        PlayerCard() { setOpaque(false); }
-        @Override protected void paintComponent(Graphics graphics) {
-            Graphics2D g = (Graphics2D) graphics.create();
-            quality(g);
-            g.setColor(new Color(239, 243, 254));
-            g.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 17, 17);
-            g.setColor(new Color(220, 227, 245));
-            g.setStroke(new BasicStroke(1));
-            g.drawRoundRect(0, 0, getWidth() - 2, getHeight() - 2, 17, 17);
-            g.dispose();
-        }
-    }
-
-    private static class RoundedTextField extends JTextField {
+    static class RoundedTextField extends JTextField {
         private final String placeholder;
         RoundedTextField(String placeholder) {
             this.placeholder = placeholder;
@@ -341,7 +294,7 @@ public class PlayerDetailsScreen extends JPanel {
         }
     }
 
-    private static class ColorChip extends JButton {
+    static class ColorChip extends JButton {
         private final Color color;
         private boolean selectedColor;
         private boolean hovered;
@@ -390,7 +343,7 @@ public class PlayerDetailsScreen extends JPanel {
         }
     }
 
-    private static class ActionButton extends JButton {
+    static class ActionButton extends JButton {
         private final boolean primary;
         private boolean hovered;
         ActionButton(String text, boolean primary) {
@@ -428,45 +381,73 @@ public class PlayerDetailsScreen extends JPanel {
         }
     }
 
-    private class PlayerHero extends JPanel {
-        PlayerHero() { setOpaque(false); }
-        @Override protected void paintComponent(Graphics graphics) {
-            super.paintComponent(graphics);
-            Graphics2D g = (Graphics2D) graphics.create();
-            quality(g);
-            g.setColor(new Color(180, 193, 246));
-            g.setFont(new Font("Segoe UI", Font.BOLD, 13));
-            g.drawString("YOUR CREW, YOUR STORY", 39, 80);
-
-            g.setColor(Color.WHITE);
-            g.setFont(new Font("Segoe UI", Font.BOLD, 44));
-            g.drawString("The best games", 37, 139);
-            g.drawString("start together.", 37, 196);
-
-            g.setColor(new Color(206, 216, 251));
-            g.setFont(new Font("Segoe UI", Font.PLAIN, 16));
-            g.drawString("Choose your teammates' names", 39, 247);
-            g.drawString("and make every color count.", 39, 273);
-
-            // Four Ludo pawns arranged as a team (vector drawing, no images).
-            int[][] spots = {{145, 400}, {268, 381}, {190, 472}, {326, 481}};
-            for (int i = 0; i < Math.min(4, numPlayers); i++) {
-                int cx = spots[i][0], cy = spots[i][1];
-                g.setColor(new Color(0, 0, 0, 30));
-                g.fillOval(cx - 42, cy + 34, 84, 22);
-                g.setColor(PLAYER_COLORS[i]);
-                g.fillOval(cx - 22, cy - 46, 44, 44);
-                g.fillRoundRect(cx - 17, cy - 14, 34, 58, 18, 18);
-                g.fillRoundRect(cx - 36, cy + 28, 72, 21, 14, 14);
-                g.setColor(new Color(255, 255, 255, 85));
-                g.fillOval(cx - 14, cy - 39, 15, 10);
-                g.setColor(new Color(255, 255, 255, 135));
-                g.setFont(new Font("Segoe UI", Font.BOLD, 16));
-                String n = "" + (i + 1);
-                FontMetrics fm = g.getFontMetrics();
-                g.drawString(n, cx - fm.stringWidth(n)/2, cy + 20);
+    private static class PlayerCardPanel extends JPanel {
+            PlayerCardPanel() { setOpaque(false); }
+            @Override protected void paintComponent(Graphics graphics) {
+                Graphics2D g = (Graphics2D) graphics.create();
+                PlayerSetupPanel.quality(g);
+                g.setColor(new Color(239, 243, 254));
+                g.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 17, 17);
+                g.setColor(new Color(220, 227, 245));
+                g.setStroke(new BasicStroke(1));
+                g.drawRoundRect(0, 0, getWidth() - 2, getHeight() - 2, 17, 17);
+                g.dispose();
             }
-            g.dispose();
+    }
+
+    private static class PlayerDetailsCardPanel extends JPanel {
+            PlayerDetailsCardPanel() { setOpaque(false); }
+            @Override protected void paintComponent(Graphics graphics) {
+                Graphics2D g = (Graphics2D) graphics.create();
+                PlayerSetupPanel.quality(g);
+                g.setColor(new Color(0, 0, 0, 28));
+                g.fillRoundRect(4, 8, getWidth() - 7, getHeight() - 10, 28, 28);
+                g.setColor(new Color(249, 250, 255));
+                g.fillRoundRect(0, 0, getWidth() - 6, getHeight() - 8, 27, 27);
+                g.dispose();
+            }
+    }
+
+    private static class PlayerHeroPanel extends JPanel {
+        private final PlayerSetupPanel owner;
+        PlayerHeroPanel(PlayerSetupPanel owner) {
+            this.owner = owner;
+            setOpaque(false);
         }
+            @Override protected void paintComponent(Graphics graphics) {
+                super.paintComponent(graphics);
+                Graphics2D g = (Graphics2D) graphics.create();
+                PlayerSetupPanel.quality(g);
+                g.setColor(new Color(180, 193, 246));
+                g.setFont(new Font("Segoe UI", Font.BOLD, 13));
+                g.drawString("YOUR CREW, YOUR STORY", 39, 80);
+                g.setColor(Color.WHITE);
+                g.setFont(new Font("Segoe UI", Font.BOLD, 44));
+                g.drawString("The best games", 37, 139);
+                g.drawString("start together.", 37, 196);
+                g.setColor(new Color(206, 216, 251));
+                g.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+                g.drawString("Choose your teammates' names", 39, 247);
+                g.drawString("and make every color count.", 39, 273);
+                // Four Ludo pawns arranged as a team (vector drawing, no images).
+                int[][] spots = {{145, 400}, {268, 381}, {190, 472}, {326, 481}};
+                for (int i = 0; i < Math.min(4, owner.numPlayers); i++) {
+                    int cx = spots[i][0], cy = spots[i][1];
+                    g.setColor(new Color(0, 0, 0, 30));
+                    g.fillOval(cx - 42, cy + 34, 84, 22);
+                    g.setColor(PlayerSetupPanel.PLAYER_COLORS[i]);
+                    g.fillOval(cx - 22, cy - 46, 44, 44);
+                    g.fillRoundRect(cx - 17, cy - 14, 34, 58, 18, 18);
+                    g.fillRoundRect(cx - 36, cy + 28, 72, 21, 14, 14);
+                    g.setColor(new Color(255, 255, 255, 85));
+                    g.fillOval(cx - 14, cy - 39, 15, 10);
+                    g.setColor(new Color(255, 255, 255, 135));
+                    g.setFont(new Font("Segoe UI", Font.BOLD, 16));
+                    String n = "" + (i + 1);
+                    FontMetrics fm = g.getFontMetrics();
+                    g.drawString(n, cx - fm.stringWidth(n)/2, cy + 20);
+                }
+                g.dispose();
+            }
     }
 }

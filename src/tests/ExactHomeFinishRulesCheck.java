@@ -1,8 +1,8 @@
-package tests;
+package Tests;
 
 import Model.Game;
-import controller.GameController;
-import enums.Stage;
+import Tests.Controllers.GameController;
+import Enums.Stage;
 
 public class ExactHomeFinishRulesCheck {
 

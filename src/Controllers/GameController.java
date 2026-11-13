@@ -1,26 +1,87 @@
-package controller;
+package Controllers;
 
 import java.util.Random;
-import enums.RollAction;
-import enums.Stage;
+import java.util.HashSet;
+import java.util.Set;
+import Enums.RollAction;
+import Enums.Stage;
 import Model.Game;
 import Model.Player;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * בקר קוביות, תורות ושלבי המשחק.
- */
-public class TurnController {
+/** Coordinates game setup, dice rolls, turns, and game phases. */
+public class GameController {
     private final Game game;
     private final MovementController pieces;
     private final Random random = new Random();
     private long startTimeMillis = -1;
     private long endTimeMillis = -1;
 
-    public TurnController(Game game, MovementController pieces) {
+    public GameController(Game game, MovementController pieces) {
         this.game = game;
         this.pieces = pieces;
+    }
+
+    /** Returns the first validation error, or null when the setup is valid. */
+    public static String validatePlayers(String[] names, String[] colors) {
+        if (names == null || colors == null || names.length != colors.length) {
+            return "Players must be provided.";
+        }
+        Set<String> usedNames = new HashSet<>();
+        Set<String> usedColors = new HashSet<>();
+
+        for (int i = 0; i < names.length; i++) {
+            String name = names[i] == null ? "" : names[i].trim();
+            if (name.isEmpty()) {
+                return "Enter a name for player " + (i + 1) + ".";
+            }
+            if (!containsLetter(name)) {
+                return "Player " + (i + 1)
+                        + "'s name must contain at least one letter.";
+            }
+            if (!usedNames.add(name.toLowerCase())) {
+                return "Each player must have a different name.";
+            }
+            if (colors[i] == null || !usedColors.add(colors[i])) {
+                return "Each player must have a different color.";
+            }
+        }
+        return null;
+    }
+
+    /** Returns the first invalid player-name index, or -1 when all are valid. */
+    public static int findInvalidNameIndex(String[] names) {
+        if (names == null) {
+            return 0;
+        }
+        Set<String> usedNames = new HashSet<>();
+        for (int i = 0; i < names.length; i++) {
+            String name = names[i] == null ? "" : names[i].trim();
+            if (name.isEmpty() || !containsLetter(name)
+                    || !usedNames.add(name.toLowerCase())) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static boolean containsLetter(String text) {
+        for (int i = 0; i < text.length(); i++) {
+            if (Character.isLetter(text.charAt(i))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Creates model players from the setup form values. */
+    public static Player[] createPlayers(String[] names, String[] colors) {
+        Player[] players = new Player[names.length];
+        for (int i = 0; i < players.length; i++) {
+            players[i] = new Player(names[i], colors[i]);
+        }
+        return players;
     }
 
     public boolean canRoll() {

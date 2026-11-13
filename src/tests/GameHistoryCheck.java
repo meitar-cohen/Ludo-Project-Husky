@@ -1,10 +1,9 @@
-package tests;
+package Tests;
 
-import controller.GameController;
-import controller.HistoryController;
-import controller.MovementController;
-import controller.TurnController;
-import enums.Stage;
+import Tests.Controllers.GameController;
+import Controllers.HistoryController;
+import Controllers.MovementController;
+import Enums.Stage;
 import Model.Game;
 import Model.GameRecord;
 import Model.Player;
@@ -84,7 +83,7 @@ public class GameHistoryCheck {
                 new String[] {"Red", "Blue", "Green"}), "Medium");
         game.setPlayerFinished(2, true);
         game.setPlayerFinished(0, true);
-        TurnController turns = new TurnController(
+        Controllers.GameController turns = new Controllers.GameController(
                 game, new MovementController(game));
         Player[] ranking = turns.getRanking();
         check("ranking follows the finish order",
@@ -115,7 +114,7 @@ public class GameHistoryCheck {
         Game unplayed = new Game(TestPlayers.of(new String[] {"A", "B"},
                 new String[] {"Red", "Blue"}), "Easy");
         File unplayedFile = new File(dir, "unplayed.csv");
-        TurnController unplayedTurns = new TurnController(
+        Controllers.GameController unplayedTurns = new Controllers.GameController(
                 unplayed, new MovementController(unplayed));
         new HistoryController(unplayedFile).saveFinishedGame(
                 unplayed, unplayedTurns);
@@ -126,7 +125,7 @@ public class GameHistoryCheck {
         check("create blocking folder", blocked.mkdir());
         Game failing = new Game(TestPlayers.of(new String[] {"A", "B"},
                 new String[] {"Red", "Blue"}), "Easy");
-        TurnController failingTurns = new TurnController(
+        Controllers.GameController failingTurns = new Controllers.GameController(
                 failing, new MovementController(failing));
         failingTurns.startGameClock();
         String error = new HistoryController(blocked).saveFinishedGame(

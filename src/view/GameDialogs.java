@@ -5,10 +5,6 @@ import java.awt.event.ActionEvent;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 
-/**
- * Styled modal dialogs for the Ludo game.
- * Uses Java Swing only, so no external libraries are required.
- */
 public final class GameDialogs {
 
     private static final Color INK = new Color(31, 42, 98);
@@ -26,10 +22,8 @@ public final class GameDialogs {
     public static int chooseMove(Component parent) {
         final JDialog dialog = createDialog(parent, 640, 276);
         final int[] choice = {-1};
-
         JPanel card = createCard(dialog, "Choose your move");
         card.add(messageRow("6", "You rolled a 6! Choose your move:", false), BorderLayout.CENTER);
-
         JPanel buttons = buttonRow();
         JButton takeOut = new PillButton("Take out a piece", true);
         takeOut.addActionListener(e -> {
@@ -44,7 +38,6 @@ public final class GameDialogs {
         buttons.add(takeOut);
         buttons.add(moveOnBoard);
         card.add(buttons, BorderLayout.SOUTH);
-
         dialog.setContentPane(card);
         dialog.setLocationRelativeTo(parent);
         dialog.setVisible(true);
@@ -55,31 +48,23 @@ public final class GameDialogs {
     public static boolean confirmLeave(Component parent) {
         final JDialog dialog = createDialog(parent, 590, 286);
         final boolean[] confirmed = {false};
-
         JPanel card = createCard(dialog, "Leave game");
         card.add(messageRow("!", "<html>Leave the game? An unfinished game<br>is not saved to the history.</html>", true),
                 BorderLayout.CENTER);
-
-
 		JPanel buttons = new JPanel(new GridLayout(1, 2, 12, 0));
 		buttons.setOpaque(false);
-		
-		// אישור יציאה מהמשחק
-		JButton yes = new PillButton("Yes, leave game", true);
+
+        JButton yes = new PillButton("Yes, leave game", true);
 		yes.addActionListener(e -> {
 		    confirmed[0] = true;
 		    dialog.dispose();
 		});
-		
-		// ביטול היציאה והמשך המשחק
-		JButton no = new PillButton("No, keep playing", false);
+
+        JButton no = new PillButton("No, keep playing", false);
 		no.addActionListener(e -> dialog.dispose());
-		
 		buttons.add(yes);
 		buttons.add(no);
 		card.add(buttons, BorderLayout.SOUTH);
-
-
         dialog.setContentPane(card);
         dialog.setLocationRelativeTo(parent);
         dialog.setVisible(true);
@@ -125,14 +110,12 @@ public final class GameDialogs {
         };
         card.setOpaque(false);
         card.setBorder(new EmptyBorder(25, 35, 30, 39));
-
         JPanel header = new JPanel(new BorderLayout());
         header.setOpaque(false);
         JLabel heading = new JLabel(title);
         heading.setForeground(INK);
         heading.setFont(new Font("Segoe UI", Font.BOLD, 27));
         header.add(heading, BorderLayout.WEST);
-
         JButton close = new JButton("\u00d7");
         close.setForeground(new Color(100, 111, 162));
         close.setFont(new Font("Segoe UI", Font.PLAIN, 29));
@@ -172,13 +155,11 @@ public final class GameDialogs {
     private static final class RoundBadge extends JComponent {
         private final String symbol;
         private final boolean warning;
-
         RoundBadge(String symbol, boolean warning) {
             this.symbol = symbol;
             this.warning = warning;
             setPreferredSize(new Dimension(66, 66));
         }
-
         @Override
         protected void paintComponent(Graphics g) {
             Graphics2D g2 = (Graphics2D) g.create();
@@ -199,7 +180,6 @@ public final class GameDialogs {
 
     private static final class PillButton extends JButton {
         private final boolean primary;
-
         PillButton(String text, boolean primary) {
             super(text);
             this.primary = primary;
@@ -213,7 +193,6 @@ public final class GameDialogs {
             setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             setRolloverEnabled(true);
         }
-
         @Override
         protected void paintComponent(Graphics g) {
             Graphics2D g2 = (Graphics2D) g.create();

@@ -1,8 +1,7 @@
 package View;
 
-import controller.HistoryController;
+import Controllers.HistoryController;
 import Model.GameRecord;
-
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -17,7 +16,7 @@ import java.util.List;
  * Game history screen.
  * SRS 3.2.8.3.4 - shows the games saved in the history file (through HistoryController).
  */
-public class GameHistoryView extends JFrame {
+public class GameHistoryScreen extends JFrame {
 
     private static final Color NAVY = new Color(20, 27, 65);
     private static final Color BLUE = new Color(75, 110, 248);
@@ -33,11 +32,11 @@ public class GameHistoryView extends JFrame {
     private final String historyFileName;
     private JTable table;
 
-    public GameHistoryView() {
+    public GameHistoryScreen() {
         this(new HistoryController());
     }
 
-    public GameHistoryView(HistoryController controller) {
+    public GameHistoryScreen(HistoryController controller) {
         // SRS 3.2.8.3.4 - the saved games are read from the history file
         this.history = controller.loadHistory();
         this.skippedRows = controller.getSkippedRows();
@@ -48,18 +47,14 @@ public class GameHistoryView extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         setResizable(false);
-
-        JPanel background = new GradientBackground();
+        JPanel background = new HistoryBackgroundPanel();
         background.setLayout(new GridBagLayout());
-
-        RoundedSurface main = new RoundedSurface(Color.WHITE, 30);
+        HistorySurfacePanel main = new HistorySurfacePanel(Color.WHITE, 30);
         main.setPreferredSize(new Dimension(970, 640));
         main.setLayout(new BorderLayout(0, 22));
         main.setBorder(new EmptyBorder(31, 37, 28, 37));
         background.add(main);
-
         main.add(createHeader(), BorderLayout.NORTH);
-
         JPanel content = new JPanel();
         content.setOpaque(false);
         content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
@@ -68,9 +63,7 @@ public class GameHistoryView extends JFrame {
         content.add(createRankingPanel());
         main.add(content, BorderLayout.CENTER);
         main.add(createFooter(), BorderLayout.SOUTH);
-
         setContentPane(background);
-
         if (!history.isEmpty()) {
             table.setRowSelectionInterval(0, 0);   // show the standings of the newest game
         }
@@ -79,32 +72,27 @@ public class GameHistoryView extends JFrame {
     private JPanel createHeader() {
         JPanel header = new JPanel(new BorderLayout(15, 0));
         header.setOpaque(false);
-
         JPanel headings = new JPanel();
         headings.setLayout(new BoxLayout(headings, BoxLayout.Y_AXIS));
         headings.setOpaque(false);
-
         JLabel kicker = new JLabel("YOUR LUDO JOURNEY");
         kicker.setForeground(BLUE);
         kicker.setFont(new Font("Segoe UI", Font.BOLD, 12));
         kicker.setAlignmentX(Component.LEFT_ALIGNMENT);
         headings.add(kicker);
         headings.add(Box.createVerticalStrut(6));
-
         JLabel title = new JLabel("Game History");
         title.setFont(new Font("Segoe UI", Font.BOLD, 35));
         title.setForeground(NAVY);
         title.setAlignmentX(Component.LEFT_ALIGNMENT);
         headings.add(title);
         headings.add(Box.createVerticalStrut(3));
-
         JLabel subtitle = new JLabel("Explore past games and their final standings.");
         subtitle.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         subtitle.setForeground(MUTED);
         subtitle.setAlignmentX(Component.LEFT_ALIGNMENT);
         headings.add(subtitle);
         header.add(headings, BorderLayout.CENTER);
-
         int saved = history.size();
         JLabel count = new JLabel(saved == 0 ? "  NO SAVED GAMES  "
                 : "  " + saved + (saved == 1 ? " SAVED GAME  " : " SAVED GAMES  "));
@@ -121,12 +109,11 @@ public class GameHistoryView extends JFrame {
     }
 
     private JComponent createGamesTable() {
-        RoundedSurface container = new RoundedSurface(LIGHT, 21);
+        HistorySurfacePanel container = new HistorySurfacePanel(LIGHT, 21);
         container.setLayout(new BorderLayout());
         container.setMaximumSize(new Dimension(Integer.MAX_VALUE, 219));
         container.setPreferredSize(new Dimension(880, 219));
         container.setBorder(new EmptyBorder(10, 13, 10, 13));
-
         String[] columns = {"GAME", "DATE & TIME", "DIFFICULTY", "WINNER", "DURATION"};
         DefaultTableModel model = new DefaultTableModel(new Object[0][columns.length], columns) {
             @Override public boolean isCellEditable(int row, int column) { return false; }
@@ -140,7 +127,6 @@ public class GameHistoryView extends JFrame {
                 game.getDuration()
             });
         }
-
         table = new JTable(model);
         table.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         table.setRowHeight(49);
@@ -151,26 +137,22 @@ public class GameHistoryView extends JFrame {
         table.setSelectionBackground(new Color(227, 234, 255));
         table.setSelectionForeground(NAVY);
         table.setBackground(Color.WHITE);
-
         table.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 11));
         table.getTableHeader().setBackground(new Color(238, 242, 251));
         table.getTableHeader().setForeground(MUTED);
         table.getTableHeader().setPreferredSize(new Dimension(100, 39));
         table.getTableHeader().setReorderingAllowed(false);
-
         int[] widths = {90, 200, 145, 125, 122};
         for (int i = 0; i < columns.length; i++) {
             table.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
             table.getColumnModel().getColumn(i).setCellRenderer(new HistoryCellRenderer(i));
         }
-
         JScrollPane scroll = new JScrollPane(table);
         scroll.setBorder(BorderFactory.createEmptyBorder());
         scroll.getViewport().setBackground(Color.WHITE);
         scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         scroll.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
         container.add(scroll, BorderLayout.CENTER);
-
         table.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting() && table.getSelectedRow() >= 0) {
                 int index = table.convertRowIndexToModel(table.getSelectedRow());
@@ -182,12 +164,11 @@ public class GameHistoryView extends JFrame {
     }
 
     private JComponent createRankingPanel() {
-        RoundedSurface panel = new RoundedSurface(new Color(247, 249, 254), 21);
+        HistorySurfacePanel panel = new HistorySurfacePanel(new Color(247, 249, 254), 21);
         panel.setLayout(new BorderLayout(0, 12));
         panel.setPreferredSize(new Dimension(880, 177));
         panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 177));
         panel.setBorder(new EmptyBorder(17, 19, 15, 19));
-
         JPanel head = new JPanel(new BorderLayout());
         head.setOpaque(false);
         JLabel title = new JLabel("FINAL STANDINGS");
@@ -198,7 +179,6 @@ public class GameHistoryView extends JFrame {
         rankingGameLabel.setForeground(MUTED);
         head.add(rankingGameLabel, BorderLayout.EAST);
         panel.add(head, BorderLayout.NORTH);
-
         rankingCards.setOpaque(false);
         panel.add(rankingCards, BorderLayout.CENTER);
         JLabel empty = new JLabel("Complete a game to see its final standings.",
@@ -224,7 +204,7 @@ public class GameHistoryView extends JFrame {
             if (names[i].isEmpty()) {
                 continue;   // fewer than 4 players
             }
-            RoundedSurface card = new RoundedSurface(i == 0 ? new Color(232, 237, 255) : Color.WHITE, 16);
+            HistorySurfacePanel card = new HistorySurfacePanel(i == 0 ? new Color(232, 237, 255) : Color.WHITE, 16);
             card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
             card.setBorder(new EmptyBorder(10, 16, 10, 16));
             card.setPreferredSize(new Dimension(195, 66));
@@ -262,10 +242,9 @@ public class GameHistoryView extends JFrame {
         note.setForeground(MUTED);
         note.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         footer.add(note, BorderLayout.WEST);
-
         JButton back = new ModernButton("Back to Main Menu");
         back.addActionListener(e -> {
-            new MainMenuView().setVisible(true);
+            new MainMenuScreen().setVisible(true);
             dispose();
         });
         footer.add(back, BorderLayout.EAST);
@@ -277,7 +256,7 @@ public class GameHistoryView extends JFrame {
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
     }
 
-    private static class GradientBackground extends JPanel {
+    private static class HistoryBackgroundPanel extends JPanel {
         @Override protected void paintComponent(Graphics graphics) {
             super.paintComponent(graphics);
             Graphics2D g = (Graphics2D) graphics.create();
@@ -293,10 +272,10 @@ public class GameHistoryView extends JFrame {
         }
     }
 
-    private static class RoundedSurface extends JPanel {
+    private static class HistorySurfacePanel extends JPanel {
         private final Color fill;
         private final int radius;
-        RoundedSurface(Color fill, int radius) {
+        HistorySurfacePanel(Color fill, int radius) {
             this.fill = fill;
             this.radius = radius;
             setOpaque(false);
