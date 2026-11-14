@@ -14,7 +14,7 @@ public class StepCalculationCheck {
 
         MovementController controllerPieces = new MovementController(game);
         GameController controller = new GameController(game, controllerPieces);
-        int actual = controller.calculateSteps(stepDie, boostDie);
+        int actual = controller.getTurnController().calculateSteps(stepDie, boostDie);
 
         if (actual != expected) {
             throw new AssertionError(
@@ -45,7 +45,7 @@ public class StepCalculationCheck {
         MovementController controller1Pieces = new MovementController(game1);
         GameController controller1 = new GameController(game1, controller1Pieces);
 
-        String action1 = controller1.finishRoll(4, 3).name();
+        String action1 = controller1.getTurnController().finishRoll(4, 3).name();
 
         if (game1.getPendingSteps() != 8 ||
             !"MOVE".equals(action1)) {
@@ -61,7 +61,7 @@ public class StepCalculationCheck {
         MovementController controller2Pieces = new MovementController(game2);
         GameController controller2 = new GameController(game2, controller2Pieces);
 
-        String action2 = controller2.finishRoll(4, 1).name();
+        String action2 = controller2.getTurnController().finishRoll(4, 1).name();
 
         if (game2.getPendingSteps() != 0 ||
             !"NEED_SIX".equals(action2)) {
@@ -76,7 +76,7 @@ public class StepCalculationCheck {
         MovementController controller3Pieces = new MovementController(game3);
         GameController controller3 = new GameController(game3, controller3Pieces);
 
-        String action3 = controller3.finishRoll(6, 1).name();
+        String action3 = controller3.getTurnController().finishRoll(6, 1).name();
 
         if (game3.getPendingSteps() != 0 ||
             !"TAKE_OUT".equals(action3)) {

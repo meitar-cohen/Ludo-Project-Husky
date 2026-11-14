@@ -12,7 +12,8 @@ public class HomePathCheck {
         // בדיקת מסלול הבית בכל רמה ולכל צבע
         for (String difficulty : levels) {
 
-            BoardPanel board = new BoardPanel(difficulty, colors);
+            BoardPanel board = new BoardPanel(
+                    TestPlayers.gameControllerForBoard(difficulty, colors));
 
             for (String color : colors) {
 

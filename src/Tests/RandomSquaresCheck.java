@@ -1,6 +1,6 @@
 package Tests;
 
-import Controller.BoardController;
+import Controller.GameController;
 import java.awt.Color;
 import java.awt.Point;
 import java.lang.reflect.Field;
@@ -34,9 +34,9 @@ public class RandomSquaresCheck {
         return field.get(object);
     }
 
-    private static BoardController squares(BoardPanel board)
+    private static GameController squares(BoardPanel board)
             throws Exception {
-        return (BoardController) value(board, "boardController");
+        return (GameController) value(board, "turns");
     }
 
     @SuppressWarnings("unchecked")
@@ -53,13 +53,13 @@ public class RandomSquaresCheck {
         return (Map<Point, Color>) value(board, "homeCells");
     }
 
-    private static String type(BoardController squares, Point position) {
+    private static String type(GameController squares, Point position) {
         return squares.getSpecialSquareType(position).toString();
     }
 
     // שמירת המיקומים הקבועים להשוואה בין משחקים
     private static Map<Point, String> fixedSquares(
-            BoardController squares) {
+            GameController squares) {
 
         Map<Point, String> fixed = new HashMap<>();
 
@@ -84,7 +84,7 @@ public class RandomSquaresCheck {
     private static String inspect(BoardPanel board, String level,
             Map<Point, String> originalFixed) throws Exception {
 
-        BoardController special = squares(board);
+        GameController special = squares(board);
         List<List<Point>> routes = routes(board);
         Map<Point, Color> home = home(board);
         List<Point> specialPositions = special.getSpecialSquarePositions();
@@ -237,7 +237,8 @@ public class RandomSquaresCheck {
         for (String level :
                 new String[]{"Easy", "Medium", "Hard"}) {
 
-            BoardPanel initial = new BoardPanel(level, COLORS);
+            BoardPanel initial = new BoardPanel(
+                    TestPlayers.gameControllerForBoard(level, COLORS));
 
             Map<Point, String> fixed =
                     fixedSquares(squares(initial));
@@ -249,7 +250,8 @@ public class RandomSquaresCheck {
             // יצירת 30 משחקים נוספים ובדיקת כל לוח
             for (int i = 0; i < 30; i++) {
 
-                BoardPanel board = new BoardPanel(level, COLORS);
+                BoardPanel board = new BoardPanel(
+                        TestPlayers.gameControllerForBoard(level, COLORS));
 
                 layouts.add(inspect(board, level, fixed));
             }

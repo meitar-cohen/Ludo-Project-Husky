@@ -7,7 +7,6 @@ import java.util.Map;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
-import Controller.BoardController;
 import Controller.GameController;
 import Controller.MovementController;
 import Enums.RollAction;
@@ -105,10 +104,10 @@ public class Iteration1UiRegressionCheck {
 
         for (int i = 0; i < levels.length; i++) {
 
-            BoardPanel board = new BoardPanel(levels[i], colors);
+            BoardPanel board = new BoardPanel(
+                    TestPlayers.gameControllerForBoard(levels[i], colors));
 
-            BoardController squares =
-                    (BoardController) field(board, "boardController");
+            GameController turns = (GameController) field(board, "turns");
 
             int starts = 0;
             int arrows = 0;
@@ -116,15 +115,15 @@ public class Iteration1UiRegressionCheck {
             Map<Color, Integer> startColors = new HashMap<>();
 
             for (java.awt.Point position
-                    : squares.getSpecialSquarePositions()) {
+                    : turns.getSpecialSquarePositions()) {
                 String kind =
-                        squares.getSpecialSquareType(position).toString();
+                        turns.getSpecialSquareType(position).toString();
 
                 if ("START".equals(kind)) {
 
                     starts++;
 
-                    Color color = squares.getSpecialSquareColor(position);
+                    Color color = turns.getSpecialSquareColor(position);
 
                     startColors.put(color,
                             startColors.getOrDefault(color, 0) + 1);
@@ -162,15 +161,15 @@ public class Iteration1UiRegressionCheck {
         Game game = new Game(TestPlayers.of(names, colors), "Medium");
         MovementController controllerPieces = new MovementController(game);
         GameController controller = new GameController(game, controllerPieces);
-        BoardPanel board = new BoardPanel("Medium", colors);
+        BoardPanel board = new BoardPanel(controller);
 
         board.setActivePlayerColor("Red");
 
         // הטלת 6 ראשונה
-        check(!controller.registerRollAndCheckThirdSix(6),
+        check(!controller.getTurnController().registerRollAndCheckThirdSix(6),
                 "First six cancelled unexpectedly");
 
-        check(controller.finishRoll(6, 2) == RollAction.TAKE_OUT,
+        check(controller.getTurnController().finishRoll(6, 2) == RollAction.TAKE_OUT,
                 "Six did not allow castle exit");
 
         // הוצאת הכלי מהטירה
@@ -182,14 +181,14 @@ public class Iteration1UiRegressionCheck {
         check(game.isPieceOnBoard(0, 0),
                 "Piece missing from model after castle exit");
 
-        check(controller.canRoll(),
+        check(controller.getTurnController().canRoll(),
                 "Cannot roll again after castle exit");
 
         // הטלה שנייה: 2 בקובייה ו-2 ב-Boost
-        check(!controller.registerRollAndCheckThirdSix(2),
+        check(!controller.getTurnController().registerRollAndCheckThirdSix(2),
                 "Second roll cancelled unexpectedly");
 
-        check(controller.finishRoll(2, 2) == RollAction.MOVE,
+        check(controller.getTurnController().finishRoll(2, 2) == RollAction.MOVE,
                 "Medium 2 with Boost 2 must allow movement");
 
         int routeSize = board.getActiveRouteSize(0);

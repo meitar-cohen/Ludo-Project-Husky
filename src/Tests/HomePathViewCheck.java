@@ -11,7 +11,8 @@ public class HomePathViewCheck {
         // בדיקת המעבר למסלול הבית בכל רמה ולכל צבע
         for (String level : levels) {
 
-            BoardPanel board = new BoardPanel(level, colors);
+            BoardPanel board = new BoardPanel(
+                    TestPlayers.gameControllerForBoard(level, colors));
 
             for (String color : colors) {
 

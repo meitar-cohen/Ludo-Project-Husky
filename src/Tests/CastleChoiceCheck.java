@@ -20,9 +20,9 @@ public class CastleChoiceCheck {
         game.setPiecesInCastle(3);
         game.setPieceOnBoard(true);
 
-        controller.registerRollAndCheckThirdSix(6);
+        controller.getTurnController().registerRollAndCheckThirdSix(6);
 
-        if (controller.finishRoll(6, 0) != RollAction.TAKE_OUT ||
+        if (controller.getTurnController().finishRoll(6, 0) != RollAction.TAKE_OUT ||
                 !controllerPieces.chooseBoardMoveInsteadOfTakeOut() ||
                 game.getStage() != Stage.MOVE ||
                 game.getPiecesInCastle() != 3) {
@@ -42,9 +42,9 @@ public class CastleChoiceCheck {
         MovementController onlyCastlePieces = new MovementController(empty);
         GameController onlyCastle = new GameController(empty, onlyCastlePieces);
 
-        onlyCastle.registerRollAndCheckThirdSix(6);
+        onlyCastle.getTurnController().registerRollAndCheckThirdSix(6);
 
-        if (onlyCastle.finishRoll(6, 0) != RollAction.TAKE_OUT ||
+        if (onlyCastle.getTurnController().finishRoll(6, 0) != RollAction.TAKE_OUT ||
                 onlyCastlePieces.chooseBoardMoveInsteadOfTakeOut() ||
                 empty.getStage() != Stage.TAKE_OUT) {
 
@@ -66,9 +66,9 @@ public class CastleChoiceCheck {
         MovementController zeroControllerPieces = new MovementController(zero);
         GameController zeroController = new GameController(zero, zeroControllerPieces);
 
-        zeroController.registerRollAndCheckThirdSix(6);
+        zeroController.getTurnController().registerRollAndCheckThirdSix(6);
 
-        if (zeroController.finishRoll(6, 1) != RollAction.TAKE_OUT ||
+        if (zeroController.getTurnController().finishRoll(6, 1) != RollAction.TAKE_OUT ||
                 zeroControllerPieces.chooseBoardMoveInsteadOfTakeOut()) {
 
             throw new AssertionError(

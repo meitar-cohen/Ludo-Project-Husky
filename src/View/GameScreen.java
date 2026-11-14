@@ -8,6 +8,7 @@ import javax.swing.border.EmptyBorder;
 import Controller.HistoryController;
 import Controller.MovementController;
 import Controller.GameController;
+import Controller.TurnController;
 import Enums.RollAction;
 
 public class GameScreen extends JPanel {
@@ -31,12 +32,14 @@ public class GameScreen extends JPanel {
     private final HistoryController history;
     private final MovementController pieces;
     private final GameController turns;
+    private final TurnController turnController;
 
     public GameScreen(GameController turns, String difficulty) {
         this.turns = turns;
         this.difficulty = difficulty == null ? "Easy" : difficulty;
         this.history = new HistoryController();
         this.pieces = turns.getMovementController();
+        this.turnController = turns.getTurnController();
         setOpaque(false);
         setLayout(new BorderLayout(0, 14));
         setBorder(new EmptyBorder(15, 20, 18, 20));
@@ -96,7 +99,7 @@ public class GameScreen extends JPanel {
             this, createLegend(), "Board legend", JOptionPane.PLAIN_MESSAGE));
         boardCaption.add(legendButton, BorderLayout.EAST);
         boardCard.add(boardCaption, BorderLayout.NORTH);
-        board = new BoardPanel(this.difficulty, turns.getPlayerColors());
+        board = new BoardPanel(turns);
         board.setOpaque(false);
         board.setCastlePieceClickListener(this::onCastlePieceClicked);
         board.setBoardPieceClickListener(this::onBoardPieceClicked);
@@ -106,7 +109,7 @@ public class GameScreen extends JPanel {
                 turns.getPlayerNames(),
                 turns.getPlayerColors(),
                 this.difficulty,
-                turns.getBoostDieFaces(),
+                turnController.getBoostDieFaces(),
                 this::onRoll,
                 this::showEndScreen,
                 this::backToMenu
@@ -137,7 +140,7 @@ public class GameScreen extends JPanel {
     }
 
     private void onRoll() {
-        if (!turns.canRoll()) return;
+        if (!turnController.canRoll()) return;
         if ("Next Turn".equals(sidebar.getRollButtonText())) {
             passTurn();
             return;
@@ -145,15 +148,15 @@ public class GameScreen extends JPanel {
         // SRS 3.2.1.3.3 - the game clock starts with the first roll.
         turns.startGameClock();
         board.setActivePlayerColor(turns.getCurrentPlayerColor());
-        int stepDie = turns.rollStepDie();
-        int boostDie = turns.rollBoostDie();
+        int stepDie = turnController.rollStepDie();
+        int boostDie = turnController.rollBoostDie();
         sidebar.setFormula(" ");
         sidebar.setRollButton(false, "Rolling...");
         sidebar.animateDice(stepDie, boostDie, () -> finishRoll(stepDie, boostDie));
     }
 
     private void finishRoll(int stepDie, int boostDie) {
-        if (turns.registerRollAndCheckThirdSix(stepDie)) {
+        if (turnController.registerRollAndCheckThirdSix(stepDie)) {
             String player = turns.getCurrentPlayerName();
             passTurn();
             setStatus("Third 6 in a row for " + player
@@ -162,7 +165,7 @@ public class GameScreen extends JPanel {
                 + "'s turn. Click Roll Dice.");
             return;
         }
-        RollAction action = turns.finishRoll(stepDie, boostDie);
+        RollAction action = turnController.finishRoll(stepDie, boostDie);
         if (action == RollAction.TAKE_OUT
                 && pieces.canChooseBoardMoveInsteadOfTakeOut()
                 && pieces.hasAnyLegalMove(getCurrentRouteSizes())) {
@@ -177,7 +180,7 @@ public class GameScreen extends JPanel {
                 "Rolled a 6! Click a highlighted piece in your castle."
             );
             board.highlightCastlePieces(
-                turns.consumeFirstTurnPulse()
+                turnController.consumeFirstTurnPulse()
             );
             sidebar.setRollButton(false, "Select Your Piece");
         } else if (action == RollAction.MOVE) {
@@ -199,11 +202,11 @@ public class GameScreen extends JPanel {
                 );
             }
             board.highlightBoardPiece(
-                turns.consumeFirstTurnPulse()
+                turnController.consumeFirstTurnPulse()
             );
             sidebar.setRollButton(false, "Select Your Piece");
         } else if (turns.getPendingSteps() == 0) {
-            if (turns.hasExtraTurn()) {
+            if (turnController.hasExtraTurn()) {
                 passWhenNoLegalMove();
                 return;
             }
@@ -228,8 +231,8 @@ public class GameScreen extends JPanel {
 
     private void passWhenNoLegalMove() {
         String previousPlayer = turns.getCurrentPlayerName();
-        if (turns.hasExtraTurn()) {
-            turns.grantExtraTurn();
+        if (turnController.hasExtraTurn()) {
+            turnController.grantExtraTurn();
             board.clearHighlight();
             sidebar.setRollButton(true, "Roll Again");
             setStatus(previousPlayer
@@ -237,7 +240,7 @@ public class GameScreen extends JPanel {
             return;
         }
         passTurn();
-        if (turns.canRoll()) {
+        if (turnController.canRoll()) {
             String reason =
                     turns.getPendingSteps() == 0
                     && !"Easy".equals(difficulty)
@@ -463,8 +466,8 @@ public class GameScreen extends JPanel {
     }
 
     private void endTurnOrExtraTurn() {
-        if (turns.hasExtraTurn()) {
-            turns.grantExtraTurn();
+        if (turnController.hasExtraTurn()) {
+            turnController.grantExtraTurn();
             board.clearHighlight();
             sidebar.setRollButton(true, "Roll Again");
             setStatus(turns.getCurrentPlayerName() + " rolled a 6 - roll again!");
@@ -474,16 +477,16 @@ public class GameScreen extends JPanel {
     }
 
     private void passTurn() {
-        turns.passTurn();
+        turnController.passTurn();
         sidebar.setFormula(" ");
-        sidebar.setRollButton(turns.canRoll(), "Roll Dice");
+        sidebar.setRollButton(turnController.canRoll(), "Roll Dice");
         sidebar.setEndGameEnabled(turns.isGameOver());
         if (turns.isGameOver()) {
             handleGameOver();
         }
         board.clearHighlight();
         refreshPlayers();
-        setStatus(turns.canRoll()
+        setStatus(turnController.canRoll()
                 ? turns.getCurrentPlayerName()
                     + "'s turn. Click Roll Dice."
                 : "Game finished: no active turns remain.");

@@ -28,9 +28,9 @@ public class CastleRuleAcceptanceCheck {
         int bonus = "Easy".equals(level) ? 0 : 1;
 
         // ללא 6 אי אפשר לצאת מהטירה
-        controller.registerRollAndCheckThirdSix(5);
+        controller.getTurnController().registerRollAndCheckThirdSix(5);
 
-        check(controller.finishRoll(5, bonus)
+        check(controller.getTurnController().finishRoll(5, bonus)
                 != RollAction.TAKE_OUT,
                 level + ": exit without six");
 
@@ -41,9 +41,9 @@ public class CastleRuleAcceptanceCheck {
                 level + ": castle unchanged");
 
         // עם 6 מותר לצאת, גם כאשר Boost שווה 1
-        controller.registerRollAndCheckThirdSix(6);
+        controller.getTurnController().registerRollAndCheckThirdSix(6);
 
-        check(controller.finishRoll(6, bonus)
+        check(controller.getTurnController().finishRoll(6, bonus)
                 == RollAction.TAKE_OUT,
                 level + ": exit with six");
 
@@ -95,9 +95,9 @@ public class CastleRuleAcceptanceCheck {
         game.setPiecesInCastle(3);
         game.setPieceOnBoard(true);
 
-        controller.registerRollAndCheckThirdSix(6);
+        controller.getTurnController().registerRollAndCheckThirdSix(6);
 
-        check(controller.finishRoll(6, bonus)
+        check(controller.getTurnController().finishRoll(6, bonus)
                 == RollAction.TAKE_OUT,
                 level + ": choice stage");
 
@@ -127,9 +127,9 @@ public class CastleRuleAcceptanceCheck {
         game.setPiecesInCastle(3);
         game.setPieceOnBoard(true);
 
-        controller.registerRollAndCheckThirdSix(6);
+        controller.getTurnController().registerRollAndCheckThirdSix(6);
 
-        check(controller.finishRoll(6, 1)
+        check(controller.getTurnController().finishRoll(6, 1)
                 == RollAction.TAKE_OUT,
                 "Zero Boost castle exit");
 

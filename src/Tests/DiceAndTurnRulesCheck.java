@@ -7,7 +7,6 @@ import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
-import Controller.BoardController;
 import Controller.GameController;
 import Controller.MovementController;
 import Enums.Stage;
@@ -49,12 +48,12 @@ public class DiceAndTurnRulesCheck {
         int[] faces = {0, 3, 6};
         for (int l = 0; l < levels.length; l++) {
             GameController controller = controllerFor(newGame(levels[l]));
-            check(controller.getBoostDieFaces() == faces[l], levels[l] + ": bonus die faces");
+            check(controller.getTurnController().getBoostDieFaces() == faces[l], levels[l] + ": bonus die faces");
             boolean[] stepSeen = new boolean[7];
             boolean[] boostSeen = new boolean[7];
             for (int i = 0; i < 20000; i++) {
-                int step = controller.rollStepDie();
-                int boost = controller.rollBoostDie();
+                int step = controller.getTurnController().rollStepDie();
+                int boost = controller.getTurnController().rollBoostDie();
                 check(step >= 1 && step <= 6, levels[l] + ": step die out of range: " + step);
                 if (faces[l] == 0) {
                     check(boost == 0, levels[l] + ": no bonus die");
@@ -79,20 +78,20 @@ public class DiceAndTurnRulesCheck {
     private static void testSixesRule() {
         Game game = newGame("Medium");
         GameController controller = controllerFor(game);
-        check(!controller.registerRollAndCheckThirdSix(6) && controller.hasExtraTurn(),
+        check(!controller.getTurnController().registerRollAndCheckThirdSix(6) && controller.getTurnController().hasExtraTurn(),
                 "first 6 gives an extra turn");
-        check(!controller.registerRollAndCheckThirdSix(6) && game.getConsecutiveSixes() == 2,
+        check(!controller.getTurnController().registerRollAndCheckThirdSix(6) && game.getConsecutiveSixes() == 2,
                 "second 6 in a row is counted");
-        check(controller.registerRollAndCheckThirdSix(6), "third 6 in a row is cancelled");
+        check(controller.getTurnController().registerRollAndCheckThirdSix(6), "third 6 in a row is cancelled");
         check(game.getConsecutiveSixes() == 0, "counter restarts after the cancelled roll");
-        check(!controller.registerRollAndCheckThirdSix(6), "the next 6 is a first 6 again");
-        check(!controller.registerRollAndCheckThirdSix(4) && !controller.hasExtraTurn()
+        check(!controller.getTurnController().registerRollAndCheckThirdSix(6), "the next 6 is a first 6 again");
+        check(!controller.getTurnController().registerRollAndCheckThirdSix(4) && !controller.getTurnController().hasExtraTurn()
                 && game.getConsecutiveSixes() == 0, "a roll that is not 6 resets the counter");
         game.setStage(Stage.BUSY);
-        controller.grantExtraTurn();
+        controller.getTurnController().grantExtraTurn();
         check(game.getStage() == Stage.ROLL, "extra turn lets the same player roll");
-        controller.registerRollAndCheckThirdSix(6);
-        controller.passTurn();
+        controller.getTurnController().registerRollAndCheckThirdSix(6);
+        controller.getTurnController().passTurn();
         check(game.getConsecutiveSixes() == 0 && game.getCurrentPlayer() == 1,
                 "passing the turn resets the counter for the next player");
         System.out.println("PASS - extra turn and third 6 in a row");
@@ -200,9 +199,8 @@ public class DiceAndTurnRulesCheck {
     }
 
     private static void removeEventSquares(BoardPanel board) throws Exception {
-        BoardController squares =
-                (BoardController) field(board, "boardController");
-        squares.removeSpecialSquares(
+        GameController turns = (GameController) field(board, "turns");
+        turns.removeSpecialSquares(
                 SquareType.QUESTION, SquareType.SURPRISE);
     }
 

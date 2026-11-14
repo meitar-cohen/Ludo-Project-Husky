@@ -107,7 +107,7 @@ public class NoLegalMoveRulesCheck {
         game.setPlayerFinished(1, true);
         game.setConsecutiveSixes(2);
 
-        controller.passTurn();
+        controller.getTurnController().passTurn();
 
         check(game.getCurrentPlayer() == 2,
                 "Skip finished player");
@@ -119,14 +119,14 @@ public class NoLegalMoveRulesCheck {
                 "Reset sixes between players");
 
         // חזרה לשחקן הראשון
-        controller.passTurn();
+        controller.getTurnController().passTurn();
 
         check(game.getCurrentPlayer() == 0,
                 "Wrap to first active player");
 
         // כשהשחקן הראשון הוא האחרון, אין עוד תורות
         game.setPlayerFinished(2, true);
-        controller.passTurn();
+        controller.getTurnController().passTurn();
 
         check(game.getStage() == Stage.DONE,
                 "No turns when just one player remains");

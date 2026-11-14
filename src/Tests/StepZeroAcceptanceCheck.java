@@ -52,27 +52,27 @@ public class StepZeroAcceptanceCheck {
 
         expect(4,
                 newController(newGame("Easy"))
-                        .calculateSteps(4, 0),
+                        .getTurnController().calculateSteps(4, 0),
                 "Easy");
 
         expect(8,
                 newController(newGame("Medium"))
-                        .calculateSteps(4, 3),
+                        .getTurnController().calculateSteps(4, 3),
                 "Medium Boost 3");
 
         expect(0,
                 newController(newGame("Medium"))
-                        .calculateSteps(5, 1),
+                        .getTurnController().calculateSteps(5, 1),
                 "Medium Boost 1");
 
         expect(30,
                 newController(newGame("Hard"))
-                        .calculateSteps(6, 6),
+                        .getTurnController().calculateSteps(6, 6),
                 "Hard UltraBoost 6");
 
         expect(0,
                 newController(newGame("Hard"))
-                        .calculateSteps(3, 1),
+                        .getTurnController().calculateSteps(3, 1),
                 "Hard UltraBoost 1");
 
         System.out.println(
@@ -89,10 +89,10 @@ public class StepZeroAcceptanceCheck {
 
         MovementController controllerPieces = new MovementController(game);
         GameController controller = new GameController(game, controllerPieces);
-        controller.registerRollAndCheckThirdSix(4);
+        controller.getTurnController().registerRollAndCheckThirdSix(4);
 
         expect(RollAction.NEED_SIX,
-                controller.finishRoll(4, 1),
+                controller.getTurnController().finishRoll(4, 1),
                 level + " zero on shared route");
 
         expect(0, game.getPendingSteps(),
@@ -114,10 +114,10 @@ public class StepZeroAcceptanceCheck {
 
         MovementController controllerPieces = new MovementController(game);
         GameController controller = new GameController(game, controllerPieces);
-        controller.registerRollAndCheckThirdSix(4);
+        controller.getTurnController().registerRollAndCheckThirdSix(4);
 
         expect(RollAction.MOVE,
-                controller.finishRoll(4, 1),
+                controller.getTurnController().finishRoll(4, 1),
                 level + " home allowed");
 
         expect(5,
@@ -147,10 +147,10 @@ public class StepZeroAcceptanceCheck {
 
         MovementController controllerPieces = new MovementController(game);
         GameController controller = new GameController(game, controllerPieces);
-        controller.registerRollAndCheckThirdSix(4);
+        controller.getTurnController().registerRollAndCheckThirdSix(4);
 
         expect(RollAction.NEED_SIX,
-                controller.finishRoll(4, 1),
+                controller.getTurnController().finishRoll(4, 1),
                 level + " no legal home move");
 
         System.out.println(
@@ -164,10 +164,10 @@ public class StepZeroAcceptanceCheck {
 
         MovementController controllerPieces = new MovementController(game);
         GameController controller = new GameController(game, controllerPieces);
-        controller.registerRollAndCheckThirdSix(6);
+        controller.getTurnController().registerRollAndCheckThirdSix(6);
 
         expect(RollAction.TAKE_OUT,
-                controller.finishRoll(6, 1),
+                controller.getTurnController().finishRoll(6, 1),
                 level + " six can exit castle");
 
         expect(Stage.TAKE_OUT, game.getStage(),

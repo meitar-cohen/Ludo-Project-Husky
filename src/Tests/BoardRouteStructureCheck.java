@@ -17,7 +17,8 @@ public class BoardRouteStructureCheck {
             String difficulty, int[] expected, String[] colors) {
 
         // יצירת לוח ברמת הקושי הנבדקת
-        BoardPanel board = new BoardPanel(difficulty, colors);
+        BoardPanel board = new BoardPanel(
+                TestPlayers.gameControllerForBoard(difficulty, colors));
 
         // בדיקת מספר המסלולים
         if (board.getSharedRouteCount() != expected.length) {

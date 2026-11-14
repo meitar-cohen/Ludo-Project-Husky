@@ -74,7 +74,7 @@ public class HomePathUIFullAcceptanceCheck {
 
                     game[0].setPendingSteps(3);
                     game[0].setStage(Stage.MOVE);
-                    controller.registerRollAndCheckThirdSix(3);
+                    controller.getTurnController().registerRollAndCheckThirdSix(3);
 
                     // הפעלת בחירת הכלי מתוך GameScreen
                     Method click = GameScreen.class.getDeclaredMethod(
@@ -111,7 +111,7 @@ public class HomePathUIFullAcceptanceCheck {
                     // קובייה רגילה 4, מכפיל שנותן 0
                     game[0].setPendingSteps(0);
                     game[0].setStage(Stage.MOVE);
-                    controller.registerRollAndCheckThirdSix(4);
+                    controller.getTurnController().registerRollAndCheckThirdSix(4);
 
                     // כלי במסלול המשותף אינו יכול לזוז
                     click.invoke(view[0], 1);

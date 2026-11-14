@@ -22,7 +22,8 @@ public class TurnSquareEventCheck {
             // בדיקה בעשרה לוחות שונים
             for (int gameNumber = 0; gameNumber < 10; gameNumber++) {
 
-                BoardPanel board = new BoardPanel(level, colors);
+                BoardPanel board = new BoardPanel(
+                        TestPlayers.gameControllerForBoard(level, colors));
                 board.setActivePlayerColor("Green");
 
                 check(board.placeActivePieceOnStart(0),

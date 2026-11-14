@@ -95,7 +95,8 @@ public class InnerPathArrowCheck {
 
     private static void testBoardArrowLookup() {
         BoardPanel board = new BoardPanel(
-                "Medium", new String[]{"Green", "Yellow"});
+                TestPlayers.gameControllerForBoard(
+                        "Medium", new String[]{"Green", "Yellow"}));
         board.setActivePlayerColor("Green");
         check(board.placeActivePieceOnStart(0),
                 "Could not place piece on the board");

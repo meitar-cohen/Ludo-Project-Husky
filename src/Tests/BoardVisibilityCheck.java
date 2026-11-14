@@ -18,11 +18,13 @@ public class BoardVisibilityCheck {
         String[] colors = {"Blue", "Red"};
 
         // לוח ללא כלי כחול במסלול - להשוואה
-        BoardPanel baselineBoard = new BoardPanel(level, colors);
+        BoardPanel baselineBoard = new BoardPanel(
+                TestPlayers.gameControllerForBoard(level, colors));
         baselineBoard.setActivePlayerColor("Red");
 
         // לוח עם כלי כחול, לאחר שהתור עבר לאדום
-        BoardPanel testBoard = new BoardPanel(level, colors);
+        BoardPanel testBoard = new BoardPanel(
+                TestPlayers.gameControllerForBoard(level, colors));
 
         if (!testBoard.placeActivePieceOnStart(0)) {
             throw new AssertionError(

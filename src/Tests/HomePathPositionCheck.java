@@ -10,7 +10,8 @@ public class HomePathPositionCheck {
 
         for (String level : levels) {
 
-            BoardPanel board = new BoardPanel(level, colors);
+            BoardPanel board = new BoardPanel(
+                    TestPlayers.gameControllerForBoard(level, colors));
 
             for (String color : colors) {
 

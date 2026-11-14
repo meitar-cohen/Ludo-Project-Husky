@@ -4,7 +4,7 @@ import java.lang.reflect.Method;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
-import Controller.BoardController;
+import Controller.GameController;
 import Controller.MovementController;
 import Enums.Stage;
 import Enums.SquareType;
@@ -29,9 +29,8 @@ public class TurnFlowAcceptanceCheck {
     }
 
     private static void removeEventSquares(BoardPanel board) throws Exception {
-        BoardController squares =
-                (BoardController) field(board, "boardController");
-        squares.removeSpecialSquares(
+        GameController turns = (GameController) field(board, "turns");
+        turns.removeSpecialSquares(
                 SquareType.QUESTION, SquareType.SURPRISE);
     }
 

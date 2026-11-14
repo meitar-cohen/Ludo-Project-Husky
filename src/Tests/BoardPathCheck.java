@@ -21,7 +21,8 @@ public class BoardPathCheck {
             String[] colors) {
 
         // יצירת לוח זמני ברמת הקושי הנבדקת
-        BoardPanel board = new BoardPanel(difficulty, colors);
+        BoardPanel board = new BoardPanel(
+                TestPlayers.gameControllerForBoard(difficulty, colors));
 
         for (String color : colors) {
 

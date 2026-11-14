@@ -94,7 +94,7 @@ public class GameHistoryCheck {
         File gameFile = new File(dir, "games.csv");
         HistoryController gameHistory = new HistoryController(gameFile);
         turns.startGameClock();
-        turns.passTurn();
+        turns.getTurnController().passTurn();
         check("game is over", game.getStage() == Stage.DONE);
         turns.stopGameClock();
         check("save succeeds", gameHistory.saveFinishedGame(game, turns) == null

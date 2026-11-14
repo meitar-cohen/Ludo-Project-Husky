@@ -9,7 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.IntConsumer;
-import Controller.BoardController;
+import Controller.GameController;
 import Enums.SquareType;
 
 /**
@@ -42,7 +42,7 @@ public class BoardPanel extends JPanel {
     private final List<Point> activeHomePath = new ArrayList<>();
 
     private final List<List<Point>> sharedRoutes = new ArrayList<>();
-    private final BoardController boardController = new BoardController();
+    private final GameController turns;
     private final Map<Point, Color> homeCells = new HashMap<>();
 
     /**
@@ -68,7 +68,10 @@ public class BoardPanel extends JPanel {
     private final PiecePanel piecePanel = new PiecePanel();
     private final BoardDrawingPanel drawingPanel = new BoardDrawingPanel();
 
-    public BoardPanel(String difficulty, String[] playerColorNames) {
+    public BoardPanel(GameController turns) {
+        this.turns = turns;
+        String difficulty = turns.getDifficulty();
+        String[] playerColorNames = turns.getPlayerColors();
         if ("Hard".equals(difficulty)) {
             rings = 2;
         } else if ("Medium".equals(difficulty)) {
@@ -87,7 +90,9 @@ public class BoardPanel extends JPanel {
         }
         activeCorner = cornerOf(playerColorNames[0]);
         buildBoard();
-        randomizeSquares();
+        turns.randomizeSpecialSquares(
+                sharedRoutes, rings, homeCells.keySet(),
+                new Color[]{Q_EASY, Q_MEDIUM, Q_HARD}, SURPRISE);
         setBackground(new Color(244, 247, 255));
         setPreferredSize(new Dimension(700, 700));
         addMouseListener(new MouseAdapter() {
@@ -184,12 +189,12 @@ public class BoardPanel extends JPanel {
         }
         for (int c = 0; c < 4; c++) {
             Point star = inner.get((startIdx[c] + 8) % 52);
-            boardController.addSpecialSquare(star, SquareType.STAR, null, 0);
+            turns.addSpecialSquare(star, SquareType.STAR, null, 0);
             Point arrow = inner.get((startIdx[c] + 50) % 52);
-            boardController.addSpecialSquare(
+            turns.addSpecialSquare(
                     arrow, SquareType.ARROW, CORNER_COLORS[c], c);
             if (rings == 0) {
-                boardController.addSpecialSquare(
+                turns.addSpecialSquare(
                         inner.get(startIdx[c]), SquareType.START,
                         CORNER_COLORS[c], 0);
             }
@@ -214,29 +219,29 @@ public class BoardPanel extends JPanel {
             Color[] qLevels = {Q_EASY, Q_MEDIUM, Q_HARD, Q_EASY};
             for (int i = 0; i < 4; i++) {
                 int c = (k + i) % 4;
-                boardController.addSpecialSquare(
+                turns.addSpecialSquare(
                         ringCell(outer, c, 0), SquareType.START,
                         CORNER_COLORS[c], 0);
-                boardController.addSpecialSquare(
+                turns.addSpecialSquare(
                         ringCell(outer, c, 3), SquareType.QUESTION,
                         qLevels[i], 0);
-                boardController.addSpecialSquare(
+                turns.addSpecialSquare(
                         ringCell(outer, c, 11), SquareType.STAR, null, 0);
                 int mid = (size - 1) / 2;
-                boardController.addSpecialSquare(
+                turns.addSpecialSquare(
                         ringCell(outer, c, mid), SquareType.ARROW,
                         CORNER_COLORS[c], (c + 1) % 4);
             }
-            boardController.addSpecialSquare(
+            turns.addSpecialSquare(
                     ringCell(outer, (k + 1) % 4, 12),
                     SquareType.QUESTION, Q_MEDIUM, 0);
-            boardController.addSpecialSquare(
+            turns.addSpecialSquare(
                     ringCell(outer, (k + 2) % 4, 12),
                     SquareType.QUESTION, Q_HARD, 0);
-            boardController.addSpecialSquare(
+            turns.addSpecialSquare(
                     ringCell(outer, k, 5),
                     SquareType.SURPRISE, SURPRISE, 0);
-            boardController.addSpecialSquare(
+            turns.addSpecialSquare(
                     ringCell(outer, k, 7),
                     SquareType.SURPRISE, SURPRISE, 0);
             if (rings == 2) {
@@ -244,20 +249,20 @@ public class BoardPanel extends JPanel {
                 Color[] q2 = {Q_EASY, Q_MEDIUM, Q_HARD};
                 for (int i = 0; i < 4; i++) {
                     int c = (k + i) % 4;
-                    boardController.addSpecialSquare(
+                    turns.addSpecialSquare(
                             ringCell(second, c, 11),
                             SquareType.STAR, null, 0);
-                    boardController.addSpecialSquare(
+                    turns.addSpecialSquare(
                             ringCell(second, c, (size - 3) / 2),
                             SquareType.ARROW, CORNER_COLORS[c],
                             (c + 1) % 4);
                     if (i > 0) {
-                        boardController.addSpecialSquare(
+                        turns.addSpecialSquare(
                                 ringCell(second, c, 3),
                                 SquareType.QUESTION, q2[i - 1], 0);
                     }
                 }
-                boardController.addSpecialSquare(
+                turns.addSpecialSquare(
                         ringCell(second, (k + 2) % 4, 10),
                         SquareType.SURPRISE, SURPRISE, 0);
             }
@@ -265,12 +270,6 @@ public class BoardPanel extends JPanel {
                 activePath.add(ringCell(outer, k, i));
             }
         }
-    }
-
-    private void randomizeSquares() {
-        boardController.randomizeSpecialSquares(
-                sharedRoutes, rings, homeCells.keySet(),
-                Q_EASY, Q_MEDIUM, Q_HARD, SURPRISE);
     }
 
     // ------------------------------------------------------------------
@@ -437,10 +436,10 @@ public class BoardPanel extends JPanel {
         Color own = CORNER_COLORS[activeCorner];
         for (int step = 0; step < route.size(); step++) {
             Point position = route.get(step);
-            if (boardController.getSpecialSquareType(position)
+            if (turns.getSpecialSquareType(position)
                     == SquareType.ARROW
                     && own.equals(
-                            boardController.getSpecialSquareColor(position))) {
+                            turns.getSpecialSquareColor(position))) {
                 return step;
             }
         }
@@ -507,7 +506,7 @@ public class BoardPanel extends JPanel {
             return "NONE";
         }
         SquareType type =
-                boardController.getSpecialSquareType(route.get(step));
+                turns.getSpecialSquareType(route.get(step));
         if (type == SquareType.QUESTION) {
             return "QUESTION";
         }
@@ -530,9 +529,9 @@ public class BoardPanel extends JPanel {
             return null;
         }
         Point position = route.get(step);
-        return boardController.getSpecialSquareType(position)
+        return turns.getSpecialSquareType(position)
                 == SquareType.ARROW
-                ? boardController.getSpecialSquareColor(position) : null;
+                ? turns.getSpecialSquareColor(position) : null;
     }
 
     public int getActiveHomePathSize() {
@@ -783,19 +782,19 @@ public class BoardPanel extends JPanel {
     }
 
     Iterable<Point> specialSquarePositions() {
-        return boardController.getSpecialSquarePositions();
+        return turns.getSpecialSquarePositions();
     }
 
     SquareType specialSquareType(Point position) {
-        return boardController.getSpecialSquareType(position);
+        return turns.getSpecialSquareType(position);
     }
 
     Color specialSquareColor(Point position) {
-        return boardController.getSpecialSquareColor(position);
+        return turns.getSpecialSquareColor(position);
     }
 
     int specialSquareDirection(Point position) {
-        return boardController.getSpecialSquareDirection(position);
+        return turns.getSpecialSquareDirection(position);
     }
 
     @Override

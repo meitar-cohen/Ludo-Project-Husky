@@ -1,12 +1,11 @@
 package Tests;
 
-import java.awt.Point;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
-import Controller.BoardController;
+import Controller.GameController;
 import Controller.MovementController;
 import Enums.Stage;
 import Enums.SquareType;
@@ -93,13 +92,17 @@ public class ArrowPassThroughCheck {
 
     // 2. מיקום החצים על הלוח: 8 ב-64, 9 ב-72, ו-8 במסלול האמצעי
     private static void testBoardArrowSteps() {
-        BoardPanel medium = new BoardPanel("Medium", new String[]{"Green", "Red"});
+        BoardPanel medium = new BoardPanel(
+                TestPlayers.gameControllerForBoard(
+                        "Medium", new String[]{"Green", "Red"}));
         medium.setActivePlayerColor("Green");
         check(medium.placeActivePieceOnStart(0), "Medium: place piece");
         check(medium.getActiveRouteSize(0) == 64 && medium.getOwnArrowStep(0) == 8,
                 "Medium: own arrow at step 8 of the 64 path");
 
-        BoardPanel hard = new BoardPanel("Hard", new String[]{"Green", "Red"});
+        BoardPanel hard = new BoardPanel(
+                TestPlayers.gameControllerForBoard(
+                        "Hard", new String[]{"Green", "Red"}));
         hard.setActivePlayerColor("Green");
         check(hard.placeActivePieceOnStart(0), "Hard: place piece");
         check(hard.getActiveRouteSize(0) == 72 && hard.getOwnArrowStep(0) == 9,
@@ -112,7 +115,9 @@ public class ArrowPassThroughCheck {
                 && hard.getActiveRouteSize(0) == 52 && hard.getOwnArrowStep(0) == -1,
                 "Hard: inner path has 52 squares and no arrow to use");
 
-        BoardPanel easy = new BoardPanel("Easy", new String[]{"Green", "Red"});
+        BoardPanel easy = new BoardPanel(
+                TestPlayers.gameControllerForBoard(
+                        "Easy", new String[]{"Green", "Red"}));
         easy.setActivePlayerColor("Green");
         easy.placeActivePieceOnStart(0);
         check(!easy.showActivePieceInMiddlePath(0, 0), "Easy: there is no middle path");
@@ -181,9 +186,8 @@ public class ArrowPassThroughCheck {
 
     /** Question and surprise squares open dialogs; remove them so the move is deterministic. */
     private static void removeEventSquares(BoardPanel board) throws Exception {
-        BoardController squares =
-                (BoardController) field(board, "boardController");
-        squares.removeSpecialSquares(
+        GameController turns = (GameController) field(board, "turns");
+        turns.removeSpecialSquares(
                 SquareType.QUESTION, SquareType.SURPRISE);
     }
 

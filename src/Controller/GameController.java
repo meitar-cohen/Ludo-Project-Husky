@@ -1,23 +1,30 @@
 package Controller;
 
-import java.util.Random;
+import java.awt.Color;
+import java.awt.Point;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
-import Enums.RollAction;
+
 import Enums.Stage;
+import Enums.SquareType;
 import Model.Game;
 import Model.Player;
 import Model.Question;
-import java.util.ArrayList;
-import java.util.List;
+import Model.Square;
 
-/** Coordinates game setup, dice rolls, turns, and game phases. */
+/** Coordinates game setup, board state, questions, and game results. */
 public class GameController {
     public static final int PIECES_PER_PLAYER = Game.PIECES_PER_PLAYER;
 
     private final Game game;
     private final MovementController pieces;
-    private final Random random = new Random();
+    private final TurnController turnController;
+    private final Map<Point, Square> specialSquares = new HashMap<>();
     private final Question question = new Question(
             "Which document defines the software requirements according to IEEE Std 830?",
             new String[]{
@@ -35,6 +42,7 @@ public class GameController {
     public GameController(Game game, MovementController pieces) {
         this.game = game;
         this.pieces = pieces;
+        this.turnController = new TurnController(game, pieces);
     }
 
     public static GameController createNewGame(
@@ -69,6 +77,123 @@ public class GameController {
 
     public MovementController getMovementController() {
         return pieces;
+    }
+
+    public TurnController getTurnController() {
+        return turnController;
+    }
+
+    public void addSpecialSquare(Point position, SquareType type, Color color, int direction) {
+        specialSquares.put(
+                new Point(position), new Square(type, color, direction));
+    }
+
+    public void randomizeSpecialSquares(List<List<Point>> routes, int rings, Set<Point> excludedCells, Color[] questionColors, Color surprise) {
+        specialSquares.entrySet().removeIf(entry -> {
+            SquareType type = entry.getValue().getType();
+            return type == SquareType.STAR
+                    || type == SquareType.QUESTION
+                    || type == SquareType.SURPRISE;
+        });
+
+        placeRandomSpecialsOnRoute(
+                routes.get(0), excludedCells, 4, 0, 0, 0, 0,
+                questionColors, surprise);
+        if (rings == 1) {
+            placeRandomSpecialsOnRoute(
+                    routes.get(1), excludedCells, 4, 2, 2, 2, 2,
+                    questionColors, surprise);
+        } else if (rings == 2) {
+            placeRandomSpecialsOnRoute(
+                    routes.get(1), excludedCells, 4, 1, 1, 1, 1,
+                    questionColors, surprise);
+            placeRandomSpecialsOnRoute(
+                    routes.get(2), excludedCells, 4, 2, 2, 2, 2,
+                    questionColors, surprise);
+        } else if (rings != 0) {
+            throw new IllegalArgumentException("Unsupported board ring count.");
+        }
+    }
+
+    private void placeRandomSpecialsOnRoute(List<Point> route, Set<Point> excludedCells, int stars, int easyQuestions, int mediumQuestions, int hardQuestions, int surprises, Color[] questionColors, Color surprise) {
+        List<Point> available = new ArrayList<>();
+        for (Point cell : route) {
+            if (!specialSquares.containsKey(cell)
+                    && !excludedCells.contains(cell)) {
+                available.add(cell);
+            }
+        }
+
+        int needed = stars + easyQuestions + mediumQuestions
+                + hardQuestions + surprises;
+        if (available.size() < needed) {
+            throw new IllegalStateException(
+                    "Not enough free squares for special cells");
+        }
+        Collections.shuffle(available);
+        int index = 0;
+        for (int i = 0; i < stars; i++) {
+            addSpecialSquare(
+                    available.get(index++), SquareType.STAR, null, 0);
+        }
+        for (int i = 0; i < easyQuestions; i++) {
+            addSpecialSquare(
+                    available.get(index++), SquareType.QUESTION,
+                    questionColors[0], 0);
+        }
+        for (int i = 0; i < mediumQuestions; i++) {
+            addSpecialSquare(
+                    available.get(index++), SquareType.QUESTION,
+                    questionColors[1], 0);
+        }
+        for (int i = 0; i < hardQuestions; i++) {
+            addSpecialSquare(
+                    available.get(index++), SquareType.QUESTION,
+                    questionColors[2], 0);
+        }
+        for (int i = 0; i < surprises; i++) {
+            addSpecialSquare(
+                    available.get(index++), SquareType.SURPRISE,
+                    surprise, 0);
+        }
+    }
+
+    public boolean hasSpecialSquare(Point position) {
+        return specialSquares.containsKey(position);
+    }
+
+    public void removeSpecialSquares(SquareType... types) {
+        specialSquares.entrySet().removeIf(entry -> {
+            for (SquareType type : types) {
+                if (entry.getValue().getType() == type) {
+                    return true;
+                }
+            }
+            return false;
+        });
+    }
+
+    public SquareType getSpecialSquareType(Point position) {
+        Square square = specialSquares.get(position);
+        return square == null ? null : square.getType();
+    }
+
+    public Color getSpecialSquareColor(Point position) {
+        Square square = specialSquares.get(position);
+        return square == null ? null : square.getColor();
+    }
+
+    public int getSpecialSquareDirection(Point position) {
+        Square square = specialSquares.get(position);
+        return square == null ? -1 : square.getDirection();
+    }
+
+    public List<Point> getSpecialSquarePositions() {
+        List<Point> positions = new ArrayList<>();
+        for (Point position : specialSquares.keySet()) {
+            positions.add(new Point(position));
+        }
+        return positions;
     }
 
     public String[] getPlayerNames() {
@@ -202,81 +327,6 @@ public class GameController {
         return players;
     }
 
-    public boolean canRoll() {
-        return game.getStage() == Stage.ROLL;
-    }
-
-    public boolean consumeFirstTurnPulse() {
-        if (!game.isFirstTurnPulsePending()) {
-            return false;
-        }
-        game.setFirstTurnPulsePending(false);
-        return true;
-    }
-
-    public int rollStepDie() {
-        return random.nextInt(6) + 1;
-    }
-
-    public int rollBoostDie() {
-        int faces = getBoostDieFaces();
-        return faces == 0 ? 0 : random.nextInt(faces) + 1;
-    }
-
-    public int getBoostDieFaces() {
-        if ("Hard".equals(game.getDifficulty())) {
-            return 6;
-        }
-        if ("Medium".equals(game.getDifficulty())) {
-            return 3;
-        }
-        return 0;
-    }
-
-    public boolean registerRollAndCheckThirdSix(int stepDie) {
-        game.setLastStepDie(stepDie);
-        if (stepDie != 6) {
-            game.setConsecutiveSixes(0);
-            return false;
-        }
-        game.setConsecutiveSixes(game.getConsecutiveSixes() + 1);
-        if (game.getConsecutiveSixes() >= 3) {
-            game.setConsecutiveSixes(0);
-            return true;
-        }
-        return false;
-    }
-
-    public boolean hasExtraTurn() {
-        return game.getLastStepDie() == 6;
-    }
-
-    public void grantExtraTurn() {
-        game.setStage(Stage.ROLL);
-    }
-
-    public RollAction finishRoll(int stepDie, int boostDie) {
-        game.setPendingSteps(calculateSteps(stepDie, boostDie));
-        if (stepDie == 6 && game.hasPieceInCastle()) {
-            game.setStage(Stage.TAKE_OUT);
-            return RollAction.TAKE_OUT;
-        }
-        if ((game.getPendingSteps() > 0 && game.hasAnyPieceOnBoard())
-                || pieces.hasAvailableHomePathMove(stepDie)) {
-            game.setStage(Stage.MOVE);
-            return RollAction.MOVE;
-        }
-        game.setStage(Stage.ROLL);
-        return RollAction.NEED_SIX;
-    }
-
-    public int calculateSteps(int stepDie, int boostDie) {
-        if ("Easy".equals(game.getDifficulty())) {
-            return stepDie;
-        }
-        return stepDie * (boostDie - 1);
-    }
-
     public void startGameClock() {
         if (startTimeMillis < 0) {
             startTimeMillis = System.currentTimeMillis();
@@ -320,26 +370,4 @@ public class GameController {
         return ranking.toArray(new Player[0]);
     }
 
-    public void passTurn() {
-        game.setConsecutiveSixes(0);
-        int total = game.getPlayerCount();
-        int active = 0;
-        for (int player = 0; player < total; player++) {
-            if (!game.isPlayerFinished(player)) {
-                active++;
-            }
-        }
-        if (active <= 1) {
-            game.setStage(Stage.DONE);
-            return;
-        }
-        for (int offset = 1; offset <= total; offset++) {
-            int candidate = (game.getCurrentPlayer() + offset) % total;
-            if (!game.isPlayerFinished(candidate)) {
-                game.setCurrentPlayer(candidate);
-                game.setStage(Stage.ROLL);
-                return;
-            }
-        }
-    }
 }

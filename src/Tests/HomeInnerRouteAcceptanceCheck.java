@@ -12,7 +12,8 @@ public class HomeInnerRouteAcceptanceCheck {
 
             for (String color : colors) {
 
-                BoardPanel board = new BoardPanel(level, colors);
+                BoardPanel board = new BoardPanel(
+                        TestPlayers.gameControllerForBoard(level, colors));
                 board.setActivePlayerColor(color);
 
                 // הוצאת כלי מהטירה אל הלוח

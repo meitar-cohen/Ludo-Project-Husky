@@ -8,7 +8,6 @@ import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
 import Controller.GameController;
-import Controller.MovementController;
 import Enums.RollAction;
 import Enums.Stage;
 import Model.Game;
@@ -67,9 +66,9 @@ public class CastleViewAcceptanceCheck {
                 // הטלת 6 - עם Boost 1 ברמות הרלוונטיות
                 int bonus = "Easy".equals(level) ? 0 : 1;
 
-                controller.registerRollAndCheckThirdSix(6);
+                controller.getTurnController().registerRollAndCheckThirdSix(6);
 
-                check(controller.finishRoll(6, bonus)
+                check(controller.getTurnController().finishRoll(6, bonus)
                         == RollAction.TAKE_OUT,
                         level + ": take-out stage");
 

@@ -143,7 +143,7 @@ public class ExactHomeFinishRulesCheck {
                 "All four pieces counted");
 
         // במשחק זוגי לא נותרת תחרות פעילה
-        controller.passTurn();
+        controller.getTurnController().passTurn();
 
         check(game.getStage() == Stage.DONE,
                 "Game ends after four finished pieces");

@@ -2,7 +2,7 @@ package Tests;
 import java.awt.Color;
 import java.lang.reflect.Field;
 
-import Controller.BoardController;
+import Controller.GameController;
 import View.BoardPanel;
 
 public class SquaresCountCheck {
@@ -44,11 +44,11 @@ public class SquaresCountCheck {
         // בודקים כמה לוחות שונים בכל רמת קושי
         for (int gameNumber = 0; gameNumber < 20; gameNumber++) {
 
-            BoardPanel board = new BoardPanel(level, colors);
+            BoardPanel board = new BoardPanel(
+                    TestPlayers.gameControllerForBoard(level, colors));
 
             // אוסף המשבצות המיוחדות של הלוח
-            BoardController squares =
-                    (BoardController) readField(board, "boardController");
+            GameController turns = (GameController) readField(board, "turns");
 
             int stars = 0;
             int arrows = 0;
@@ -61,9 +61,9 @@ public class SquaresCountCheck {
 
             // ספירת כל סוגי המשבצות
             for (java.awt.Point position
-                    : squares.getSpecialSquarePositions()) {
+                    : turns.getSpecialSquarePositions()) {
                 String type =
-                        squares.getSpecialSquareType(position).toString();
+                        turns.getSpecialSquareType(position).toString();
 
                 switch (type) {
 
@@ -85,7 +85,7 @@ public class SquaresCountCheck {
 
                     case "QUESTION":
 
-                        Color color = squares.getSpecialSquareColor(position);
+                        Color color = turns.getSpecialSquareColor(position);
 
                         if (BoardPanel.Q_EASY.equals(color)) {
                             easyQuestions++;
@@ -133,7 +133,7 @@ public class SquaresCountCheck {
                     + expectedSurprises;
 
             checkCount(level, "Total special squares",
-                    squares.getSpecialSquarePositions().size(),
+                    turns.getSpecialSquarePositions().size(),
                     expectedTotal);
         }
 

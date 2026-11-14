@@ -32,13 +32,13 @@ public class Iteration1IntegrationCheck {
         Game game = new Game(TestPlayers.of(names, colors), level);
         MovementController controllerPieces = new MovementController(game);
         GameController controller = new GameController(game, controllerPieces);
-        BoardPanel board = new BoardPanel(level, colors);
+        BoardPanel board = new BoardPanel(controller);
 
         // 3.2.1 - מצב התחלתי של משחק
         check(game.getCurrentPlayer() == 0,
                 level + ": wrong starting player");
 
-        check(controller.canRoll(),
+        check(controller.getTurnController().canRoll(),
                 level + ": first player cannot roll");
 
         check(controllerPieces.hasPieceInCastle(),
@@ -54,13 +54,13 @@ public class Iteration1IntegrationCheck {
         }
 
         // 3.2.3 - סוגי הקוביות וטווחי התוצאות
-        check(controller.getBoostDieFaces() == expectedBoostFaces,
+        check(controller.getTurnController().getBoostDieFaces() == expectedBoostFaces,
                 level + ": wrong Boost die configuration");
 
         for (int i = 0; i < 30; i++) {
 
-            int stepDie = controller.rollStepDie();
-            int boostDie = controller.rollBoostDie();
+            int stepDie = controller.getTurnController().rollStepDie();
+            int boostDie = controller.getTurnController().rollBoostDie();
 
             check(stepDie >= 1 && stepDie <= 6,
                     level + ": invalid step die result");
@@ -85,10 +85,10 @@ public class Iteration1IntegrationCheck {
         // 3.2.3 - הטלת 6 מאפשרת הוצאת כלי מהטירה
         int boostForTest = expectedBoostFaces == 0 ? 0 : 2;
 
-        check(!controller.registerRollAndCheckThirdSix(6),
+        check(!controller.getTurnController().registerRollAndCheckThirdSix(6),
                 level + ": first six cancelled");
 
-        check(controller.finishRoll(6, boostForTest)
+        check(controller.getTurnController().finishRoll(6, boostForTest)
                 == RollAction.TAKE_OUT,
                 level + ": castle exit not offered");
 
@@ -105,10 +105,10 @@ public class Iteration1IntegrationCheck {
                 level + ": model castle exit failed");
 
         // 3.2.4 - הטלה רגילה ובחירת כלי לתנועה
-        check(!controller.registerRollAndCheckThirdSix(2),
+        check(!controller.getTurnController().registerRollAndCheckThirdSix(2),
                 level + ": normal roll cancelled");
 
-        check(controller.finishRoll(2, boostForTest)
+        check(controller.getTurnController().finishRoll(2, boostForTest)
                 == RollAction.MOVE,
                 level + ": move stage not reached");
 
@@ -153,12 +153,12 @@ public class Iteration1IntegrationCheck {
                 level + ": board position not updated");
 
         // 3.2.3 - העברת תור לאחר סיום המהלך
-        controller.passTurn();
+        controller.getTurnController().passTurn();
 
         check(game.getCurrentPlayer() == 1,
                 level + ": next player not selected");
 
-        check(controller.canRoll(),
+        check(controller.getTurnController().canRoll(),
                 level + ": next player cannot roll");
 
         System.out.println(

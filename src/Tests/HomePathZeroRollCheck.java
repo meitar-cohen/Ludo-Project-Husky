@@ -33,9 +33,9 @@ public class HomePathZeroRollCheck {
 
         MovementController controllerPieces = new MovementController(game);
         GameController controller = new GameController(game, controllerPieces);
-        controller.registerRollAndCheckThirdSix(4);
+        controller.getTurnController().registerRollAndCheckThirdSix(4);
 
-        same(RollAction.MOVE, controller.finishRoll(4, 1),
+        same(RollAction.MOVE, controller.getTurnController().finishRoll(4, 1),
                 difficulty + " chooses MOVE");
 
         same(Stage.MOVE, game.getStage(), difficulty + " stage");
@@ -62,9 +62,9 @@ public class HomePathZeroRollCheck {
 
         MovementController controllerPieces = new MovementController(game);
         GameController controller = new GameController(game, controllerPieces);
-        controller.registerRollAndCheckThirdSix(4);
+        controller.getTurnController().registerRollAndCheckThirdSix(4);
 
-        same(RollAction.NEED_SIX, controller.finishRoll(4, 1),
+        same(RollAction.NEED_SIX, controller.getTurnController().finishRoll(4, 1),
                 "Zero boost with shared path only");
 
         System.out.println("PASS - shared path cannot move");
@@ -86,9 +86,9 @@ public class HomePathZeroRollCheck {
 
         MovementController controllerPieces = new MovementController(game);
         GameController controller = new GameController(game, controllerPieces);
-        controller.registerRollAndCheckThirdSix(3);
+        controller.getTurnController().registerRollAndCheckThirdSix(3);
 
-        same(RollAction.MOVE, controller.finishRoll(3, 1),
+        same(RollAction.MOVE, controller.getTurnController().finishRoll(3, 1),
                 "Mixed pieces roll");
 
         same(-1, controllerPieces.validatePieceMove(0, 64),
@@ -109,9 +109,9 @@ public class HomePathZeroRollCheck {
 
         MovementController controllerPieces = new MovementController(game);
         GameController controller = new GameController(game, controllerPieces);
-        controller.registerRollAndCheckThirdSix(4);
+        controller.getTurnController().registerRollAndCheckThirdSix(4);
 
-        same(RollAction.MOVE, controller.finishRoll(4, 3),
+        same(RollAction.MOVE, controller.getTurnController().finishRoll(4, 3),
                 "Normal roll");
 
         same(10, controllerPieces.validatePieceMove(0, 64),
@@ -130,9 +130,9 @@ public class HomePathZeroRollCheck {
 
         MovementController controllerPieces = new MovementController(game);
         GameController controller = new GameController(game, controllerPieces);
-        controller.registerRollAndCheckThirdSix(3);
+        controller.getTurnController().registerRollAndCheckThirdSix(3);
 
-        same(RollAction.NEED_SIX, controller.finishRoll(3, 1),
+        same(RollAction.NEED_SIX, controller.getTurnController().finishRoll(3, 1),
                 "Home path boundary");
 
         System.out.println("PASS - home path boundary");
