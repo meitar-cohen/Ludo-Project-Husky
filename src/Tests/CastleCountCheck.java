@@ -1,6 +1,5 @@
 package Tests;
 
-import Controller.GameController;
 import Controller.MovementController;
 import Enums.Stage;
 import Model.Game;
@@ -13,8 +12,6 @@ public class CastleCountCheck {
         Game game = new Game(TestPlayers.of(new String[] {"Blue", "Red"}, new String[] {"Blue", "Red"}), "Easy");
 
         MovementController controllerPieces = new MovementController(game);
-        GameController controller = new GameController(game, controllerPieces);
-
         // בתחילת המשחק לכל שחקן ארבעה כלים בטירה
         check(game, 0, 4);
         check(game, 1, 4);

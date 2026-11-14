@@ -193,10 +193,6 @@ public class StepZeroAcceptanceCheck {
                 view = new GameScreen(TestPlayers.of(new String[]{"A", "B"}, new String[]{"Red", "Blue"}), level);
 
                 Game game = (Game) field(view, "game");
-                Controller.GameController controller =
-                        new Controller.GameController(
-                                game, new MovementController(game));
-
                 // בדיקה גם עם כלי במסלול המשותף
                 if (hasSharedPiece) {
                     game.selectPiece(0);

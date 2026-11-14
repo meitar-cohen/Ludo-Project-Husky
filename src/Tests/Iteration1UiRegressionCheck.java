@@ -45,7 +45,8 @@ public class Iteration1UiRegressionCheck {
             try {
                 view = new GameScreen(TestPlayers.of(new String[]{"A", "B"}, new String[]{"Red", "Blue"}), "Medium");
 
-                Object dice = field(view, "dice");
+                Object sidebar = field(view, "sidebar");
+                Object dice = field(sidebar, "dice");
 
                 Method show = dice.getClass().getDeclaredMethod(
                         "show", int.class, int.class);

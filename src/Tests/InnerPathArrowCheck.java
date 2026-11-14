@@ -2,7 +2,6 @@ package Tests;
 
 import java.awt.Color;
 
-import Controller.GameController;
 import Controller.MovementController;
 import Enums.Stage;
 import Model.Game;
@@ -28,8 +27,6 @@ public class InnerPathArrowCheck {
     private static void testMatchingArrow() {
         Game game = new Game(TestPlayers.of(new String[]{"Green", "Yellow"}, new String[]{"Green", "Yellow"}), "Medium");
         MovementController controllerPieces = new MovementController(game);
-        GameController controller = new GameController(game, controllerPieces);
-
         game.selectPiece(0);
         game.setPieceOnBoard(true);
         game.setStage(Stage.MOVE);
@@ -46,8 +43,6 @@ public class InnerPathArrowCheck {
     private static void testNonMatchingArrow() {
         Game game = new Game(TestPlayers.of(new String[]{"Green", "Yellow"}, new String[]{"Green", "Yellow"}), "Medium");
         MovementController controllerPieces = new MovementController(game);
-        GameController controller = new GameController(game, controllerPieces);
-
         game.selectPiece(0);
         game.setPieceOnBoard(true);
         game.setStage(Stage.MOVE);

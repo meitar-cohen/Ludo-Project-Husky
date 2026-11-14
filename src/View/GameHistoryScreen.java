@@ -22,8 +22,6 @@ public class GameHistoryScreen extends JFrame {
     private static final Color BLUE = new Color(75, 110, 248);
     private static final Color MUTED = new Color(112, 124, 151);
     private static final Color LIGHT = new Color(243, 246, 253);
-    private static final Font FONT = new Font("Segoe UI", Font.PLAIN, 14);
-
     private final JPanel rankingCards = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 2));
     private final JLabel rankingGameLabel = new JLabel();
     private final List<GameRecord> history;

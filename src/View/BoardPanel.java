@@ -31,7 +31,6 @@ public class BoardPanel extends JPanel {
     public static final Color Q_HARD = new Color(235, 100, 100);
     public static final Color SURPRISE = new Color(150, 90, 200);
 
-    private final String difficulty;
     private final int rings;
     private final int size;
     private int activeCorner;
@@ -70,7 +69,6 @@ public class BoardPanel extends JPanel {
     private final BoardDrawingPanel drawingPanel = new BoardDrawingPanel();
 
     public BoardPanel(String difficulty, String[] playerColorNames) {
-        this.difficulty = difficulty;
         if ("Hard".equals(difficulty)) {
             rings = 2;
         } else if ("Medium".equals(difficulty)) {

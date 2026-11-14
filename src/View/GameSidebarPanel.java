@@ -111,10 +111,6 @@ class GameSidebarPanel extends JPanel {
         dice.animate(stepDie, boostDie, onDone);
     }
 
-    DicePanel getDice() {
-        return dice;
-    }
-
     String getRollButtonText() {
         return rollButton.getText();
     }

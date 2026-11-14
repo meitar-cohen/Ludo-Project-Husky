@@ -1,5 +1,4 @@
 package Tests;
-import Controller.GameController;
 import Controller.MovementController;
 import Enums.Stage;
 import Model.Game;

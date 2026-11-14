@@ -25,8 +25,6 @@ public class NoLegalMoveRulesCheck {
 
         Game game = newGame(level);
         MovementController controllerPieces = new MovementController(game);
-        GameController controller = new GameController(game, controllerPieces);
-
         // כל הכלים בטירה - אין כלי שניתן להזיז
         game.setStage(Stage.MOVE);
         game.setPendingSteps(4);
@@ -78,8 +76,6 @@ public class NoLegalMoveRulesCheck {
 
         Game game = newGame("Medium");
         MovementController controllerPieces = new MovementController(game);
-        GameController controller = new GameController(game, controllerPieces);
-
         game.setStage(Stage.MOVE);
         game.setPieceOnBoard(true);
         game.setPieceInInnerPath(true);

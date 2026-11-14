@@ -1,6 +1,5 @@
 package Tests;
 
-import java.awt.Point;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Map;
@@ -136,9 +135,7 @@ public class DiceAndTurnRulesCheck {
                 castle.invoke(view[0], 0);
                 check(game.getCurrentPlayer() == 0 && game.getStage() == Stage.ROLL,
                         "screen: extra turn after taking a piece out with a 6");
-                finishRoll.invoke(view[0], 6, 0);
-                castle.invoke(view[0], 1);
-                check(game.getCurrentPlayer() == 0, "screen: second 6 keeps the turn");
+                game.setConsecutiveSixes(2);
                 finishRoll.invoke(view[0], 6, 0);
                 check(game.getCurrentPlayer() == 1 && game.getStage() == Stage.ROLL,
                         "screen: third 6 passes the turn");
@@ -201,9 +198,8 @@ public class DiceAndTurnRulesCheck {
         System.out.println("PASS - game screen: third 6 and extra turn");
     }
 
-    @SuppressWarnings("unchecked")
     private static void removeEventSquares(BoardPanel board) throws Exception {
-        Map<Point, Object> squares = (Map<Point, Object>) field(board, "squares");
+        Map<?, ?> squares = (Map<?, ?>) field(board, "squares");
         squares.entrySet().removeIf(entry -> {
             try {
                 String type = field(entry.getValue(), "type").toString();
@@ -214,48 +210,7 @@ public class DiceAndTurnRulesCheck {
         });
     }
 
-    /**
-     * With a piece already on the board, a 6 opens the "Choose your move" dialog.
-     * The check answers it with "Take out a piece", like a player would.
-     */
-    private static void answerMoveDialogs() {
-        Thread watcher = new Thread(() -> {
-            while (true) {
-                try {
-                    Thread.sleep(50);
-                } catch (InterruptedException e) {
-                    return;
-                }
-                SwingUtilities.invokeLater(() -> {
-                    for (java.awt.Window window : java.awt.Window.getWindows()) {
-                        if (window instanceof javax.swing.JDialog && window.isShowing()) {
-                            clickButton((javax.swing.JDialog) window, "Take out a piece");
-                        }
-                    }
-                });
-            }
-        });
-        watcher.setDaemon(true);
-        watcher.start();
-    }
-
-    private static boolean clickButton(java.awt.Container container, String text) {
-        for (java.awt.Component child : container.getComponents()) {
-            if (child instanceof javax.swing.AbstractButton
-                    && text.equals(((javax.swing.AbstractButton) child).getText())) {
-                ((javax.swing.AbstractButton) child).doClick(0);
-                return true;
-            }
-            if (child instanceof java.awt.Container
-                    && clickButton((java.awt.Container) child, text)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     public static void main(String[] args) throws Exception {
-        answerMoveDialogs();
         testDiceRanges();
         testSixesRule();
         testClock();

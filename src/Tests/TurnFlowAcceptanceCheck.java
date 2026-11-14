@@ -5,7 +5,6 @@ import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
 import Controller.MovementController;
-import Controller.GameController;
 import Enums.Stage;
 import Model.Game;
 import View.BoardPanel;
@@ -47,8 +46,6 @@ public class TurnFlowAcceptanceCheck {
         Game game = new Game(TestPlayers.of(new String[]{"A", "B"}, new String[]{"Green", "Red"}), "Medium");
 
         MovementController controllerPieces = new MovementController(game);
-        GameController controller = new GameController(game, controllerPieces);
-
         game.setPieceOnBoard(true);
         game.setPieceStep(5);
         game.setStage(Stage.BUSY);
@@ -93,9 +90,6 @@ public class TurnFlowAcceptanceCheck {
                 view[0] = new GameScreen(TestPlayers.of(new String[]{"A", "B"}, new String[]{"Green", "Red"}), level);
 
                 game[0] = (Game) field(view[0], "game");
-                Controller.GameController controller =
-                        new Controller.GameController(
-                                game[0], new MovementController(game[0]));
                 board[0] = (BoardPanel) field(view[0], "board");
 
                 board[0].setActivePlayerColor("Green");

@@ -23,7 +23,6 @@ public class GameScreen extends JPanel {
     private final String difficulty;
 
     private final BoardPanel board;
-    private final DicePanel dice;
     private final JLabel timerLabel;
     private final GameSidebarPanel sidebar;
 
@@ -117,7 +116,6 @@ public class GameScreen extends JPanel {
                 this::showEndScreen,
                 this::backToMenu
         );
-        dice = sidebar.getDice();
         GameCardPanel side = new GameCardPanel(Color.WHITE, 24);
         side.setLayout(new BorderLayout());
         side.setPreferredSize(new Dimension(330, 0));

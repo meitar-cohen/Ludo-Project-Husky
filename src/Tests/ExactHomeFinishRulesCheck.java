@@ -34,8 +34,6 @@ public class ExactHomeFinishRulesCheck {
 
         Game game = newGame(level);
         MovementController controllerPieces = new MovementController(game);
-        GameController controller = new GameController(game, controllerPieces);
-
         // משבצת 4, תוצאה 3 - חריגה מבית הסיום
         prepareHomePiece(game, 4, 3);
 
@@ -96,8 +94,6 @@ public class ExactHomeFinishRulesCheck {
 
         Game game = newGame(level);
         MovementController controllerPieces = new MovementController(game);
-        GameController controller = new GameController(game, controllerPieces);
-
         game.setPieceOnBoard(true);
         game.setPieceInInnerPath(true);
         game.setPieceStep(50);

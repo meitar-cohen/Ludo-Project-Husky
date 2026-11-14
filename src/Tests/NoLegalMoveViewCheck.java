@@ -7,8 +7,6 @@ import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
-import Controller.GameController;
-import Controller.MovementController;
 import Enums.Stage;
 import Model.Game;
 import View.BoardPanel;
@@ -43,9 +41,6 @@ public class NoLegalMoveViewCheck {
                 view = new GameScreen(TestPlayers.of(new String[]{"A", "B", "C"}, new String[]{"Red", "Blue", "Green"}), level);
 
                 Game game = (Game) field(view, "game");
-                GameController controller =
-                        new GameController(game, new MovementController(game));
-
                 BoardPanel board =
                         (BoardPanel) field(view, "board");
 

@@ -3,7 +3,6 @@ package Tests;
 import java.awt.Point;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.List;
 import java.util.Map;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
