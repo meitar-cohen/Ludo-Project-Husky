@@ -44,13 +44,6 @@ public class MainMenuScreen extends JFrame {
             new GameHistoryScreen().setVisible(true);
             dispose();
         });
-        questionManagementButton.addActionListener(e -> {
-            AdminLoginScreen login = new AdminLoginScreen(() ->
-                new QuestionManagementScreen().setVisible(true)
-            );
-            login.setVisible(true);
-            dispose();
-        });
         exitButton.addActionListener(e -> dispose());
     }
 
