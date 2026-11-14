@@ -27,9 +27,9 @@ public class HomePathZeroRollCheck {
     private static void checkZeroWithHome(String difficulty) {
 
         Game game = newGame(difficulty);
-        game.setPieceOnBoard(true);
-        game.setPieceInHomePath(true);
-        game.setPieceStep(1);
+        game.getSelectedPiece().setOnBoard(true);
+        game.getSelectedPiece().setInHomePath(true);
+        game.getSelectedPiece().setSteps(1);
 
         MovementController controllerPieces = new MovementController(game);
         GameController controller = new GameController(game, controllerPieces);
@@ -47,7 +47,7 @@ public class HomePathZeroRollCheck {
         yes(controllerPieces.movePiece(0, 5, 6),
                 difficulty + " moves home piece");
 
-        same(5, game.getPieceStep(),
+        same(5, game.getSelectedPiece().getSteps(),
                 difficulty + " saved position");
 
         System.out.println("PASS - " + difficulty
@@ -58,7 +58,7 @@ public class HomePathZeroRollCheck {
     private static void checkZeroWithoutHome() {
 
         Game game = newGame("Medium");
-        game.setPieceOnBoard(true);
+        game.getSelectedPiece().setOnBoard(true);
 
         MovementController controllerPieces = new MovementController(game);
         GameController controller = new GameController(game, controllerPieces);
@@ -76,13 +76,13 @@ public class HomePathZeroRollCheck {
         Game game = newGame("Medium");
 
         game.selectPiece(0);
-        game.setPieceOnBoard(true);
-        game.setPieceStep(3);
+        game.getSelectedPiece().setOnBoard(true);
+        game.getSelectedPiece().setSteps(3);
 
         game.selectPiece(1);
-        game.setPieceOnBoard(true);
-        game.setPieceInHomePath(true);
-        game.setPieceStep(0);
+        game.getSelectedPiece().setOnBoard(true);
+        game.getSelectedPiece().setInHomePath(true);
+        game.getSelectedPiece().setSteps(0);
 
         MovementController controllerPieces = new MovementController(game);
         GameController controller = new GameController(game, controllerPieces);
@@ -104,8 +104,8 @@ public class HomePathZeroRollCheck {
     private static void checkNormalMovement() {
 
         Game game = newGame("Medium");
-        game.setPieceOnBoard(true);
-        game.setPieceStep(2);
+        game.getSelectedPiece().setOnBoard(true);
+        game.getSelectedPiece().setSteps(2);
 
         MovementController controllerPieces = new MovementController(game);
         GameController controller = new GameController(game, controllerPieces);
@@ -124,9 +124,9 @@ public class HomePathZeroRollCheck {
     private static void checkHomeBoundary() {
 
         Game game = newGame("Medium");
-        game.setPieceOnBoard(true);
-        game.setPieceInHomePath(true);
-        game.setPieceStep(4);
+        game.getSelectedPiece().setOnBoard(true);
+        game.getSelectedPiece().setInHomePath(true);
+        game.getSelectedPiece().setSteps(4);
 
         MovementController controllerPieces = new MovementController(game);
         GameController controller = new GameController(game, controllerPieces);

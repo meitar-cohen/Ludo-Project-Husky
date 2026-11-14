@@ -178,7 +178,7 @@ public class Iteration1UiRegressionCheck {
 
         controllerPieces.takeOutActivePiece(0);
 
-        check(game.isPieceOnBoard(0, 0),
+        check(game.getPlayer(0).getPiece(0).isOnBoard(),
                 "Piece missing from model after castle exit");
 
         check(controller.getTurnController().canRoll(),
@@ -207,7 +207,7 @@ public class Iteration1UiRegressionCheck {
         check(controllerPieces.movePiece(0, target, routeSize),
                 "Controller rejected legal movement");
 
-        check(game.getPieceStep(0, 0) == 2,
+        check(game.getPlayer(0).getPiece(0).getSteps() == 2,
                 "Piece position was not updated");
 
         System.out.println(

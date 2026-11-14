@@ -85,7 +85,7 @@ public class StepZeroAcceptanceCheck {
         Game game = newGame(level);
 
         game.selectPiece(0);
-        game.setPieceOnBoard(true);
+        game.getSelectedPiece().setOnBoard(true);
 
         MovementController controllerPieces = new MovementController(game);
         GameController controller = new GameController(game, controllerPieces);
@@ -108,9 +108,9 @@ public class StepZeroAcceptanceCheck {
         Game game = newGame(level);
 
         game.selectPiece(0);
-        game.setPieceOnBoard(true);
-        game.setPieceInHomePath(true);
-        game.setPieceStep(1);
+        game.getSelectedPiece().setOnBoard(true);
+        game.getSelectedPiece().setInHomePath(true);
+        game.getSelectedPiece().setSteps(1);
 
         MovementController controllerPieces = new MovementController(game);
         GameController controller = new GameController(game, controllerPieces);
@@ -128,7 +128,7 @@ public class StepZeroAcceptanceCheck {
                 controllerPieces.movePiece(0, 5, 6),
                 level + " apply home move");
 
-        expect(5, game.getPieceStep(),
+        expect(5, game.getSelectedPiece().getSteps(),
                 level + " home position");
 
         System.out.println(
@@ -141,9 +141,9 @@ public class StepZeroAcceptanceCheck {
         Game game = newGame(level);
 
         game.selectPiece(0);
-        game.setPieceOnBoard(true);
-        game.setPieceInHomePath(true);
-        game.setPieceStep(4);
+        game.getSelectedPiece().setOnBoard(true);
+        game.getSelectedPiece().setInHomePath(true);
+        game.getSelectedPiece().setSteps(4);
 
         MovementController controllerPieces = new MovementController(game);
         GameController controller = new GameController(game, controllerPieces);
@@ -197,7 +197,7 @@ public class StepZeroAcceptanceCheck {
                 // בדיקה גם עם כלי במסלול המשותף
                 if (hasSharedPiece) {
                     game.selectPiece(0);
-                    game.setPieceOnBoard(true);
+                    game.getSelectedPiece().setOnBoard(true);
                 }
 
                 // הפעלת סיום הטלה עם תוצאה 0

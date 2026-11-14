@@ -28,15 +28,15 @@ public class InnerPathArrowCheck {
         Game game = new Game(TestPlayers.of(new String[]{"Green", "Yellow"}, new String[]{"Green", "Yellow"}), "Medium");
         MovementController controllerPieces = new MovementController(game);
         game.selectPiece(0);
-        game.setPieceOnBoard(true);
+        game.getSelectedPiece().setOnBoard(true);
         game.setStage(Stage.MOVE);
 
         check(controllerPieces.enterInnerPathFromArrow(
                         BoardPanel.GREEN, BoardPanel.GREEN, 0),
                 "Matching arrow was rejected");
-        check(game.isPieceInInnerPath(),
+        check(game.getSelectedPiece().isInInnerPath(),
                 "Piece did not enter the inner path");
-        check(game.getPieceStep() == 0,
+        check(game.getSelectedPiece().getSteps() == 0,
                 "Piece did not start at the inner path entry");
     }
 
@@ -44,13 +44,13 @@ public class InnerPathArrowCheck {
         Game game = new Game(TestPlayers.of(new String[]{"Green", "Yellow"}, new String[]{"Green", "Yellow"}), "Medium");
         MovementController controllerPieces = new MovementController(game);
         game.selectPiece(0);
-        game.setPieceOnBoard(true);
+        game.getSelectedPiece().setOnBoard(true);
         game.setStage(Stage.MOVE);
 
         check(!controllerPieces.enterInnerPathFromArrow(
                         BoardPanel.RED, BoardPanel.GREEN, 0),
                 "Non-matching arrow was accepted");
-        check(!game.isPieceInInnerPath(),
+        check(!game.getSelectedPiece().isInInnerPath(),
                 "Piece entered the inner path from a non-matching arrow");
     }
 
@@ -59,19 +59,19 @@ public class InnerPathArrowCheck {
         Game game = new Game(TestPlayers.of(new String[]{"Green", "Yellow"}, new String[]{"Green", "Yellow"}), "Hard");
         MovementController pieces = new MovementController(game);
         game.selectPiece(0);
-        game.setPieceOnBoard(true);
-        game.setPieceStep(9);
+        game.getSelectedPiece().setOnBoard(true);
+        game.getSelectedPiece().setSteps(9);
         game.setStage(Stage.MOVE);
 
         check(pieces.enterInnerPathFromArrow(BoardPanel.GREEN, BoardPanel.GREEN, 0),
                 "Hard: arrow on the outer path was rejected");
-        check(game.isPieceInMiddlePath() && !game.isPieceInInnerPath(),
+        check(game.getSelectedPiece().isInMiddlePath() && !game.getSelectedPiece().isInInnerPath(),
                 "Hard: the first arrow must lead to the middle path (64), not the inner path");
-        check(game.getPieceStep() == 0, "Hard: piece must start the middle path at step 0");
+        check(game.getSelectedPiece().getSteps() == 0, "Hard: piece must start the middle path at step 0");
 
         check(pieces.enterInnerPathFromArrow(BoardPanel.GREEN, BoardPanel.GREEN, 0),
                 "Hard: arrow on the middle path was rejected");
-        check(game.isPieceInInnerPath() && !game.isPieceInMiddlePath(),
+        check(game.getSelectedPiece().isInInnerPath() && !game.getSelectedPiece().isInMiddlePath(),
                 "Hard: the second arrow must lead to the inner path (52)");
 
         check(!pieces.enterInnerPathFromArrow(BoardPanel.GREEN, BoardPanel.GREEN, 0),
@@ -83,14 +83,14 @@ public class InnerPathArrowCheck {
         Game game = new Game(TestPlayers.of(new String[]{"Green", "Yellow"}, new String[]{"Green", "Yellow"}), "Medium");
         MovementController pieces = new MovementController(game);
         game.selectPiece(0);
-        game.setPieceOnBoard(true);
-        game.setPieceInInnerPath(true);
-        game.setPieceStep(50);
+        game.getSelectedPiece().setOnBoard(true);
+        game.getSelectedPiece().setInInnerPath(true);
+        game.getSelectedPiece().setSteps(50);
         game.setStage(Stage.MOVE);
         check(!pieces.enterInnerPathFromArrow(BoardPanel.GREEN, BoardPanel.GREEN, 0)
-                && game.getPieceStep() == 50,
+                && game.getSelectedPiece().getSteps() == 50,
                 "Medium: an arrow on the inner path must not reset the piece");
-        check(!game.isPieceInMiddlePath(), "Medium has no middle path");
+        check(!game.getSelectedPiece().isInMiddlePath(), "Medium has no middle path");
     }
 
     private static void testBoardArrowLookup() {

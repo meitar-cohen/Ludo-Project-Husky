@@ -164,9 +164,9 @@ public class DiceAndTurnRulesCheck {
                 check(board.placeActivePieceOnStart(0), "setup piece");
                 removeEventSquares(board);
                 game[0].selectPiece(0);
-                game[0].setPieceOnBoard(true);
+                game[0].getSelectedPiece().setOnBoard(true);
                 game[0].setPiecesInCastle(3);
-                game[0].setPieceStep(0);
+                game[0].getSelectedPiece().setSteps(0);
                 game[0].setLastStepDie(6);
                 game[0].setPendingSteps(6);
                 game[0].setStage(Stage.MOVE);

@@ -36,10 +36,10 @@ public class HomeEntryRuleCheck {
         Game game = new Game(TestPlayers.of(new String[] {"A", "B"}, new String[] {"Red", "Blue"}), level);
 
         game.setStage(Stage.MOVE);
-        game.setPieceOnBoard(true);
-        game.setPieceStep(start);
+        game.getSelectedPiece().setOnBoard(true);
+        game.getSelectedPiece().setSteps(start);
         game.setPendingSteps(move);
-        game.setPieceInInnerPath(alreadyInner);
+        game.getSelectedPiece().setInInnerPath(alreadyInner);
 
         boolean success = new MovementController(game)
                 .tryEnterHomePath(0, routeSize);
@@ -49,8 +49,8 @@ public class HomeEntryRuleCheck {
         }
 
         // בדיקה שמיקום הכלי במסלול הבית נשמר נכון
-        if (success && (!game.isPieceInHomePath()
-                || game.getPieceStep() != start + move - routeSize)) {
+        if (success && (!game.getSelectedPiece().isInHomePath()
+                || game.getSelectedPiece().getSteps() != start + move - routeSize)) {
             throw new AssertionError("Home position incorrect");
         }
     }

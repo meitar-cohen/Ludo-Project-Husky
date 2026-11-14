@@ -63,9 +63,9 @@ public class NoLegalMoveViewCheck {
                             "Board setup");
 
                     game.selectPiece(0);
-                    game.setPieceOnBoard(true);
-                    game.setPieceInHomePath(true);
-                    game.setPieceStep(5);
+                    game.getSelectedPiece().setOnBoard(true);
+                    game.getSelectedPiece().setInHomePath(true);
+                    game.getSelectedPiece().setSteps(5);
 
                     board.showActivePieceInHomePath(0, 5);
 
@@ -82,9 +82,9 @@ public class NoLegalMoveViewCheck {
                             "Board setup");
 
                     game.selectPiece(0);
-                    game.setPieceOnBoard(true);
-                    game.setPieceInHomePath(true);
-                    game.setPieceStep(1);
+                    game.getSelectedPiece().setOnBoard(true);
+                    game.getSelectedPiece().setInHomePath(true);
+                    game.getSelectedPiece().setSteps(1);
 
                     board.showActivePieceInHomePath(0, 1);
                     boost = 1;
@@ -107,9 +107,9 @@ public class NoLegalMoveViewCheck {
                                 "All pieces setup");
 
                         game.selectPiece(piece);
-                        game.setPieceOnBoard(true);
-                        game.setPieceInHomePath(true);
-                        game.setPieceStep(5);
+                        game.getSelectedPiece().setOnBoard(true);
+                        game.getSelectedPiece().setInHomePath(true);
+                        game.getSelectedPiece().setSteps(5);
 
                         board.showActivePieceInHomePath(piece, 5);
                     }

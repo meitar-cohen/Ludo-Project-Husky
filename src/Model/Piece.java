@@ -42,9 +42,21 @@ public class Piece {
         return state == PieceState.BOARD || state == PieceState.HOME_PATH;
     }
 
+    public void setOnBoard(boolean onBoard) {
+        setState(onBoard ? PieceState.BOARD : PieceState.CASTLE);
+    }
+
     public boolean isInHomePath() {
         return state == PieceState.HOME_PATH
                 || state == PieceState.FINISHED;
+    }
+
+    public void setInHomePath(boolean inHomePath) {
+        if (inHomePath) {
+            setState(PieceState.HOME_PATH);
+        } else if (!isFinished()) {
+            setState(PieceState.BOARD);
+        }
     }
 
     public boolean isFinished() {

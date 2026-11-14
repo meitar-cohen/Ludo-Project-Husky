@@ -76,8 +76,8 @@ public class CastleViewAcceptanceCheck {
                 castleClick.invoke(view, 0);
 
                 // בדיקת מצב הכלי במודל
-                check(game.isPieceOnBoard(0, 0)
-                        && game.getPieceStep(0, 0) == 0,
+                check(game.getPlayer(0).getPiece(0).isOnBoard()
+                        && game.getPlayer(0).getPiece(0).getSteps() == 0,
                         level + ": model position");
 
                 // בדיקת הופעת הכלי בלוח

@@ -76,7 +76,7 @@ public class TurnController {
             game.setStage(Stage.TAKE_OUT);
             return RollAction.TAKE_OUT;
         }
-        if ((game.getPendingSteps() > 0 && game.hasAnyPieceOnBoard())
+        if ((game.getPendingSteps() > 0 && game.getPlayer(game.getCurrentPlayer()).hasPieceOnBoard())
                 || pieces.hasAvailableHomePathMove(stepDie)) {
             game.setStage(Stage.MOVE);
             return RollAction.MOVE;

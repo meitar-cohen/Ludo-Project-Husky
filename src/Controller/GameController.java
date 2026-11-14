@@ -4,10 +4,8 @@ import java.awt.Color;
 import java.awt.Point;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import Enums.Stage;
@@ -24,7 +22,6 @@ public class GameController {
     private final Game game;
     private final MovementController pieces;
     private final TurnController turnController;
-    private final Map<Point, Square> specialSquares = new HashMap<>();
     private final Question question = new Question(
             "Which document defines the software requirements according to IEEE Std 830?",
             new String[]{
@@ -43,6 +40,7 @@ public class GameController {
         this.game = game;
         this.pieces = pieces;
         this.turnController = new TurnController(game, pieces);
+        initializeBoard();
     }
 
     public static GameController createNewGame(
@@ -83,18 +81,84 @@ public class GameController {
         return turnController;
     }
 
+    public int getBoardRings() {
+        return game.getBoard().getRings();
+    }
+
+    public int getBoardSize() {
+        return game.getBoard().getSize();
+    }
+
+    public Point getInnerBoardPoint(int column, int row) {
+        return new Point(column + getBoardRings(), row + getBoardRings());
+    }
+
+    public List<Point> getInnerBoardPath() {
+        return game.getBoard().getSharedRoutes().get(0);
+    }
+
+    public List<Point> getBoardRingPath(int ring) {
+        if (ring < 0 || ring > getBoardRings()) {
+            throw new IllegalArgumentException("Invalid board ring index");
+        }
+        int n = getBoardSize() - 2 * ring;
+        List<Point> path = new ArrayList<>();
+        for (int c = 0; c < n; c++) path.add(new Point(ring + c, ring));
+        for (int r = 1; r < n; r++) path.add(new Point(ring + n - 1, ring + r));
+        for (int c = n - 2; c >= 0; c--) path.add(new Point(ring + c, ring + n - 1));
+        for (int r = n - 2; r >= 1; r--) path.add(new Point(ring, ring + r));
+        return path;
+    }
+
+    public List<List<Point>> getBoardSharedRoutes() {
+        return game.getBoard().getSharedRoutes();
+    }
+
+    private void initializeBoard() {
+        String difficulty = game.getDifficulty();
+        int rings = "Hard".equals(difficulty) ? 2 : "Medium".equals(difficulty) ? 1 : 0;
+        game.getBoard().setRings(rings);
+        game.getBoard().setSize(15 + 2 * rings);
+        List<List<Point>> routes = new ArrayList<>();
+        routes.add(createInnerBoardPath());
+        if (rings >= 1) {
+            routes.add(getBoardRingPath(rings == 1 ? 0 : 1));
+        }
+        if (rings == 2) {
+            routes.add(getBoardRingPath(0));
+        }
+        game.getBoard().setSharedRoutes(routes);
+    }
+
+    private List<Point> createInnerBoardPath() {
+        List<Point> path = new ArrayList<>();
+        for (int c = 1; c <= 5; c++) path.add(getInnerBoardPoint(c, 6));
+        for (int r = 5; r >= 0; r--) path.add(getInnerBoardPoint(6, r));
+        path.add(getInnerBoardPoint(7, 0));
+        path.add(getInnerBoardPoint(8, 0));
+        for (int r = 1; r <= 5; r++) path.add(getInnerBoardPoint(8, r));
+        for (int c = 9; c <= 14; c++) path.add(getInnerBoardPoint(c, 6));
+        path.add(getInnerBoardPoint(14, 7));
+        path.add(getInnerBoardPoint(14, 8));
+        for (int c = 13; c >= 9; c--) path.add(getInnerBoardPoint(c, 8));
+        for (int r = 9; r <= 14; r++) path.add(getInnerBoardPoint(8, r));
+        path.add(getInnerBoardPoint(7, 14));
+        path.add(getInnerBoardPoint(6, 14));
+        for (int r = 13; r >= 9; r--) path.add(getInnerBoardPoint(6, r));
+        for (int c = 5; c >= 0; c--) path.add(getInnerBoardPoint(c, 8));
+        path.add(getInnerBoardPoint(0, 7));
+        path.add(getInnerBoardPoint(0, 6));
+        return path;
+    }
+
     public void addSpecialSquare(Point position, SquareType type, Color color, int direction) {
-        specialSquares.put(
+        game.getBoard().putSpecialSquare(
                 new Point(position), new Square(type, color, direction));
     }
 
     public void randomizeSpecialSquares(List<List<Point>> routes, int rings, Set<Point> excludedCells, Color[] questionColors, Color surprise) {
-        specialSquares.entrySet().removeIf(entry -> {
-            SquareType type = entry.getValue().getType();
-            return type == SquareType.STAR
-                    || type == SquareType.QUESTION
-                    || type == SquareType.SURPRISE;
-        });
+        removeSpecialSquares(
+                SquareType.STAR, SquareType.QUESTION, SquareType.SURPRISE);
 
         placeRandomSpecialsOnRoute(
                 routes.get(0), excludedCells, 4, 0, 0, 0, 0,
@@ -118,7 +182,7 @@ public class GameController {
     private void placeRandomSpecialsOnRoute(List<Point> route, Set<Point> excludedCells, int stars, int easyQuestions, int mediumQuestions, int hardQuestions, int surprises, Color[] questionColors, Color surprise) {
         List<Point> available = new ArrayList<>();
         for (Point cell : route) {
-            if (!specialSquares.containsKey(cell)
+            if (!hasSpecialSquare(cell)
                     && !excludedCells.contains(cell)) {
                 available.add(cell);
             }
@@ -159,41 +223,37 @@ public class GameController {
     }
 
     public boolean hasSpecialSquare(Point position) {
-        return specialSquares.containsKey(position);
+        return game.getBoard().getSpecialSquare(position) != null;
     }
 
     public void removeSpecialSquares(SquareType... types) {
-        specialSquares.entrySet().removeIf(entry -> {
+        for (Point position : game.getBoard().getSpecialSquarePositions()) {
             for (SquareType type : types) {
-                if (entry.getValue().getType() == type) {
-                    return true;
+                if (game.getBoard().getSpecialSquare(position).getType() == type) {
+                    game.getBoard().removeSpecialSquare(position);
+                    break;
                 }
             }
-            return false;
-        });
+        }
     }
 
     public SquareType getSpecialSquareType(Point position) {
-        Square square = specialSquares.get(position);
+        Square square = game.getBoard().getSpecialSquare(position);
         return square == null ? null : square.getType();
     }
 
     public Color getSpecialSquareColor(Point position) {
-        Square square = specialSquares.get(position);
+        Square square = game.getBoard().getSpecialSquare(position);
         return square == null ? null : square.getColor();
     }
 
     public int getSpecialSquareDirection(Point position) {
-        Square square = specialSquares.get(position);
+        Square square = game.getBoard().getSpecialSquare(position);
         return square == null ? -1 : square.getDirection();
     }
 
     public List<Point> getSpecialSquarePositions() {
-        List<Point> positions = new ArrayList<>();
-        for (Point position : specialSquares.keySet()) {
-            positions.add(new Point(position));
-        }
-        return positions;
+        return game.getBoard().getSpecialSquarePositions();
     }
 
     public String[] getPlayerNames() {

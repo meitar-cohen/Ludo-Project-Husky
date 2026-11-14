@@ -39,11 +39,9 @@ public class RandomSquaresCheck {
         return (GameController) value(board, "turns");
     }
 
-    @SuppressWarnings("unchecked")
     private static List<List<Point>> routes(BoardPanel board)
             throws Exception {
-
-        return (List<List<Point>>) value(board, "sharedRoutes");
+        return squares(board).getBoardSharedRoutes();
     }
 
     @SuppressWarnings("unchecked")

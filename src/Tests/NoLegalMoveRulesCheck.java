@@ -35,16 +35,16 @@ public class NoLegalMoveRulesCheck {
 
         // כלי בסוף מסלול הבית שאינו יכול להתקדם
         game.selectPiece(0);
-        game.setPieceOnBoard(true);
-        game.setPieceInHomePath(true);
-        game.setPieceStep(5);
+        game.getSelectedPiece().setOnBoard(true);
+        game.getSelectedPiece().setInHomePath(true);
+        game.getSelectedPiece().setSteps(5);
 
         check(!controllerPieces.hasAnyLegalMove(
                         new int[]{6, lengths[1], lengths[2], lengths[3]}),
                 level + " blocked home");
 
         // תוצאה 0 עם כלי שיכול לנוע במסלול הבית
-        game.setPieceStep(1);
+        game.getSelectedPiece().setSteps(1);
         game.setPendingSteps(0);
         game.setLastStepDie(4);
 
@@ -56,8 +56,8 @@ public class NoLegalMoveRulesCheck {
                 level + " zero boost home");
 
         // תנועה רגילה במסלול המשותף
-        game.setPieceInHomePath(false);
-        game.setPieceStep(2);
+        game.getSelectedPiece().setInHomePath(false);
+        game.getSelectedPiece().setSteps(2);
         game.setPendingSteps(4);
 
         check(controllerPieces.hasAnyLegalMove(lengths),
@@ -77,9 +77,9 @@ public class NoLegalMoveRulesCheck {
         Game game = newGame("Medium");
         MovementController controllerPieces = new MovementController(game);
         game.setStage(Stage.MOVE);
-        game.setPieceOnBoard(true);
-        game.setPieceInInnerPath(true);
-        game.setPieceStep(50);
+        game.getSelectedPiece().setOnBoard(true);
+        game.getSelectedPiece().setInInnerPath(true);
+        game.getSelectedPiece().setSteps(50);
         game.setPendingSteps(3);
 
         check(controllerPieces.hasAnyLegalMove(
@@ -87,7 +87,7 @@ public class NoLegalMoveRulesCheck {
                 "Legal crossing into home path");
 
         // מהמסלול החיצוני אי אפשר לקפוץ ישירות לבית
-        game.setPieceStep(62);
+        game.getSelectedPiece().setSteps(62);
 
         check(!controllerPieces.hasAnyLegalMove(MEDIUM),
                 "Cannot jump from outer route directly to home");

@@ -41,7 +41,7 @@ public class StepCalculationCheck {
         // בדיקה שהמשחק משתמש בתוצאה המחושבת
         Game game1 = new Game(TestPlayers.of(new String[] {"Player1", "Player2"}, new String[] {"Red", "Blue"}), "Medium");
 
-        game1.setPieceOnBoard(true);
+        game1.getSelectedPiece().setOnBoard(true);
         MovementController controller1Pieces = new MovementController(game1);
         GameController controller1 = new GameController(game1, controller1Pieces);
 
@@ -57,7 +57,7 @@ public class StepCalculationCheck {
         // בדיקת תוצאה 0 ללא כלי במסלול הבית
         Game game2 = new Game(TestPlayers.of(new String[] {"Player1", "Player2"}, new String[] {"Red", "Blue"}), "Medium");
 
-        game2.setPieceOnBoard(true);
+        game2.getSelectedPiece().setOnBoard(true);
         MovementController controller2Pieces = new MovementController(game2);
         GameController controller2 = new GameController(game2, controller2Pieces);
 

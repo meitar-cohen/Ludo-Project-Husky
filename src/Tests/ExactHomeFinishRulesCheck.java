@@ -21,9 +21,9 @@ public class ExactHomeFinishRulesCheck {
             Game game, int position, int die) {
 
         game.selectPiece(0);
-        game.setPieceOnBoard(true);
-        game.setPieceInHomePath(true);
-        game.setPieceStep(position);
+        game.getSelectedPiece().setOnBoard(true);
+        game.getSelectedPiece().setInHomePath(true);
+        game.getSelectedPiece().setSteps(position);
         game.setLastStepDie(die);
         game.setPendingSteps(0);
         game.setStage(Stage.MOVE);
@@ -40,8 +40,8 @@ public class ExactHomeFinishRulesCheck {
         check(!controllerPieces.tryFinishPiece(0, 6),
                 level + ": overshoot rejected");
 
-        check(game.getPieceStep() == 4
-                && !game.isPieceFinished(0, 0),
+        check(game.getSelectedPiece().getSteps() == 4
+                && !game.getPlayer(0).getPiece(0).isFinished(),
                 level + ": unchanged after overshoot");
 
         check(!controllerPieces.hasAnyLegalMove(
@@ -67,12 +67,16 @@ public class ExactHomeFinishRulesCheck {
         check(controllerPieces.tryFinishPiece(0, 6),
                 level + ": exact finish succeeded");
 
-        check(game.isPieceFinished(0, 0)
-                && game.getPieceStep(0, 0) == 6,
+        check(game.getPlayer(0).getPiece(0).isFinished()
+                && game.getPlayer(0).getPiece(0).getSteps() == 6,
                 level + ": finish position");
 
-        check(!game.isPieceOnBoard(0, 0)
-                && game.getFinishedPieceCount(0) == 1,
+        game.getSelectedPiece().setInHomePath(false);
+        check(game.getSelectedPiece().isFinished(),
+                level + ": leaving home path does not reset a finished piece");
+
+        check(!game.getPlayer(0).getPiece(0).isOnBoard()
+                && game.getPlayer(0).getFinishedPieceCount() == 1,
                 level + ": finished piece removed from path");
 
         // כלי שכבר סיים לא ניתן לבחירה נוספת
@@ -94,9 +98,9 @@ public class ExactHomeFinishRulesCheck {
 
         Game game = newGame(level);
         MovementController controllerPieces = new MovementController(game);
-        game.setPieceOnBoard(true);
-        game.setPieceInInnerPath(true);
-        game.setPieceStep(50);
+        game.getSelectedPiece().setOnBoard(true);
+        game.getSelectedPiece().setInInnerPath(true);
+        game.getSelectedPiece().setSteps(50);
         game.setPendingSteps(8);
         game.setLastStepDie(4);
         game.setStage(Stage.MOVE);
@@ -108,7 +112,7 @@ public class ExactHomeFinishRulesCheck {
         check(controllerPieces.tryFinishPiece(0, 52),
                 level + ": direct finish succeeded");
 
-        check(game.isPieceFinished(0, 0),
+        check(game.getPlayer(0).getPiece(0).isFinished(),
                 level + ": direct finish saved");
 
         System.out.println(
@@ -125,9 +129,9 @@ public class ExactHomeFinishRulesCheck {
         for (int piece = 0; piece < 4; piece++) {
 
             game.selectPiece(piece);
-            game.setPieceOnBoard(true);
-            game.setPieceInHomePath(true);
-            game.setPieceStep(5);
+            game.getSelectedPiece().setOnBoard(true);
+            game.getSelectedPiece().setInHomePath(true);
+            game.getSelectedPiece().setSteps(5);
             game.setLastStepDie(1);
             game.setStage(Stage.MOVE);
 
@@ -139,7 +143,7 @@ public class ExactHomeFinishRulesCheck {
                 && !game.isPlayerFinished(1),
                 "Player finishes after four pieces");
 
-        check(game.getFinishedPieceCount(0) == 4,
+        check(game.getPlayer(0).getFinishedPieceCount() == 4,
                 "All four pieces counted");
 
         // במשחק זוגי לא נותרת תחרות פעילה

@@ -58,12 +58,12 @@ public class HomePathUIFullAcceptanceCheck {
                     check(board[0].placeActivePieceOnStart(0),
                             level + ": castle exit");
 
-                    game[0].setPieceOnBoard(true);
-                    game[0].setPieceStep(50);
+                    game[0].getSelectedPiece().setOnBoard(true);
+                    game[0].getSelectedPiece().setSteps(50);
 
                     // ברמות Medium ו-Hard הכלי נמצא במסלול הפנימי
                     if (!"Easy".equals(level)) {
-                        game[0].setPieceInInnerPath(true);
+                        game[0].getSelectedPiece().setInInnerPath(true);
 
                         check(board[0].showActivePieceInInnerPath(0, 50),
                                 level + ": inner path");
@@ -84,10 +84,10 @@ public class HomePathUIFullAcceptanceCheck {
                     click.invoke(view[0], 0);
 
                     // בדיקת כניסה למסלול הבית במודל ובתצוגה
-                    check(game[0].isPieceInHomePath(0, 0),
+                    check(game[0].getPlayer(0).getPiece(0).isInHomePath(),
                             level + ": model home entry");
 
-                    check(game[0].getPieceStep(0, 0) == 1,
+                    check(game[0].getPlayer(0).getPiece(0).getSteps() == 1,
                             level + ": model home position");
 
                     check(board[0].isActivePieceInHomePath(0),
@@ -105,8 +105,8 @@ public class HomePathUIFullAcceptanceCheck {
                             level + ": second piece");
 
                     game[0].selectPiece(1);
-                    game[0].setPieceOnBoard(true);
-                    game[0].setPieceStep(0);
+                    game[0].getSelectedPiece().setOnBoard(true);
+                    game[0].getSelectedPiece().setSteps(0);
 
                     // קובייה רגילה 4, מכפיל שנותן 0
                     game[0].setPendingSteps(0);
@@ -119,13 +119,13 @@ public class HomePathUIFullAcceptanceCheck {
                     check(game[0].getStage() == Stage.MOVE,
                             level + ": shared move rejected");
 
-                    check(game[0].getPieceStep(0, 1) == 0,
+                    check(game[0].getPlayer(0).getPiece(1).getSteps() == 0,
                             level + ": shared piece unchanged");
 
                     // כלי במסלול הבית מתקדם ארבע משבצות
                     click.invoke(view[0], 0);
 
-                    check(game[0].getPieceStep(0, 0) == 5,
+                    check(game[0].getPlayer(0).getPiece(0).getSteps() == 5,
                             level + ": home movement in model");
 
                 } catch (Throwable t) {

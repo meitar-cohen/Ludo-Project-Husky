@@ -39,8 +39,8 @@ public class ArrowPassThroughCheck {
         Game game = new Game(TestPlayers.of(new String[]{"A", "B"},
                 new String[]{"Green", "Red"}), level);
         game.selectPiece(0);
-        game.setPieceOnBoard(true);
-        game.setPieceStep(step);
+        game.getSelectedPiece().setOnBoard(true);
+        game.getSelectedPiece().setSteps(step);
         game.setPendingSteps(pendingSteps);
         game.setLastStepDie(5);
         game.setStage(Stage.MOVE);
@@ -62,7 +62,7 @@ public class ArrowPassThroughCheck {
         check(new MovementController(easy).findArrowOnMove(0, 57) == -1,
                 "Easy: there are no arrows between paths");
         Game inner = gameAt("Medium", 45, 6);
-        inner.setPieceInInnerPath(true);
+        inner.getSelectedPiece().setInInnerPath(true);
         check(new MovementController(inner).findArrowOnMove(0, 51) == -1,
                 "Medium: the arrow on the inner path does not move the piece again");
 
@@ -72,20 +72,20 @@ public class ArrowPassThroughCheck {
         check(hardPieces.findArrowOnMove(0, 65) == 65, "Hard: outer arrow detected");
         check(hardPieces.movePiece(0, 65, 72), "Hard: move to the outer arrow");
         check(hardPieces.enterNextPathFromArrow(0, BoardPanel.GREEN, BoardPanel.GREEN)
-                && hard.isPieceInMiddlePath() && !hard.isPieceInInnerPath(),
+                && hard.getSelectedPiece().isInMiddlePath() && !hard.getSelectedPiece().isInInnerPath(),
                 "Hard: the outer arrow leads to the middle path, not to the inner path");
-        check(hardPieces.continueMoveAfterArrow(0, 3, 64) && hard.getPieceStep() == 3,
+        check(hardPieces.continueMoveAfterArrow(0, 3, 64) && hard.getSelectedPiece().getSteps() == 3,
                 "Hard: the 3 steps that are left are taken on the middle path");
 
         Game middle = gameAt("Hard", 60, 5);
-        middle.setPieceInMiddlePath(true);
+        middle.getSelectedPiece().setInMiddlePath(true);
         MovementController middlePieces = new MovementController(middle);
         check(middlePieces.findArrowOnMove(0, 63) == 63, "Hard: middle arrow detected");
         check(middlePieces.movePiece(0, 63, 64), "Hard: move to the middle arrow");
         check(middlePieces.enterNextPathFromArrow(0, BoardPanel.GREEN, BoardPanel.GREEN)
-                && middle.isPieceInInnerPath() && !middle.isPieceInMiddlePath(),
+                && middle.getSelectedPiece().isInInnerPath() && !middle.getSelectedPiece().isInMiddlePath(),
                 "Hard: the middle arrow leads to the inner path");
-        check(middlePieces.continueMoveAfterArrow(0, 2, 52) && middle.getPieceStep() == 2,
+        check(middlePieces.continueMoveAfterArrow(0, 2, 52) && middle.getSelectedPiece().getSteps() == 2,
                 "Hard: the 2 steps that are left are taken on the inner path");
         check(!middlePieces.enterNextPathFromArrow(0, BoardPanel.GREEN, BoardPanel.GREEN),
                 "Hard: an arrow on the inner path does nothing");
@@ -166,15 +166,15 @@ public class ArrowPassThroughCheck {
                 check(board[0].placeActivePieceOnStart(0), level + ": setup piece");
                 removeEventSquares(board[0]);
                 game[0].selectPiece(0);
-                game[0].setPieceOnBoard(true);
+                game[0].getSelectedPiece().setOnBoard(true);
                 if (startOnMiddle) {
                     check(board[0].showActivePieceInMiddlePath(0, startStep),
                             level + ": setup middle path");
-                    game[0].setPieceInMiddlePath(true);
+                    game[0].getSelectedPiece().setInMiddlePath(true);
                 } else {
                     board[0].animatePiece(0, startStep, startStep, null);
                 }
-                game[0].setPieceStep(startStep);
+                game[0].getSelectedPiece().setSteps(startStep);
                 game[0].setStage(Stage.MOVE);
                 game[0].setLastStepDie(5);
                 game[0].setPendingSteps(pendingSteps);
@@ -196,11 +196,11 @@ public class ArrowPassThroughCheck {
                         + " + " + pendingSteps;
                 boolean inner = "inner".equals(expectedPath);
                 boolean middle = "middle".equals(expectedPath);
-                check(game[0].isPieceInInnerPath(0, 0) == inner
-                        && game[0].isPieceInMiddlePath(0, 0) == middle,
+                check(game[0].getPlayer(0).getPiece(0).isInInnerPath() == inner
+                        && game[0].getPlayer(0).getPiece(0).isInMiddlePath() == middle,
                         where + ": the piece must be on the " + expectedPath + " path");
-                check(game[0].getPieceStep(0, 0) == expectedStep,
-                        where + ": model step " + game[0].getPieceStep(0, 0)
+                check(game[0].getPlayer(0).getPiece(0).getSteps() == expectedStep,
+                        where + ": model step " + game[0].getPlayer(0).getPiece(0).getSteps()
                                 + " expected " + expectedStep);
                 check(game[0].getCurrentPlayer() == 1, where + ": turn passed");
                 board[0].setActivePlayerColor("Green");

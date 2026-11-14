@@ -54,9 +54,9 @@ public class ExactHomeFinishViewCheck {
                         level + ": start");
 
                 // הכנת הכלי במשבצת 4 במסלול הבית
-                game.setPieceOnBoard(true);
-                game.setPieceInHomePath(true);
-                game.setPieceStep(4);
+                game.getSelectedPiece().setOnBoard(true);
+                game.getSelectedPiece().setInHomePath(true);
+                game.getSelectedPiece().setSteps(4);
                 game.setLastStepDie(3);
                 game.setStage(Stage.MOVE);
 
@@ -73,8 +73,8 @@ public class ExactHomeFinishViewCheck {
                 // תוצאה 3 גדולה מדי - הכלי לא מסיים
                 click.invoke(view, 0);
 
-                check(game.getPieceStep(0, 0) == 4
-                        && !game.isPieceFinished(0, 0),
+                check(game.getPlayer(0).getPiece(0).getSteps() == 4
+                        && !game.getPlayer(0).getPiece(0).isFinished(),
                         level + ": overshoot rejected");
 
                 check(game.getCurrentPlayer() == 0,
@@ -84,8 +84,8 @@ public class ExactHomeFinishViewCheck {
                 game.setLastStepDie(2);
                 click.invoke(view, 0);
 
-                check(game.isPieceFinished(0, 0)
-                        && game.getPieceStep(0, 0) == 6,
+                check(game.getPlayer(0).getPiece(0).isFinished()
+                        && game.getPlayer(0).getPiece(0).getSteps() == 6,
                         level + ": exact finish");
 
                 // בדיקת תצוגת הסיום

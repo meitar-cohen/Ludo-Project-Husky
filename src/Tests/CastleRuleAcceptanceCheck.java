@@ -56,8 +56,8 @@ public class CastleRuleAcceptanceCheck {
         check(controllerPieces.takeOutActivePiece(0),
                 level + ": first piece exit");
 
-        check(game.isPieceOnBoard(0, 0)
-                && game.getPieceStep(0, 0) == 0,
+        check(game.getPlayer(0).getPiece(0).isOnBoard()
+                && game.getPlayer(0).getPiece(0).getSteps() == 0,
                 level + ": start square");
 
         // מספר הכלים בטירה של כל שחקן
@@ -93,7 +93,7 @@ public class CastleRuleAcceptanceCheck {
 
         // כלי אחד כבר נמצא על הלוח
         game.setPiecesInCastle(3);
-        game.setPieceOnBoard(true);
+        game.getSelectedPiece().setOnBoard(true);
 
         controller.getTurnController().registerRollAndCheckThirdSix(6);
 
@@ -125,7 +125,7 @@ public class CastleRuleAcceptanceCheck {
         GameController controller = new GameController(game, controllerPieces);
 
         game.setPiecesInCastle(3);
-        game.setPieceOnBoard(true);
+        game.getSelectedPiece().setOnBoard(true);
 
         controller.getTurnController().registerRollAndCheckThirdSix(6);
 
@@ -148,13 +148,13 @@ public class CastleRuleAcceptanceCheck {
                 new String[]{"Red", "Blue"}), "Easy");
         MovementController pieces = new MovementController(game);
         game.selectPiece(0);
-        game.setPieceOnBoard(true);
+        game.getSelectedPiece().setOnBoard(true);
         game.getPlayer(0).getPiece(0).finish();
         game.setPiecesInCastle(3);
         game.setStage(Stage.TAKE_OUT);
         check(!pieces.canTakeOutActivePiece(0) && !pieces.takeOutActivePiece(0),
                 "finished piece must not leave the castle again");
-        check(game.isPieceFinished(0, 0), "finished piece stays finished");
+        check(game.getPlayer(0).getPiece(0).isFinished(), "finished piece stays finished");
         check(pieces.canTakeOutActivePiece(1), "a piece in the castle can still leave");
         System.out.println("PASS - finished piece is not taken out of the castle");
     }

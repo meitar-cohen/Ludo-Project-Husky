@@ -18,7 +18,7 @@ public class CastleChoiceCheck {
 
         // לשחקן יש שלושה כלים בטירה וכלי אחד על הלוח
         game.setPiecesInCastle(3);
-        game.setPieceOnBoard(true);
+        game.getSelectedPiece().setOnBoard(true);
 
         controller.getTurnController().registerRollAndCheckThirdSix(6);
 
@@ -61,7 +61,7 @@ public class CastleChoiceCheck {
         Game zero = new Game(TestPlayers.of(new String[] {"Blue", "Red"}, new String[] {"Blue", "Red"}), "Medium");
 
         zero.setPiecesInCastle(3);
-        zero.setPieceOnBoard(true);
+        zero.getSelectedPiece().setOnBoard(true);
 
         MovementController zeroControllerPieces = new MovementController(zero);
         GameController zeroController = new GameController(zero, zeroControllerPieces);

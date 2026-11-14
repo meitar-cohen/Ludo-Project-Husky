@@ -47,7 +47,6 @@ public class BoardPanel extends JPanel {
     private final List<Point> activePath = new ArrayList<>();
     private final List<Point> activeHomePath = new ArrayList<>();
 
-    private final List<List<Point>> sharedRoutes = new ArrayList<>();
     private final GameController turns;
     private final Map<Point, Color> homeCells = new HashMap<>();
 
@@ -76,16 +75,9 @@ public class BoardPanel extends JPanel {
 
     public BoardPanel(GameController turns) {
         this.turns = turns;
-        String difficulty = turns.getDifficulty();
         String[] playerColorNames = turns.getPlayerColors();
-        if ("Hard".equals(difficulty)) {
-            rings = 2;
-        } else if ("Medium".equals(difficulty)) {
-            rings = 1;
-        } else {
-            rings = 0;
-        }
-        size = 15 + 2 * rings;
+        rings = turns.getBoardRings();
+        size = turns.getBoardSize();
         for (String name : playerColorNames) {
             int c = cornerOf(name);
             activeCorners[c] = true;
@@ -97,7 +89,7 @@ public class BoardPanel extends JPanel {
         activeCorner = cornerOf(playerColorNames[0]);
         buildBoard();
         turns.randomizeSpecialSquares(
-                sharedRoutes, rings, homeCells.keySet(),
+                turns.getBoardSharedRoutes(), rings, homeCells.keySet(),
                 new Color[]{Q_EASY, Q_MEDIUM, Q_HARD}, SURPRISE);
         setBackground(new Color(244, 247, 255));
         setPreferredSize(new Dimension(700, 700));
@@ -134,39 +126,15 @@ public class BoardPanel extends JPanel {
     // ------------------------------------------------------------------
 
     Point inner(int c, int r) {
-        return new Point(c + rings, r + rings);
+        return turns.getInnerBoardPoint(c, r);
     }
 
     private List<Point> innerPath() {
-        List<Point> p = new ArrayList<>();
-        for (int c = 1; c <= 5; c++) p.add(inner(c, 6));
-        for (int r = 5; r >= 0; r--) p.add(inner(6, r));
-        p.add(inner(7, 0));
-        p.add(inner(8, 0));
-        for (int r = 1; r <= 5; r++) p.add(inner(8, r));
-        for (int c = 9; c <= 14; c++) p.add(inner(c, 6));
-        p.add(inner(14, 7));
-        p.add(inner(14, 8));
-        for (int c = 13; c >= 9; c--) p.add(inner(c, 8));
-        for (int r = 9; r <= 14; r++) p.add(inner(8, r));
-        p.add(inner(7, 14));
-        p.add(inner(6, 14));
-        for (int r = 13; r >= 9; r--) p.add(inner(6, r));
-        for (int c = 5; c >= 0; c--) p.add(inner(c, 8));
-        p.add(inner(0, 7));
-        p.add(inner(0, 6));
-        return p;
+        return turns.getInnerBoardPath();
     }
 
     List<Point> ringPath(int ring) {
-        int n = size - 2 * ring;
-        int o = ring;
-        List<Point> p = new ArrayList<>();
-        for (int c = 0; c < n; c++) p.add(new Point(o + c, o));
-        for (int r = 1; r < n; r++) p.add(new Point(o + n - 1, o + r));
-        for (int c = n - 2; c >= 0; c--) p.add(new Point(o + c, o + n - 1));
-        for (int r = n - 2; r >= 1; r--) p.add(new Point(o, o + r));
-        return p;
+        return turns.getBoardRingPath(ring);
     }
 
     private Point ringCell(List<Point> ring, int corner, int step) {
@@ -178,14 +146,6 @@ public class BoardPanel extends JPanel {
 
     private void buildBoard() {
         List<Point> inner = innerPath();
-        sharedRoutes.clear();
-        sharedRoutes.add(inner);
-        if (rings >= 1) {
-            sharedRoutes.add(ringPath(rings == 1 ? 0 : 1));
-        }
-        if (rings == 2) {
-            sharedRoutes.add(ringPath(0));
-        }
         int[] startIdx = {0, 13, 26, 39};
         for (int i = 1; i <= 5; i++) {
             homeCells.put(inner(i, 7), GREEN);
@@ -554,11 +514,11 @@ public class BoardPanel extends JPanel {
     }
 
     public int getSharedRouteCount() {
-        return sharedRoutes.size();
+        return turns.getBoardSharedRoutes().size();
     }
 
     public int getSharedRouteSize(int routeIndex) {
-        return sharedRoutes.get(routeIndex).size();
+        return turns.getBoardSharedRoutes().get(routeIndex).size();
     }
     public void setActivePlayerColor(String colorName) {
         activeCorner = cornerOf(colorName);

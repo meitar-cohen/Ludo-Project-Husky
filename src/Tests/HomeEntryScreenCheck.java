@@ -38,8 +38,8 @@ public class HomeEntryScreenCheck {
 
                 // הכנת כלי לקראת סוף המסלול המשותף
                 board.placeActivePieceOnStart(0);
-                game.setPieceOnBoard(true);
-                game.setPieceStep(50);
+                game.getSelectedPiece().setOnBoard(true);
+                game.getSelectedPiece().setSteps(50);
                 game.setPendingSteps(3);
                 game.setStage(Stage.MOVE);
 
@@ -51,8 +51,8 @@ public class HomeEntryScreenCheck {
                 click.invoke(view, 0);
 
                 // בדיקת כניסה למסלול הבית במודל
-                if (!game.isPieceInHomePath(0, 0)
-                        || game.getPieceStep(0, 0) != 1) {
+                if (!game.getPlayer(0).getPiece(0).isInHomePath()
+                        || game.getPlayer(0).getPiece(0).getSteps() != 1) {
                     throw new AssertionError(
                         "Model home entry failed"
                     );

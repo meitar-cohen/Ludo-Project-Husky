@@ -21,9 +21,9 @@ public class MovementController {
                 && slot >= 0
                 && slot < Game.PIECES_PER_PLAYER
                 && game.hasPieceInCastle()
-                && !game.isPieceOnBoard(game.getCurrentPlayer(), slot)
+                && !game.getPlayer(game.getCurrentPlayer()).getPiece(slot).isOnBoard()
                 // a piece that already reached the finish is not in the castle
-                && !game.isPieceFinished(game.getCurrentPlayer(), slot);
+                && !game.getPlayer(game.getCurrentPlayer()).getPiece(slot).isFinished();
     }
 
     public boolean takeOutActivePiece(int slot) {
@@ -31,11 +31,11 @@ public class MovementController {
             return false;
         }
         game.setPiecesInCastle(game.getPiecesInCastle() - 1);
-        game.setPieceOnBoard(true);
-        game.setPieceStep(0);
-        game.setPieceInInnerPath(false);
-        game.setPieceInMiddlePath(false);
-        game.setPieceInHomePath(false);
+        game.getSelectedPiece().setOnBoard(true);
+        game.getSelectedPiece().setSteps(0);
+        game.getSelectedPiece().setInInnerPath(false);
+        game.getSelectedPiece().setInMiddlePath(false);
+        game.getSelectedPiece().setInHomePath(false);
         game.setStage(Stage.ROLL);
         return true;
     }
@@ -43,7 +43,7 @@ public class MovementController {
     public boolean canChooseBoardMoveInsteadOfTakeOut() {
         return game.getStage() == Stage.TAKE_OUT
                 && game.getLastStepDie() == 6
-                && game.hasAnyPieceOnBoard()
+                && game.getPlayer(game.getCurrentPlayer()).hasPieceOnBoard()
                 && (game.getPendingSteps() > 0
                     || hasAvailableHomePathMove(game.getLastStepDie()));
     }
@@ -61,42 +61,42 @@ public class MovementController {
     }
 
     public boolean hasPieceOnBoard() {
-        return game.hasAnyPieceOnBoard();
+        return game.getPlayer(game.getCurrentPlayer()).hasPieceOnBoard();
     }
 
     public int getActivePieceStep() {
-        return game.getPieceStep();
+        return game.getSelectedPiece().getSteps();
     }
 
     public int getPieceStep(int pieceIndex) {
         if (!game.selectPiece(pieceIndex)) {
             return -1;
         }
-        return game.getPieceStep();
+        return game.getSelectedPiece().getSteps();
     }
 
     public int getAnswerMoveTarget(boolean correct, int routeSize) {
         int change = correct ? 1 : -1;
-        int target = getClockwiseTarget(game.getPieceStep(), change);
+        int target = getClockwiseTarget(game.getSelectedPiece().getSteps(), change);
         return target >= 0 && target < routeSize
-                ? target : game.getPieceStep();
+                ? target : game.getSelectedPiece().getSteps();
     }
 
     public int getSurpriseMoveTarget(int routeSize) {
-        int target = game.getPieceStep() - 3;
+        int target = game.getSelectedPiece().getSteps() - 3;
         return target >= 0 ? target : 0;
     }
 
     public int getMoveStepsForSelectedPiece() {
-        return game.isPieceInHomePath()
+        return game.getSelectedPiece().isInHomePath()
                 ? game.getLastStepDie() : game.getPendingSteps();
     }
 
     public boolean isPieceSelectionLegal(int pieceIndex) {
         if (game.getStage() != Stage.MOVE
                 || !game.selectPiece(pieceIndex)
-                || !game.hasPieceOnBoard()
-                || game.isPieceFinished(game.getCurrentPlayer(), pieceIndex)) {
+                || !game.getSelectedPiece().isOnBoard()
+                || game.getSelectedPiece().isFinished()) {
             return false;
         }
         return getMoveStepsForSelectedPiece() > 0;
@@ -106,7 +106,7 @@ public class MovementController {
         if (!isPieceSelectionLegal(pieceIndex)) {
             return -1;
         }
-        int currentStep = game.getPieceStep();
+        int currentStep = game.getSelectedPiece().getSteps();
         int steps = getMoveStepsForSelectedPiece();
         return isClockwiseMoveAllowed(currentStep, steps, routeSize)
                 ? getClockwiseTarget(currentStep, steps) : -1;
@@ -117,7 +117,7 @@ public class MovementController {
                 || targetStep < 0 || targetStep >= routeSize) {
             return false;
         }
-        game.setPieceStep(targetStep);
+        game.getSelectedPiece().setSteps(targetStep);
         game.setStage(Stage.BUSY);
         return true;
     }
@@ -126,25 +126,25 @@ public class MovementController {
                                       int routeSize) {
         if (game.getStage() != Stage.BUSY
                 || !game.selectPiece(pieceIndex)
-                || !game.hasPieceOnBoard()
+                || !game.getSelectedPiece().isOnBoard()
                 || targetStep < 0 || targetStep >= routeSize) {
             return false;
         }
-        game.setPieceStep(targetStep);
+        game.getSelectedPiece().setSteps(targetStep);
         return true;
     }
 
     public boolean tryFinishPiece(int pieceIndex, int routeSize) {
         if (game.getStage() != Stage.MOVE
                 || !game.selectPiece(pieceIndex)
-                || !game.hasPieceOnBoard()
-                || game.isPieceFinished(game.getCurrentPlayer(), pieceIndex)) {
+                || !game.getSelectedPiece().isOnBoard()
+                || game.getSelectedPiece().isFinished()) {
             return false;
         }
 
-        boolean inHome = game.isPieceInHomePath();
+        boolean inHome = game.getSelectedPiece().isInHomePath();
         int steps = inHome ? game.getLastStepDie() : game.getPendingSteps();
-        int current = game.getPieceStep();
+        int current = game.getSelectedPiece().getSteps();
         if (steps <= 0 || current < 0) {
             return false;
         }
@@ -154,7 +154,7 @@ public class MovementController {
                 return false;
             }
         } else if (routeSize != 52 || current >= routeSize
-                || (!isEasyGame() && !game.isPieceInInnerPath())
+                || (!isEasyGame() && !game.getSelectedPiece().isInInnerPath())
                 || current + steps != routeSize + 6) {
             return false;
         }
@@ -208,17 +208,17 @@ public class MovementController {
     public boolean enterInnerPathFromArrow(Color arrowColor, Color pieceColor,
                                            int innerPathStartStep) {
         if (isEasyGame() || !isMatchingArrow(arrowColor, pieceColor)
-                || !game.hasPieceOnBoard() || game.isPieceInHomePath()
-                || game.isPieceInInnerPath() || innerPathStartStep < 0) {
+                || !game.getSelectedPiece().isOnBoard() || game.getSelectedPiece().isInHomePath()
+                || game.getSelectedPiece().isInInnerPath() || innerPathStartStep < 0) {
             return false;
         }
-        if (isHardGame() && !game.isPieceInMiddlePath()) {
-            game.setPieceInMiddlePath(true);
+        if (isHardGame() && !game.getSelectedPiece().isInMiddlePath()) {
+            game.getSelectedPiece().setInMiddlePath(true);
         } else {
-            game.setPieceInInnerPath(true);
+            game.getSelectedPiece().setInInnerPath(true);
         }
-        game.setPieceInHomePath(false);
-        game.setPieceStep(innerPathStartStep);
+        game.getSelectedPiece().setInHomePath(false);
+        game.getSelectedPiece().setSteps(innerPathStartStep);
         return true;
     }
 
@@ -233,17 +233,17 @@ public class MovementController {
     public boolean canUseArrows(int pieceIndex) {
         return !isEasyGame()
                 && game.selectPiece(pieceIndex)
-                && game.hasPieceOnBoard()
-                && !game.isPieceInHomePath()
-                && !game.isPieceInInnerPath();
+                && game.getSelectedPiece().isOnBoard()
+                && !game.getSelectedPiece().isInHomePath()
+                && !game.getSelectedPiece().isInInnerPath();
     }
 
     public boolean isPieceInMiddlePath(int pieceIndex) {
-        return game.selectPiece(pieceIndex) && game.isPieceInMiddlePath();
+        return game.selectPiece(pieceIndex) && game.getSelectedPiece().isInMiddlePath();
     }
 
     public boolean isPieceInInnerPath(int pieceIndex) {
-        return game.selectPiece(pieceIndex) && game.isPieceInInnerPath();
+        return game.selectPiece(pieceIndex) && game.getSelectedPiece().isInInnerPath();
     }
 
     /**
@@ -256,7 +256,7 @@ public class MovementController {
         if (game.getStage() != Stage.MOVE || !canUseArrows(pieceIndex)) {
             return -1;
         }
-        return arrowWithinReach(game.getPieceStep(),
+        return arrowWithinReach(game.getSelectedPiece().getSteps(),
                 getMoveStepsForSelectedPiece(), ownArrowStep);
     }
 
@@ -270,7 +270,7 @@ public class MovementController {
         if (!canUseArrows(pieceIndex)) {
             return -1;
         }
-        return arrowWithinReach(game.getPieceStep(), remainingSteps, ownArrowStep);
+        return arrowWithinReach(game.getSelectedPiece().getSteps(), remainingSteps, ownArrowStep);
     }
 
     private static int arrowWithinReach(int currentStep, int steps, int arrowStep) {
@@ -312,13 +312,13 @@ public class MovementController {
 
         int player = game.getCurrentPlayer();
         for (int piece = 0; piece < Game.PIECES_PER_PLAYER; piece++) {
-            if (!game.isPieceOnBoard(player, piece)
-                    || game.isPieceFinished(player, piece)) {
+            Piece currentPiece = game.getPlayer(player).getPiece(piece);
+            if (!currentPiece.isOnBoard() || currentPiece.isFinished()) {
                 continue;
             }
-            boolean inHome = game.isPieceInHomePath(player, piece);
+            boolean inHome = currentPiece.isInHomePath();
             int steps = inHome ? game.getLastStepDie() : game.getPendingSteps();
-            int current = game.getPieceStep(player, piece);
+            int current = currentPiece.getSteps();
             int routeSize = routeSizes[piece];
             if (steps <= 0 || current < 0 || routeSize <= 0
                     || current >= routeSize) {
@@ -332,11 +332,11 @@ public class MovementController {
                 return true;
             }
             if (!inHome && routeSize == 52
-                    && (isEasyGame() || game.isPieceInInnerPath(player, piece))
+                    && (isEasyGame() || currentPiece.isInInnerPath())
                     && destination <= routeSize + 6) {
                 return true;
             }
-            if (!inHome && !isEasyGame() && !game.isPieceInInnerPath(player, piece)
+            if (!inHome && !isEasyGame() && !currentPiece.isInInnerPath()
                     && ownArrowSteps != null && ownArrowSteps.length == Game.PIECES_PER_PLAYER
                     && arrowWithinReach(current, steps, ownArrowSteps[piece]) >= 0) {
                 return true;
@@ -347,21 +347,21 @@ public class MovementController {
 
     public boolean tryEnterHomePath(int pieceIndex, int sharedRouteSize) {
         if (game.getStage() != Stage.MOVE || sharedRouteSize <= 0
-                || !game.selectPiece(pieceIndex) || !game.hasPieceOnBoard()
-                || game.isPieceInHomePath()) {
+                || !game.selectPiece(pieceIndex) || !game.getSelectedPiece().isOnBoard()
+                || game.getSelectedPiece().isInHomePath()) {
             return false;
         }
-        if (!isEasyGame() && !game.isPieceInInnerPath()) {
+        if (!isEasyGame() && !game.getSelectedPiece().isInInnerPath()) {
             return false;
         }
         int steps = game.getPendingSteps();
-        int destination = game.getPieceStep() + steps;
+        int destination = game.getSelectedPiece().getSteps() + steps;
         if (steps <= 0 || destination < sharedRouteSize
                 || destination >= sharedRouteSize + 6) {
             return false;
         }
-        game.setPieceInHomePath(true);
-        game.setPieceStep(destination - sharedRouteSize);
+        game.getSelectedPiece().setInHomePath(true);
+        game.getSelectedPiece().setSteps(destination - sharedRouteSize);
         game.setStage(Stage.BUSY);
         return true;
     }
@@ -370,10 +370,11 @@ public class MovementController {
         int player = game.getCurrentPlayer();
         for (int pieceIndex = 0; pieceIndex < Game.PIECES_PER_PLAYER;
                 pieceIndex++) {
-            if (game.isPieceOnBoard(player, pieceIndex)
-                    && game.isPieceInHomePath(player, pieceIndex)
-                    && !game.isPieceFinished(player, pieceIndex)
-                    && game.getPieceStep(player, pieceIndex) + stepDie <= 6) {
+            Piece piece = game.getPlayer(player).getPiece(pieceIndex);
+            if (piece.isOnBoard()
+                    && piece.isInHomePath()
+                    && !piece.isFinished()
+                    && piece.getSteps() + stepDie <= 6) {
                 return true;
             }
         }
