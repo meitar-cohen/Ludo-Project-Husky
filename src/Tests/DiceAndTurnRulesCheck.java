@@ -2,15 +2,16 @@ package Tests;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.Map;
 import javax.swing.JButton;
 import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
+import Controller.BoardController;
 import Controller.GameController;
 import Controller.MovementController;
 import Enums.Stage;
+import Enums.SquareType;
 import Model.Game;
 import View.BoardPanel;
 import View.GameScreen;
@@ -199,15 +200,10 @@ public class DiceAndTurnRulesCheck {
     }
 
     private static void removeEventSquares(BoardPanel board) throws Exception {
-        Map<?, ?> squares = (Map<?, ?>) field(board, "squares");
-        squares.entrySet().removeIf(entry -> {
-            try {
-                String type = TestPlayers.specialSquareType(entry.getValue());
-                return "QUESTION".equals(type) || "SURPRISE".equals(type);
-            } catch (Exception e) {
-                throw new IllegalStateException(e);
-            }
-        });
+        BoardController squares =
+                (BoardController) field(board, "boardController");
+        squares.removeSpecialSquares(
+                SquareType.QUESTION, SquareType.SURPRISE);
     }
 
     public static void main(String[] args) throws Exception {

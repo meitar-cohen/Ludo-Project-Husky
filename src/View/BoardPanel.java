@@ -9,7 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.IntConsumer;
-import Controller.GameController;
+import Controller.BoardController;
 import Enums.SquareType;
 
 /**
@@ -42,8 +42,7 @@ public class BoardPanel extends JPanel {
     private final List<Point> activeHomePath = new ArrayList<>();
 
     private final List<List<Point>> sharedRoutes = new ArrayList<>();
-    private final Map<Point, GameController.SpecialSquareInfo> squares =
-            new HashMap<>();
+    private final BoardController boardController = new BoardController();
     private final Map<Point, Color> homeCells = new HashMap<>();
 
     /**
@@ -185,11 +184,14 @@ public class BoardPanel extends JPanel {
         }
         for (int c = 0; c < 4; c++) {
             Point star = inner.get((startIdx[c] + 8) % 52);
-            squares.put(star, GameController.createSpecialSquare(SquareType.STAR, null, 0));
+            boardController.addSpecialSquare(star, SquareType.STAR, null, 0);
             Point arrow = inner.get((startIdx[c] + 50) % 52);
-            squares.put(arrow, GameController.createSpecialSquare(SquareType.ARROW, CORNER_COLORS[c], c));
+            boardController.addSpecialSquare(
+                    arrow, SquareType.ARROW, CORNER_COLORS[c], c);
             if (rings == 0) {
-                squares.put(inner.get(startIdx[c]), GameController.createSpecialSquare(SquareType.START, CORNER_COLORS[c], 0));
+                boardController.addSpecialSquare(
+                        inner.get(startIdx[c]), SquareType.START,
+                        CORNER_COLORS[c], 0);
             }
         }
         for (int i = 1; i <= 6; i++) {
@@ -212,28 +214,52 @@ public class BoardPanel extends JPanel {
             Color[] qLevels = {Q_EASY, Q_MEDIUM, Q_HARD, Q_EASY};
             for (int i = 0; i < 4; i++) {
                 int c = (k + i) % 4;
-                squares.put(ringCell(outer, c, 0), GameController.createSpecialSquare(SquareType.START, CORNER_COLORS[c], 0));
-                squares.put(ringCell(outer, c, 3), GameController.createSpecialSquare(SquareType.QUESTION, qLevels[i], 0));
-                squares.put(ringCell(outer, c, 11), GameController.createSpecialSquare(SquareType.STAR, null, 0));
+                boardController.addSpecialSquare(
+                        ringCell(outer, c, 0), SquareType.START,
+                        CORNER_COLORS[c], 0);
+                boardController.addSpecialSquare(
+                        ringCell(outer, c, 3), SquareType.QUESTION,
+                        qLevels[i], 0);
+                boardController.addSpecialSquare(
+                        ringCell(outer, c, 11), SquareType.STAR, null, 0);
                 int mid = (size - 1) / 2;
-                squares.put(ringCell(outer, c, mid), GameController.createSpecialSquare(SquareType.ARROW, CORNER_COLORS[c], (c + 1) % 4));
+                boardController.addSpecialSquare(
+                        ringCell(outer, c, mid), SquareType.ARROW,
+                        CORNER_COLORS[c], (c + 1) % 4);
             }
-            squares.put(ringCell(outer, (k + 1) % 4, 12), GameController.createSpecialSquare(SquareType.QUESTION, Q_MEDIUM, 0));
-            squares.put(ringCell(outer, (k + 2) % 4, 12), GameController.createSpecialSquare(SquareType.QUESTION, Q_HARD, 0));
-            squares.put(ringCell(outer, k, 5), GameController.createSpecialSquare(SquareType.SURPRISE, SURPRISE, 0));
-            squares.put(ringCell(outer, k, 7), GameController.createSpecialSquare(SquareType.SURPRISE, SURPRISE, 0));
+            boardController.addSpecialSquare(
+                    ringCell(outer, (k + 1) % 4, 12),
+                    SquareType.QUESTION, Q_MEDIUM, 0);
+            boardController.addSpecialSquare(
+                    ringCell(outer, (k + 2) % 4, 12),
+                    SquareType.QUESTION, Q_HARD, 0);
+            boardController.addSpecialSquare(
+                    ringCell(outer, k, 5),
+                    SquareType.SURPRISE, SURPRISE, 0);
+            boardController.addSpecialSquare(
+                    ringCell(outer, k, 7),
+                    SquareType.SURPRISE, SURPRISE, 0);
             if (rings == 2) {
                 List<Point> second = ringPath(1);
                 Color[] q2 = {Q_EASY, Q_MEDIUM, Q_HARD};
                 for (int i = 0; i < 4; i++) {
                     int c = (k + i) % 4;
-                    squares.put(ringCell(second, c, 11), GameController.createSpecialSquare(SquareType.STAR, null, 0));
-                    squares.put(ringCell(second, c, (size - 3) / 2), GameController.createSpecialSquare(SquareType.ARROW, CORNER_COLORS[c], (c + 1) % 4));
+                    boardController.addSpecialSquare(
+                            ringCell(second, c, 11),
+                            SquareType.STAR, null, 0);
+                    boardController.addSpecialSquare(
+                            ringCell(second, c, (size - 3) / 2),
+                            SquareType.ARROW, CORNER_COLORS[c],
+                            (c + 1) % 4);
                     if (i > 0) {
-                        squares.put(ringCell(second, c, 3), GameController.createSpecialSquare(SquareType.QUESTION, q2[i - 1], 0));
+                        boardController.addSpecialSquare(
+                                ringCell(second, c, 3),
+                                SquareType.QUESTION, q2[i - 1], 0);
                     }
                 }
-                squares.put(ringCell(second, (k + 2) % 4, 10), GameController.createSpecialSquare(SquareType.SURPRISE, SURPRISE, 0));
+                boardController.addSpecialSquare(
+                        ringCell(second, (k + 2) % 4, 10),
+                        SquareType.SURPRISE, SURPRISE, 0);
             }
             for (int i = 0; i < outer.size(); i++) {
                 activePath.add(ringCell(outer, k, i));
@@ -242,57 +268,9 @@ public class BoardPanel extends JPanel {
     }
 
     private void randomizeSquares() {
-        squares.entrySet().removeIf(entry ->
-                entry.getValue().getType() == SquareType.STAR
-                || entry.getValue().getType() == SquareType.QUESTION
-                || entry.getValue().getType() == SquareType.SURPRISE);
-        placeRandomSpecialsOnRoute(sharedRoutes.get(0), 4, 0, 0, 0, 0);
-        if (rings == 1) {
-            placeRandomSpecialsOnRoute(sharedRoutes.get(1), 4, 2, 2, 2, 2);
-        }
-        if (rings == 2) {
-            placeRandomSpecialsOnRoute(sharedRoutes.get(1), 4, 1, 1, 1, 1);
-            placeRandomSpecialsOnRoute(sharedRoutes.get(2), 4, 2, 2, 2, 2);
-        }
-    }
-
-    private void placeRandomSpecialsOnRoute(List<Point> route,
-            int stars, int easyQuestions, int mediumQuestions,
-            int hardQuestions, int surprises) {
-        List<Point> available = new ArrayList<>();
-        for (Point cell : route) {
-            if (!squares.containsKey(cell) && !homeCells.containsKey(cell)) {
-                available.add(cell);
-            }
-        }
-        int needed = stars + easyQuestions + mediumQuestions
-                + hardQuestions + surprises;
-        if (available.size() < needed) {
-            throw new IllegalStateException(
-                    "Not enough free squares for special cells");
-        }
-        java.util.Collections.shuffle(available);
-        int index = 0;
-        for (int i = 0; i < stars; i++) {
-            squares.put(available.get(index++),
-                    GameController.createSpecialSquare(SquareType.STAR, null, 0));
-        }
-        for (int i = 0; i < easyQuestions; i++) {
-            squares.put(available.get(index++),
-                    GameController.createSpecialSquare(SquareType.QUESTION, Q_EASY, 0));
-        }
-        for (int i = 0; i < mediumQuestions; i++) {
-            squares.put(available.get(index++),
-                    GameController.createSpecialSquare(SquareType.QUESTION, Q_MEDIUM, 0));
-        }
-        for (int i = 0; i < hardQuestions; i++) {
-            squares.put(available.get(index++),
-                    GameController.createSpecialSquare(SquareType.QUESTION, Q_HARD, 0));
-        }
-        for (int i = 0; i < surprises; i++) {
-            squares.put(available.get(index++),
-                    GameController.createSpecialSquare(SquareType.SURPRISE, SURPRISE, 0));
-        }
+        boardController.randomizeSpecialSquares(
+                sharedRoutes, rings, homeCells.keySet(),
+                Q_EASY, Q_MEDIUM, Q_HARD, SURPRISE);
     }
 
     // ------------------------------------------------------------------
@@ -458,10 +436,11 @@ public class BoardPanel extends JPanel {
         List<Point> route = currentPieceRoute(pieceIndex);
         Color own = CORNER_COLORS[activeCorner];
         for (int step = 0; step < route.size(); step++) {
-            GameController.SpecialSquareInfo special =
-                    squares.get(route.get(step));
-            if (special != null && special.getType() == SquareType.ARROW
-                    && own.equals(special.getColor())) {
+            Point position = route.get(step);
+            if (boardController.getSpecialSquareType(position)
+                    == SquareType.ARROW
+                    && own.equals(
+                            boardController.getSpecialSquareColor(position))) {
                 return step;
             }
         }
@@ -527,15 +506,12 @@ public class BoardPanel extends JPanel {
         if (step < 0 || step >= route.size()) {
             return "NONE";
         }
-        GameController.SpecialSquareInfo special =
-                squares.get(route.get(step));
-        if (special == null) {
-            return "NONE";
-        }
-        if (special.getType() == SquareType.QUESTION) {
+        SquareType type =
+                boardController.getSpecialSquareType(route.get(step));
+        if (type == SquareType.QUESTION) {
             return "QUESTION";
         }
-        if (special.getType() == SquareType.SURPRISE) {
+        if (type == SquareType.SURPRISE) {
             return "SURPRISE";
         }
         return "NONE";
@@ -553,10 +529,10 @@ public class BoardPanel extends JPanel {
         if (step < 0 || step >= route.size()) {
             return null;
         }
-        GameController.SpecialSquareInfo special =
-                squares.get(route.get(step));
-        return special != null && special.getType() == SquareType.ARROW
-                ? special.getColor() : null;
+        Point position = route.get(step);
+        return boardController.getSpecialSquareType(position)
+                == SquareType.ARROW
+                ? boardController.getSpecialSquareColor(position) : null;
     }
 
     public int getActiveHomePathSize() {
@@ -806,9 +782,20 @@ public class BoardPanel extends JPanel {
         return homeCells.get(point);
     }
 
-    Iterable<Map.Entry<Point, GameController.SpecialSquareInfo>>
-            squareEntries() {
-        return squares.entrySet();
+    Iterable<Point> specialSquarePositions() {
+        return boardController.getSpecialSquarePositions();
+    }
+
+    SquareType specialSquareType(Point position) {
+        return boardController.getSpecialSquareType(position);
+    }
+
+    Color specialSquareColor(Point position) {
+        return boardController.getSpecialSquareColor(position);
+    }
+
+    int specialSquareDirection(Point position) {
+        return boardController.getSpecialSquareDirection(position);
     }
 
     @Override

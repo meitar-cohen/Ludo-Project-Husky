@@ -1,8 +1,8 @@
 package Tests;
 import java.awt.Color;
 import java.lang.reflect.Field;
-import java.util.Map;
 
+import Controller.BoardController;
 import View.BoardPanel;
 
 public class SquaresCountCheck {
@@ -47,8 +47,8 @@ public class SquaresCountCheck {
             BoardPanel board = new BoardPanel(level, colors);
 
             // אוסף המשבצות המיוחדות של הלוח
-            Map<?, ?> squares =
-                    (Map<?, ?>) readField(board, "squares");
+            BoardController squares =
+                    (BoardController) readField(board, "boardController");
 
             int stars = 0;
             int arrows = 0;
@@ -60,9 +60,10 @@ public class SquaresCountCheck {
             int hardQuestions = 0;
 
             // ספירת כל סוגי המשבצות
-            for (Object special : squares.values()) {
-
-                String type = TestPlayers.specialSquareType(special);
+            for (java.awt.Point position
+                    : squares.getSpecialSquarePositions()) {
+                String type =
+                        squares.getSpecialSquareType(position).toString();
 
                 switch (type) {
 
@@ -84,7 +85,7 @@ public class SquaresCountCheck {
 
                     case "QUESTION":
 
-                        Color color = TestPlayers.specialSquareColor(special);
+                        Color color = squares.getSpecialSquareColor(position);
 
                         if (BoardPanel.Q_EASY.equals(color)) {
                             easyQuestions++;
@@ -132,7 +133,8 @@ public class SquaresCountCheck {
                     + expectedSurprises;
 
             checkCount(level, "Total special squares",
-                    squares.size(), expectedTotal);
+                    squares.getSpecialSquarePositions().size(),
+                    expectedTotal);
         }
 
         System.out.println(

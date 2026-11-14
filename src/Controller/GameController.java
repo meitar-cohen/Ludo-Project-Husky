@@ -1,16 +1,13 @@
 package Controller;
 
-import java.awt.Color;
 import java.util.Random;
 import java.util.HashSet;
 import java.util.Set;
 import Enums.RollAction;
 import Enums.Stage;
-import Enums.SquareType;
 import Model.Game;
 import Model.Player;
 import Model.Question;
-import Model.Square;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -48,31 +45,6 @@ public class GameController {
         }
         Game game = new Game(createPlayers(names, colors), difficulty);
         return new GameController(game, new MovementController(game));
-    }
-
-    public static SpecialSquareInfo createSpecialSquare(
-            SquareType type, Color color, int direction) {
-        return new SpecialSquareInfo(new Square(type, color, direction));
-    }
-
-    public static final class SpecialSquareInfo {
-        private final Square square;
-
-        private SpecialSquareInfo(Square square) {
-            this.square = square;
-        }
-
-        public SquareType getType() {
-            return square.getType();
-        }
-
-        public Color getColor() {
-            return square.getColor();
-        }
-
-        public int getDirection() {
-            return square.getDirection();
-        }
     }
 
     public boolean isCorrectQuestionAnswer(int selectedIndex) {

@@ -1,9 +1,9 @@
 package Tests;
 
+import Controller.BoardController;
 import java.awt.Color;
 import java.awt.Point;
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -34,11 +34,9 @@ public class RandomSquaresCheck {
         return field.get(object);
     }
 
-    @SuppressWarnings("unchecked")
-    private static Map<Point, Object> squares(BoardPanel board)
+    private static BoardController squares(BoardPanel board)
             throws Exception {
-
-        return (Map<Point, Object>) value(board, "squares");
+        return (BoardController) value(board, "boardController");
     }
 
     @SuppressWarnings("unchecked")
@@ -55,34 +53,27 @@ public class RandomSquaresCheck {
         return (Map<Point, Color>) value(board, "homeCells");
     }
 
-    private static String type(Object special) throws Exception {
-        return property(special, "getType").toString();
-    }
-
-    private static Object property(Object object, String getter)
-            throws Exception {
-        Method method = object.getClass().getMethod(getter);
-        return method.invoke(object);
+    private static String type(BoardController squares, Point position) {
+        return squares.getSpecialSquareType(position).toString();
     }
 
     // שמירת המיקומים הקבועים להשוואה בין משחקים
     private static Map<Point, String> fixedSquares(
-            Map<Point, Object> squares) throws Exception {
+            BoardController squares) {
 
         Map<Point, String> fixed = new HashMap<>();
 
-        for (Map.Entry<Point, Object> entry : squares.entrySet()) {
-
-            String squareType = type(entry.getValue());
+        for (Point position : squares.getSpecialSquarePositions()) {
+            String squareType = type(squares, position);
 
             if ("START".equals(squareType)
                     || "ARROW".equals(squareType)) {
 
-                fixed.put(entry.getKey(),
+                fixed.put(position,
                         squareType + ":"
-                        + property(entry.getValue(), "getColor")
+                        + squares.getSpecialSquareColor(position)
                         + ":"
-                        + property(entry.getValue(), "getDirection"));
+                        + squares.getSpecialSquareDirection(position));
             }
         }
 
@@ -93,9 +84,10 @@ public class RandomSquaresCheck {
     private static String inspect(BoardPanel board, String level,
             Map<Point, String> originalFixed) throws Exception {
 
-        Map<Point, Object> special = squares(board);
+        BoardController special = squares(board);
         List<List<Point>> routes = routes(board);
         Map<Point, Color> home = home(board);
+        List<Point> specialPositions = special.getSpecialSquarePositions();
 
         // איסוף כל המשבצות של המסלולים המשותפים
         Set<Point> shared = new HashSet<>();
@@ -108,7 +100,7 @@ public class RandomSquaresCheck {
                 "Easy".equals(level) ? 12
                 : "Medium".equals(level) ? 28 : 40;
 
-        check(special.size() == expectedCount,
+        check(specialPositions.size() == expectedCount,
                 level + ": total special squares");
 
         // בדיקה שהתחלות וחצים נשארו ללא שינוי
@@ -127,10 +119,8 @@ public class RandomSquaresCheck {
 
         List<String> randomPositions = new ArrayList<>();
 
-        for (Map.Entry<Point, Object> entry : special.entrySet()) {
-
-            Point cell = entry.getKey();
-            String kind = type(entry.getValue());
+        for (Point cell : specialPositions) {
+            String kind = type(special, cell);
 
             // משבצת מיוחדת חייבת להיות במסלול משותף
             check(shared.contains(cell),
@@ -149,8 +139,7 @@ public class RandomSquaresCheck {
 
                 questions++;
 
-                Color color =
-                        (Color) property(entry.getValue(), "getColor");
+                Color color = special.getSpecialSquareColor(cell);
 
                 if (BoardPanel.Q_EASY.equals(color)) {
                     easyQ++;
@@ -171,7 +160,7 @@ public class RandomSquaresCheck {
                 randomPositions.add(
                         cell.x + "," + cell.y + ":"
                         + kind + ":"
-                        + property(entry.getValue(), "getColor"));
+                        + special.getSpecialSquareColor(cell));
             }
         }
 
@@ -211,14 +200,11 @@ public class RandomSquaresCheck {
             int routeSurprises = 0;
 
             for (Point point : routes.get(routeIndex)) {
-
-                Object square = special.get(point);
-
-                if (square == null) {
+                if (!special.hasSpecialSquare(point)) {
                     continue;
                 }
 
-                String kind = type(square);
+                String kind = type(special, point);
 
                 if ("STAR".equals(kind)) routeStars++;
                 if ("QUESTION".equals(kind)) routeQuestions++;

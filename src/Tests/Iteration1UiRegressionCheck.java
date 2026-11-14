@@ -4,10 +4,10 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
-
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
+import Controller.BoardController;
 import Controller.GameController;
 import Controller.MovementController;
 import Enums.RollAction;
@@ -107,23 +107,24 @@ public class Iteration1UiRegressionCheck {
 
             BoardPanel board = new BoardPanel(levels[i], colors);
 
-            Map<?, ?> squares =
-                    (Map<?, ?>) field(board, "squares");
+            BoardController squares =
+                    (BoardController) field(board, "boardController");
 
             int starts = 0;
             int arrows = 0;
 
             Map<Color, Integer> startColors = new HashMap<>();
 
-            for (Object special : squares.values()) {
-
-                String kind = TestPlayers.specialSquareType(special);
+            for (java.awt.Point position
+                    : squares.getSpecialSquarePositions()) {
+                String kind =
+                        squares.getSpecialSquareType(position).toString();
 
                 if ("START".equals(kind)) {
 
                     starts++;
 
-                    Color color = TestPlayers.specialSquareColor(special);
+                    Color color = squares.getSpecialSquareColor(position);
 
                     startColors.put(color,
                             startColors.getOrDefault(color, 0) + 1);

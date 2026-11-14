@@ -1,11 +1,10 @@
 package View;
 
 import javax.swing.JPanel;
-import Controller.GameController;
 import java.awt.*;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.Path2D;
-import java.util.Map;
+import Enums.SquareType;
 
 /** Draws the board layout, castles, centre, and special squares. */
 class BoardDrawingPanel extends JPanel {
@@ -49,9 +48,8 @@ class BoardDrawingPanel extends JPanel {
             drawCastle(g2, board, corner);
         }
         drawCentre(g2, board);
-        for (Map.Entry<Point, GameController.SpecialSquareInfo> entry
-                : board.squareEntries()) {
-            drawSpecial(g2, board, entry.getKey(), entry.getValue());
+        for (Point position : board.specialSquarePositions()) {
+            drawSpecial(g2, board, position);
         }
         g2.setColor(new Color(126, 140, 173));
         g2.setStroke(new BasicStroke(1.6f));
@@ -178,18 +176,18 @@ class BoardDrawingPanel extends JPanel {
         g2.draw(triangle);
     }
 
-    private void drawSpecial(
-            Graphics2D g2, BoardPanel board, Point point,
-            GameController.SpecialSquareInfo square) {
+    private void drawSpecial(Graphics2D g2, BoardPanel board, Point point) {
         int cs = board.cellSize();
         int x = board.originX() + point.x * cs;
         int y = board.originY() + point.y * cs;
         int pad = Math.max(2, (int) (cs * 0.09));
         int tile = cs - pad * 2;
-        switch (square.getType()) {
+        SquareType type = board.specialSquareType(point);
+        Color color = board.specialSquareColor(point);
+        switch (type) {
             case START:
-                drawCell(g2, board, point, lighter(lighter(square.getColor())));
-                g2.setColor(square.getColor());
+                drawCell(g2, board, point, lighter(lighter(color)));
+                g2.setColor(color);
                 g2.fillRoundRect(
                         x + pad, y + pad, tile, tile,
                         Math.max(6, cs / 4), Math.max(6, cs / 4)
@@ -203,24 +201,24 @@ class BoardDrawingPanel extends JPanel {
                 drawStar(g2, x + cs / 2.0, y + cs / 2.0, cs * 0.39);
                 break;
             case ARROW:
-                drawCell(g2, board, point, lighter(lighter(square.getColor())));
+                drawCell(g2, board, point, lighter(lighter(color)));
                 g2.setColor(new Color(255, 255, 255, 150));
                 g2.fillRoundRect(
                         x + pad, y + pad, tile, tile,
                         Math.max(6, cs / 4), Math.max(6, cs / 4)
                 );
                 drawArrow(
-                        g2, x, y, cs, square.getDirection(),
-                        square.getColor().darker()
+                        g2, x, y, cs,
+                        board.specialSquareDirection(point), color.darker()
                 );
                 break;
             case QUESTION:
-                Color questionFill = square.getColor().equals(BoardPanel.Q_EASY)
+                Color questionFill = color.equals(BoardPanel.Q_EASY)
                         ? new Color(48, 167, 111)
-                        : square.getColor().equals(BoardPanel.Q_MEDIUM)
+                        : color.equals(BoardPanel.Q_MEDIUM)
                                 ? new Color(220, 157, 32)
                                 : new Color(221, 69, 90);
-                drawCell(g2, board, point, lighter(lighter(square.getColor())));
+                drawCell(g2, board, point, lighter(lighter(color)));
                 g2.setColor(questionFill);
                 g2.fillRoundRect(
                         x + pad, y + pad, tile, tile,
