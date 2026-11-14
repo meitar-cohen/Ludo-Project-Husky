@@ -1,4 +1,5 @@
 package Tests;
+import Controller.GameController;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import javax.swing.SwingUtilities;
@@ -25,12 +26,15 @@ public class HomeEntryScreenCheck {
         SwingUtilities.invokeAndWait(() -> {
             try {
                 // יצירת מסך משחק ברמה קלה
-                GameScreen view = new GameScreen(TestPlayers.of(new String[]{"Player1", "Player2"}, new String[]{"Red", "Blue"}), "Easy");
+                GameScreen view = new GameScreen(TestPlayers.gameController(
+                        new String[]{"Player1", "Player2"}, new String[]{"Red", "Blue"}, "Easy"),
+                        "Easy");
 
                 BoardPanel board = (BoardPanel)
                     getField(view, "board");
 
-                Game game = (Game) getField(view, "game");
+                GameController controller = (GameController) getField(view, "turns");
+                Game game = (Game) getField(controller, "game");
 
                 // הכנת כלי לקראת סוף המסלול המשותף
                 board.placeActivePieceOnStart(0);

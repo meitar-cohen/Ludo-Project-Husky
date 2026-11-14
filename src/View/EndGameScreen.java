@@ -1,6 +1,5 @@
 package View;
 
-import Model.Player;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
@@ -21,21 +20,26 @@ public class EndGameScreen extends JPanel {
     static final int CARD_WIDTH = 630;
     static final int CONTENT_WIDTH = 555;
 
-    public EndGameScreen(Player[] players, String difficulty, String duration) {
-        this(players, difficulty, duration, "");
+    public EndGameScreen(
+            String[] playerNames, String[] playerColors,
+            String difficulty, String duration) {
+        this(playerNames, playerColors, difficulty, duration, "");
     }
 
     /**
-     * @param players    the players by final place (index 0 = winner)
+     * @param playerNames the players by final place (index 0 = winner)
+     * @param playerColors the corresponding player colors
      * @param historyNote message about saving the game to the history file
      */
-    public EndGameScreen(Player[] players, String difficulty, String duration, String historyNote) {
+    public EndGameScreen(
+            String[] playerNames, String[] playerColors,
+            String difficulty, String duration, String historyNote) {
         setLayout(new GridBagLayout());
         setOpaque(true);
-        String winner = (players != null && players.length > 0)
-                ? players[0].getName() : "Player 1";
-        String winnerColor = (players != null && players.length > 0)
-                ? players[0].getColor() : "Blue";
+        String winner = (playerNames != null && playerNames.length > 0)
+                ? playerNames[0] : "Player 1";
+        String winnerColor = (playerColors != null && playerColors.length > 0)
+                ? playerColors[0] : "Blue";
         String level = difficulty == null ? "Easy" : difficulty;
         String elapsed = duration == null ? "00:00:00" : duration;
         EndGameCardPanel card = new EndGameCardPanel(Color.WHITE, 28);
@@ -70,10 +74,13 @@ public class EndGameScreen extends JPanel {
         card.add(rankingTitle);
         card.add(Box.createVerticalStrut(6));
         String[] places = {"1ST", "2ND", "3RD", "4TH"};
-        int count = players == null ? 0 : Math.min(places.length, players.length);
+        int count = playerNames == null ? 0
+                : Math.min(places.length, playerNames.length);
         for (int i = 0; i < count; i++) {
-            RankingRowPanel row = new RankingRowPanel(places[i], players[i].getName(),
-                    players[i].getColor(), i == 0);
+            String color = playerColors != null && i < playerColors.length
+                    ? playerColors[i] : "Blue";
+            RankingRowPanel row = new RankingRowPanel(
+                    places[i], playerNames[i], color, i == 0);
             sized(row, CONTENT_WIDTH, 31);
             card.add(row);
             if (i < count - 1) card.add(Box.createVerticalStrut(4));

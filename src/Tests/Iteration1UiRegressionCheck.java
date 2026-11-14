@@ -43,7 +43,9 @@ public class Iteration1UiRegressionCheck {
             GameScreen view = null;
 
             try {
-                view = new GameScreen(TestPlayers.of(new String[]{"A", "B"}, new String[]{"Red", "Blue"}), "Medium");
+                view = new GameScreen(TestPlayers.gameController(
+                        new String[]{"A", "B"}, new String[]{"Red", "Blue"}, "Medium"),
+                        "Medium");
 
                 Object sidebar = field(view, "sidebar");
                 Object dice = field(sidebar, "dice");
@@ -115,15 +117,13 @@ public class Iteration1UiRegressionCheck {
 
             for (Object special : squares.values()) {
 
-                String kind =
-                        field(special, "type").toString();
+                String kind = TestPlayers.specialSquareType(special);
 
                 if ("START".equals(kind)) {
 
                     starts++;
 
-                    Color color =
-                            (Color) field(special, "color");
+                    Color color = TestPlayers.specialSquareColor(special);
 
                     startColors.put(color,
                             startColors.getOrDefault(color, 0) + 1);

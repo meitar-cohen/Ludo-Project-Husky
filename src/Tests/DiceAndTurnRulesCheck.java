@@ -120,9 +120,9 @@ public class DiceAndTurnRulesCheck {
         final Throwable[] error = {null};
         SwingUtilities.invokeAndWait(() -> {
             try {
-                view[0] = new GameScreen(TestPlayers.of(new String[]{"A", "B"},
-                        new String[]{"Red", "Blue"}), "Easy");
-                Game game = (Game) field(view[0], "game");
+                view[0] = new GameScreen(TestPlayers.gameController(
+                        new String[]{"A", "B"}, new String[]{"Red", "Blue"}, "Easy"), "Easy");
+                Game game = (Game) field(field(view[0], "turns"), "game");
                 Object sidebar = field(view[0], "sidebar");
                 Method finishRoll = GameScreen.class.getDeclaredMethod("finishRoll", int.class, int.class);
                 finishRoll.setAccessible(true);
@@ -155,9 +155,9 @@ public class DiceAndTurnRulesCheck {
         SwingUtilities.invokeAndWait(() -> {
             try {
                 ((Timer) field(view[0], "gameTimer")).stop();
-                view[0] = new GameScreen(TestPlayers.of(new String[]{"A", "B"},
-                        new String[]{"Red", "Blue"}), "Easy");
-                game[0] = (Game) field(view[0], "game");
+                view[0] = new GameScreen(TestPlayers.gameController(
+                        new String[]{"A", "B"}, new String[]{"Red", "Blue"}, "Easy"), "Easy");
+                game[0] = (Game) field(field(view[0], "turns"), "game");
                 sidebar[0] = field(view[0], "sidebar");
                 BoardPanel board = (BoardPanel) field(view[0], "board");
                 board.setActivePlayerColor("Red");
@@ -202,7 +202,7 @@ public class DiceAndTurnRulesCheck {
         Map<?, ?> squares = (Map<?, ?>) field(board, "squares");
         squares.entrySet().removeIf(entry -> {
             try {
-                String type = field(entry.getValue(), "type").toString();
+                String type = TestPlayers.specialSquareType(entry.getValue());
                 return "QUESTION".equals(type) || "SURPRISE".equals(type);
             } catch (Exception e) {
                 throw new IllegalStateException(e);

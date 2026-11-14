@@ -127,9 +127,9 @@ public class ArrowPassThroughCheck {
         final Throwable[] error = {null};
         SwingUtilities.invokeAndWait(() -> {
             try {
-                view[0] = new GameScreen(TestPlayers.of(new String[]{"A", "B"},
-                        new String[]{"Green", "Red"}), level);
-                game[0] = (Game) field(view[0], "game");
+                view[0] = new GameScreen(TestPlayers.gameController(
+                        new String[]{"A", "B"}, new String[]{"Green", "Red"}, level), level);
+                game[0] = (Game) field(field(view[0], "turns"), "game");
                 board[0] = (BoardPanel) field(view[0], "board");
                 board[0].setActivePlayerColor("Green");
                 check(board[0].placeActivePieceOnStart(0), level + ": setup piece");
@@ -184,7 +184,7 @@ public class ArrowPassThroughCheck {
         Map<Point, Object> squares = (Map<Point, Object>) field(board, "squares");
         squares.entrySet().removeIf(entry -> {
             try {
-                String type = field(entry.getValue(), "type").toString();
+                String type = TestPlayers.specialSquareType(entry.getValue());
                 return "QUESTION".equals(type) || "SURPRISE".equals(type);
             } catch (Exception e) {
                 throw new IllegalStateException(e);
@@ -214,9 +214,9 @@ public class ArrowPassThroughCheck {
         final Throwable[] error = {null};
         SwingUtilities.invokeAndWait(() -> {
             try {
-                view[0] = new GameScreen(TestPlayers.of(new String[]{"A", "B"},
-                        new String[]{"Green", "Red"}), "Hard");
-                game[0] = (Game) field(view[0], "game");
+                view[0] = new GameScreen(TestPlayers.gameController(
+                        new String[]{"A", "B"}, new String[]{"Green", "Red"}, "Hard"), "Hard");
+                game[0] = (Game) field(field(view[0], "turns"), "game");
                 board[0] = (BoardPanel) field(view[0], "board");
                 board[0].setActivePlayerColor("Green");
                 board[0].placeActivePieceOnStart(0);

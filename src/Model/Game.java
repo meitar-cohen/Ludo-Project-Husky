@@ -90,6 +90,14 @@ public class Game {
         return currentPlayer;
     }
 
+    public String getCurrentPlayerName() {
+        return players[currentPlayer].getName();
+    }
+
+    public String getCurrentPlayerColor() {
+        return players[currentPlayer].getColor();
+    }
+
     public void setCurrentPlayer(int currentPlayer) {
         this.currentPlayer = currentPlayer;
     }
@@ -102,14 +110,6 @@ public class Game {
         this.pendingSteps = pendingSteps;
     }
 
-    public String getCurrentPlayerName() {
-        return players[currentPlayer].getName();
-    }
-
-    public String getCurrentPlayerColor() {
-        return players[currentPlayer].getColor();
-    }
-
     public String getDifficulty() {
         return difficulty;
     }
@@ -120,6 +120,10 @@ public class Game {
 
     public Player getPlayer(int playerIndex) {
         return players[playerIndex];
+    }
+
+    public Player[] getPlayers() {
+        return players.clone();
     }
 
     public List<Integer> getFinishOrder() {

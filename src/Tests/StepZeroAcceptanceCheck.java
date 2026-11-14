@@ -190,9 +190,10 @@ public class StepZeroAcceptanceCheck {
 
             try {
 
-                view = new GameScreen(TestPlayers.of(new String[]{"A", "B"}, new String[]{"Red", "Blue"}), level);
+                view = new GameScreen(TestPlayers.gameController(
+                        new String[]{"A", "B"}, new String[]{"Red", "Blue"}, level), level);
 
-                Game game = (Game) field(view, "game");
+                Game game = (Game) field(field(view, "turns"), "game");
                 // בדיקה גם עם כלי במסלול המשותף
                 if (hasSharedPiece) {
                     game.selectPiece(0);

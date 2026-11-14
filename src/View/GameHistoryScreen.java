@@ -1,7 +1,7 @@
 package View;
 
 import Controller.HistoryController;
-import Model.GameRecord;
+import Controller.HistoryController.HistoryEntry;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -24,7 +24,7 @@ public class GameHistoryScreen extends JFrame {
     private static final Color LIGHT = new Color(243, 246, 253);
     private final JPanel rankingCards = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 2));
     private final JLabel rankingGameLabel = new JLabel();
-    private final List<GameRecord> history;
+    private final List<HistoryEntry> history;
     private final int skippedRows;
     private final String historyError;
     private final String historyFileName;
@@ -36,7 +36,7 @@ public class GameHistoryScreen extends JFrame {
 
     public GameHistoryScreen(HistoryController controller) {
         // SRS 3.2.8.3.4 - the saved games are read from the history file
-        this.history = controller.loadHistory();
+        this.history = controller.loadHistoryEntries();
         this.skippedRows = controller.getSkippedRows();
         this.historyError = controller.getLastError();
         this.historyFileName = controller.getHistoryFileName();
@@ -116,7 +116,7 @@ public class GameHistoryScreen extends JFrame {
         DefaultTableModel model = new DefaultTableModel(new Object[0][columns.length], columns) {
             @Override public boolean isCellEditable(int row, int column) { return false; }
         };
-        for (GameRecord game : history) {
+        for (HistoryEntry game : history) {
             model.addRow(new Object[] {
                 "#" + game.getGameId(),
                 game.getTimestamp().replace(";", "  "),
@@ -192,7 +192,7 @@ public class GameHistoryScreen extends JFrame {
         if (index < 0 || index >= history.size()) {
             return;
         }
-        GameRecord game = history.get(index);
+        HistoryEntry game = history.get(index);
         rankingGameLabel.setText("Game #" + game.getGameId() + "  |  "
                 + HistoryController.toDisplayDifficulty(game.getDifficulty()) + "  |  " + game.getDuration());
         rankingCards.removeAll();

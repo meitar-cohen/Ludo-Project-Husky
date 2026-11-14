@@ -16,7 +16,8 @@ public class GameControllerQuestionCheck {
         GameController controller = new GameController(
                 game, new MovementController(game));
 
-        if (controller.getQuestion() == null) {
+        if (controller.getQuestionText() == null
+                || controller.getQuestionOptions().length == 0) {
             throw new AssertionError("Expected a current question");
         }
         if (!controller.isCorrectQuestionAnswer(0)) {

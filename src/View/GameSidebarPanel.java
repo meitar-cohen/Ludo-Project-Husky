@@ -1,6 +1,5 @@
 package View;
 
-import Model.Player;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
@@ -10,7 +9,8 @@ class GameSidebarPanel extends JPanel {
 
     private static final Color LIGHT = new Color(244, 247, 254);
 
-    private final Player[] players;
+    private final String[] playerNames;
+    private final String[] playerColors;
     private final JLabel turnLabel;
     private final JLabel formulaLabel;
     private final JTextArea statusArea;
@@ -20,13 +20,15 @@ class GameSidebarPanel extends JPanel {
     private final DicePanel dice;
 
     GameSidebarPanel(
-            Player[] players,
+            String[] playerNames,
+            String[] playerColors,
             String difficulty,
             int boostDieFaces,
             Runnable onRoll,
             Runnable onEndGame,
             Runnable onLeaveGame) {
-        this.players = players;
+        this.playerNames = playerNames.clone();
+        this.playerColors = playerColors.clone();
         setOpaque(false);
         setLayout(new BorderLayout());
         setPreferredSize(new Dimension(330, 0));
@@ -130,8 +132,8 @@ class GameSidebarPanel extends JPanel {
 
     void refreshPlayers(int currentPlayer) {
         playersPanel.removeAll();
-        turnLabel.setText(players[currentPlayer].getName() + "'s turn");
-        for (int i = 0; i < players.length; i++) {
+        turnLabel.setText(playerNames[currentPlayer] + "'s turn");
+        for (int i = 0; i < playerNames.length; i++) {
             boolean current = i == currentPlayer;
             JPanel chip = new GameScreen.GameCardPanel(
                     current ? new Color(235, 240, 255) : LIGHT, 15);
@@ -139,12 +141,12 @@ class GameSidebarPanel extends JPanel {
             chip.setBorder(new EmptyBorder(3, 10, 3, 10));
             chip.setMaximumSize(new Dimension(Integer.MAX_VALUE, 29));
             chip.setPreferredSize(new Dimension(285, 29));
-            Color pieceColor = BoardPanel.colorOf(players[i].getColor());
+            Color pieceColor = BoardPanel.colorOf(playerColors[i]);
             JLabel dot = new JLabel("\u2022");
             dot.setFont(new Font("Dialog", Font.BOLD, 19));
             dot.setForeground(pieceColor);
             chip.add(dot, BorderLayout.WEST);
-            JLabel name = new JLabel(players[i].getName());
+            JLabel name = new JLabel(playerNames[i]);
             name.setFont(new Font(
                     "Segoe UI", current ? Font.BOLD : Font.PLAIN, 13));
             name.setForeground(GameScreen.INK);
@@ -156,7 +158,7 @@ class GameSidebarPanel extends JPanel {
                 chip.add(playing, BorderLayout.EAST);
             }
             playersPanel.add(chip);
-            if (i < players.length - 1) {
+            if (i < playerNames.length - 1) {
                 playersPanel.add(Box.createVerticalStrut(3));
             }
         }

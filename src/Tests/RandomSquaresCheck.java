@@ -3,6 +3,7 @@ package Tests;
 import java.awt.Color;
 import java.awt.Point;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -55,7 +56,13 @@ public class RandomSquaresCheck {
     }
 
     private static String type(Object special) throws Exception {
-        return value(special, "type").toString();
+        return property(special, "getType").toString();
+    }
+
+    private static Object property(Object object, String getter)
+            throws Exception {
+        Method method = object.getClass().getMethod(getter);
+        return method.invoke(object);
     }
 
     // שמירת המיקומים הקבועים להשוואה בין משחקים
@@ -73,9 +80,9 @@ public class RandomSquaresCheck {
 
                 fixed.put(entry.getKey(),
                         squareType + ":"
-                        + value(entry.getValue(), "color")
+                        + property(entry.getValue(), "getColor")
                         + ":"
-                        + value(entry.getValue(), "dir"));
+                        + property(entry.getValue(), "getDirection"));
             }
         }
 
@@ -143,7 +150,7 @@ public class RandomSquaresCheck {
                 questions++;
 
                 Color color =
-                        (Color) value(entry.getValue(), "color");
+                        (Color) property(entry.getValue(), "getColor");
 
                 if (BoardPanel.Q_EASY.equals(color)) {
                     easyQ++;
@@ -164,7 +171,7 @@ public class RandomSquaresCheck {
                 randomPositions.add(
                         cell.x + "," + cell.y + ":"
                         + kind + ":"
-                        + value(entry.getValue(), "color"));
+                        + property(entry.getValue(), "getColor"));
             }
         }
 

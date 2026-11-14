@@ -1,7 +1,6 @@
 package View;
 
 import Controller.GameController;
-import Model.Player;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
@@ -237,7 +236,6 @@ public class PlayerSetupPanel extends JPanel {
         }
         errorLabel.setForeground(new Color(25, 150, 112));
         errorLabel.setText("Success! Loading game...");
-        Player[] players = GameController.createPlayers(names, colors);
         Window window = SwingUtilities.getWindowAncestor(this);
         if (!(window instanceof JFrame)) {
             errorLabel.setForeground(new Color(211, 65, 90));
@@ -246,7 +244,9 @@ public class PlayerSetupPanel extends JPanel {
         }
         JFrame frame = (JFrame) window;
         frame.setTitle("Ludo - Game");
-        frame.setContentPane(new GameScreen(players, difficulty));
+        GameController gameController =
+                GameController.createNewGame(names, colors, difficulty);
+        frame.setContentPane(new GameScreen(gameController, difficulty));
         frame.setSize(1150, 800);
         frame.setLocationRelativeTo(null);
         frame.revalidate();

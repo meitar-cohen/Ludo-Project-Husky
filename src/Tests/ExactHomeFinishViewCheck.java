@@ -39,9 +39,10 @@ public class ExactHomeFinishViewCheck {
             try {
 
                 // יצירת מסך המשחק
-                view = new GameScreen(TestPlayers.of(new String[]{"A", "B"}, new String[]{"Red", "Blue"}), level);
+                view = new GameScreen(TestPlayers.gameController(
+                        new String[]{"A", "B"}, new String[]{"Red", "Blue"}, level), level);
 
-                Game game = (Game) field(view, "game");
+                Game game = (Game) field(field(view, "turns"), "game");
 
                 BoardPanel board =
                         (BoardPanel) field(view, "board");

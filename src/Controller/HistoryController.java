@@ -96,6 +96,15 @@ public class HistoryController {
         }
     }
 
+    public List<HistoryEntry> loadHistoryEntries() {
+        List<GameRecord> records = loadHistory();
+        List<HistoryEntry> entries = new ArrayList<>();
+        for (GameRecord record : records) {
+            entries.add(new HistoryEntry(record));
+        }
+        return entries;
+    }
+
     public String getHistoryFileName() {
         return historyFile.getName();
     }
@@ -297,4 +306,43 @@ public class HistoryController {
                 HISTORY_FILE_NAME);
     }
 
+    public static final class HistoryEntry {
+        private final int gameId;
+        private final String difficulty;
+        private final String timestamp;
+        private final String[] placeNames;
+        private final String duration;
+
+        private HistoryEntry(GameRecord record) {
+            gameId = record.getGameId();
+            difficulty = record.getDifficulty();
+            timestamp = record.getTimestamp();
+            placeNames = record.getPlaceNames();
+            duration = record.getDuration();
+        }
+
+        public int getGameId() {
+            return gameId;
+        }
+
+        public String getDifficulty() {
+            return difficulty;
+        }
+
+        public String getTimestamp() {
+            return timestamp;
+        }
+
+        public String[] getPlaceNames() {
+            return placeNames.clone();
+        }
+
+        public String getWinner() {
+            return placeNames[0];
+        }
+
+        public String getDuration() {
+            return duration;
+        }
+    }
 }

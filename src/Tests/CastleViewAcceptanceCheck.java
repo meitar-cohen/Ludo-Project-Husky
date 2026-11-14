@@ -43,11 +43,12 @@ public class CastleViewAcceptanceCheck {
             try {
 
                 // יצירת מסך המשחק
-                view = new GameScreen(TestPlayers.of(new String[]{"A", "B"}, new String[]{"Red", "Blue"}), level);
+                view = new GameScreen(TestPlayers.gameController(
+                        new String[]{"A", "B"}, new String[]{"Red", "Blue"}, level), level);
 
-                Game game = (Game) field(view, "game");
                 GameController controller =
-                        new GameController(game, new MovementController(game));
+                        (GameController) field(view, "turns");
+                Game game = (Game) field(controller, "game");
 
                 BoardPanel board =
                         (BoardPanel) field(view, "board");

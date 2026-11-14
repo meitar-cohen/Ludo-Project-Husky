@@ -9,8 +9,6 @@ import Controller.HistoryController;
 import Controller.MovementController;
 import Controller.GameController;
 import Enums.RollAction;
-import Model.Game;
-import Model.Player;
 
 public class GameScreen extends JPanel {
 
@@ -19,7 +17,6 @@ public class GameScreen extends JPanel {
     static final Color MUTED = new Color(110, 122, 150);
     static final Color INK = new Color(14, 23, 55);
 
-    private final Player[] players;
     private final String difficulty;
 
     private final BoardPanel board;
@@ -31,18 +28,15 @@ public class GameScreen extends JPanel {
     // SRS 3.2.8 - the finished game is saved once; the message is shown on the end screen
     private boolean gameOverHandled;
     private String historyNote = "";
-    private final Game game;
     private final HistoryController history;
     private final MovementController pieces;
     private final GameController turns;
 
-    public GameScreen(Player[] players, String difficulty) {
-        this.players = players.clone();
+    public GameScreen(GameController turns, String difficulty) {
+        this.turns = turns;
         this.difficulty = difficulty == null ? "Easy" : difficulty;
-        this.game = new Game(this.players, this.difficulty);
         this.history = new HistoryController();
-        this.pieces = new MovementController(game);
-        this.turns = new GameController(game, pieces);
+        this.pieces = turns.getMovementController();
         setOpaque(false);
         setLayout(new BorderLayout(0, 14));
         setBorder(new EmptyBorder(15, 20, 18, 20));
@@ -102,14 +96,15 @@ public class GameScreen extends JPanel {
             this, createLegend(), "Board legend", JOptionPane.PLAIN_MESSAGE));
         boardCaption.add(legendButton, BorderLayout.EAST);
         boardCard.add(boardCaption, BorderLayout.NORTH);
-        board = new BoardPanel(this.difficulty, playerColors());
+        board = new BoardPanel(this.difficulty, turns.getPlayerColors());
         board.setOpaque(false);
         board.setCastlePieceClickListener(this::onCastlePieceClicked);
         board.setBoardPieceClickListener(this::onBoardPieceClicked);
         boardCard.add(board, BorderLayout.CENTER);
         arena.add(boardCard, BorderLayout.CENTER);
         sidebar = new GameSidebarPanel(
-                this.players,
+                turns.getPlayerNames(),
+                turns.getPlayerColors(),
                 this.difficulty,
                 turns.getBoostDieFaces(),
                 this::onRoll,
@@ -122,16 +117,8 @@ public class GameScreen extends JPanel {
         side.add(sidebar, BorderLayout.CENTER);
         arena.add(side, BorderLayout.EAST);
         refreshPlayers();
-        setStatus(players[0].getName() + "'s turn. Click Roll Dice to start.");
+        setStatus(turns.getPlayerNames()[0] + "'s turn. Click Roll Dice to start.");
         startTimer();
-    }
-
-    private String[] playerColors() {
-        String[] colors = new String[players.length];
-        for (int i = 0; i < players.length; i++) {
-            colors[i] = players[i].getColor();
-        }
-        return colors;
     }
 
     @Override
@@ -157,7 +144,7 @@ public class GameScreen extends JPanel {
         }
         // SRS 3.2.1.3.3 - the game clock starts with the first roll.
         turns.startGameClock();
-        board.setActivePlayerColor(game.getCurrentPlayerColor());
+        board.setActivePlayerColor(turns.getCurrentPlayerColor());
         int stepDie = turns.rollStepDie();
         int boostDie = turns.rollBoostDie();
         sidebar.setFormula(" ");
@@ -167,11 +154,11 @@ public class GameScreen extends JPanel {
 
     private void finishRoll(int stepDie, int boostDie) {
         if (turns.registerRollAndCheckThirdSix(stepDie)) {
-            String player = game.getCurrentPlayerName();
+            String player = turns.getCurrentPlayerName();
             passTurn();
             setStatus("Third 6 in a row for " + player
                 + "! The roll is cancelled. "
-                + game.getCurrentPlayerName()
+                + turns.getCurrentPlayerName()
                 + "'s turn. Click Roll Dice.");
             return;
         }
@@ -198,14 +185,14 @@ public class GameScreen extends JPanel {
                 passWhenNoLegalMove();
                 return;
             }
-            if (game.getPendingSteps() == 0) {
+            if (turns.getPendingSteps() == 0) {
                 setStatus(
                     "Boost result is 0. Select a home-path piece to move "
                     + stepDie + " squares."
                 );
             } else {
                 setStatus(
-                    "Move " + game.getPendingSteps()
+                    "Move " + turns.getPendingSteps()
                     + " squares on the shared path, or "
                     + stepDie
                     + " in the home path. Select a piece."
@@ -215,16 +202,16 @@ public class GameScreen extends JPanel {
                 turns.consumeFirstTurnPulse()
             );
             sidebar.setRollButton(false, "Select Your Piece");
-        } else if (game.getPendingSteps() == 0) {
+        } else if (turns.getPendingSteps() == 0) {
             if (turns.hasExtraTurn()) {
                 passWhenNoLegalMove();
                 return;
             }
-            String previousPlayer = game.getCurrentPlayerName();
+            String previousPlayer = turns.getCurrentPlayerName();
             passTurn();
             setStatus("Boost result is 0. " + previousPlayer
                     + " has no legal move. "
-                    + game.getCurrentPlayerName()
+                    + turns.getCurrentPlayerName()
                     + "'s turn. Click Roll Dice.");
         } else {
             passWhenNoLegalMove();
@@ -232,15 +219,15 @@ public class GameScreen extends JPanel {
     }
 
     private int[] getCurrentRouteSizes() {
-        int[] routeSizes = new int[Game.PIECES_PER_PLAYER];
-        for (int piece = 0; piece < Game.PIECES_PER_PLAYER; piece++) {
+        int[] routeSizes = new int[GameController.PIECES_PER_PLAYER];
+        for (int piece = 0; piece < GameController.PIECES_PER_PLAYER; piece++) {
             routeSizes[piece] = board.getActiveRouteSize(piece);
         }
         return routeSizes;
     }
 
     private void passWhenNoLegalMove() {
-        String previousPlayer = game.getCurrentPlayerName();
+        String previousPlayer = turns.getCurrentPlayerName();
         if (turns.hasExtraTurn()) {
             turns.grantExtraTurn();
             board.clearHighlight();
@@ -252,12 +239,12 @@ public class GameScreen extends JPanel {
         passTurn();
         if (turns.canRoll()) {
             String reason =
-                    game.getPendingSteps() == 0
+                    turns.getPendingSteps() == 0
                     && !"Easy".equals(difficulty)
                     ? "Boost result is 0. " : "";
             setStatus(reason + previousPlayer
                     + " has no legal move. "
-                    + game.getCurrentPlayerName()
+                    + turns.getCurrentPlayerName()
                     + "'s turn. Click Roll Dice.");
         }
     }
@@ -288,13 +275,13 @@ public class GameScreen extends JPanel {
                 throw new IllegalStateException(
                         "Finish state is out of sync");
             }
-            String player = game.getCurrentPlayerName();
+            String player = turns.getCurrentPlayerName();
             int finished = board.getActiveFinishedPieceCount();
             setStatus(player + ": piece reached the goal ("
                     + finished + "/4).");
             if (pieces.isCurrentPlayerFinished()) {
                 passTurn();
-                if (game.getStage() == Enums.Stage.DONE) {
+                if (turns.isGameOver()) {
                     sidebar.setEndGameEnabled(true);
                     setStatus(
                         "Game complete! Click End Game to see the results.");
@@ -361,7 +348,7 @@ public class GameScreen extends JPanel {
     private void crossArrow(int pieceIndex, int remaining) {
         Color arrowColor = board.getArrowColorAtStep(
                 pieceIndex, pieces.getPieceStep(pieceIndex));
-        Color pieceColor = BoardPanel.colorOf(game.getCurrentPlayerColor());
+        Color pieceColor = BoardPanel.colorOf(turns.getCurrentPlayerColor());
         if (!pieces.enterNextPathFromArrow(pieceIndex, arrowColor, pieceColor)) {
             throw new IllegalStateException("Arrow move is out of sync");
         }
@@ -480,7 +467,7 @@ public class GameScreen extends JPanel {
             turns.grantExtraTurn();
             board.clearHighlight();
             sidebar.setRollButton(true, "Roll Again");
-            setStatus(game.getCurrentPlayerName() + " rolled a 6 - roll again!");
+            setStatus(turns.getCurrentPlayerName() + " rolled a 6 - roll again!");
         } else {
             passTurn();
         }
@@ -490,14 +477,14 @@ public class GameScreen extends JPanel {
         turns.passTurn();
         sidebar.setFormula(" ");
         sidebar.setRollButton(turns.canRoll(), "Roll Dice");
-        sidebar.setEndGameEnabled(game.getStage() == Enums.Stage.DONE);
-        if (game.getStage() == Enums.Stage.DONE) {
+        sidebar.setEndGameEnabled(turns.isGameOver());
+        if (turns.isGameOver()) {
             handleGameOver();
         }
         board.clearHighlight();
         refreshPlayers();
         setStatus(turns.canRoll()
-                ? game.getCurrentPlayerName()
+                ? turns.getCurrentPlayerName()
                     + "'s turn. Click Roll Dice."
                 : "Game finished: no active turns remain.");
     }
@@ -516,11 +503,11 @@ public class GameScreen extends JPanel {
         }
         gameOverHandled = true;
         turns.stopGameClock();
-        String error = history.saveFinishedGame(game, turns);
+        String error = turns.saveFinishedGame(history);
         if (error != null) {
             historyNote = error;
             JOptionPane.showMessageDialog(this, error, "Game history", JOptionPane.ERROR_MESSAGE);
-        } else if (game.isSavedToHistory()) {
+        } else if (turns.isSavedToHistory()) {
             historyNote = "This game was saved to the game history.";
         }
     }
@@ -530,8 +517,9 @@ public class GameScreen extends JPanel {
         JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(this);
         if (frame != null) {
             // SRS 3.2.8.3.1 - the end screen shows the players by final place
-            frame.setContentPane(new EndGameScreen(turns.getRanking(), difficulty,
-                    turns.getElapsedTime(), historyNote));
+            frame.setContentPane(new EndGameScreen(
+                    turns.getRankingNames(), turns.getRankingColors(),
+                    difficulty, turns.getElapsedTime(), historyNote));
             frame.setSize(700, 600);
             frame.setLocationRelativeTo(null);
             frame.revalidate();
@@ -556,7 +544,7 @@ public class GameScreen extends JPanel {
     // ------------------------------------------------------------------
 
     private void refreshPlayers() {
-        sidebar.refreshPlayers(game.getCurrentPlayer());
+        sidebar.refreshPlayers(turns.getCurrentPlayerIndex());
     }
 
     private void setStatus(String text) {

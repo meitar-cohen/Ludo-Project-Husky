@@ -62,7 +62,7 @@ public class SquaresCountCheck {
             // ספירת כל סוגי המשבצות
             for (Object special : squares.values()) {
 
-                String type = readField(special, "type").toString();
+                String type = TestPlayers.specialSquareType(special);
 
                 switch (type) {
 
@@ -84,8 +84,7 @@ public class SquaresCountCheck {
 
                     case "QUESTION":
 
-                        Color color =
-                                (Color) readField(special, "color");
+                        Color color = TestPlayers.specialSquareColor(special);
 
                         if (BoardPanel.Q_EASY.equals(color)) {
                             easyQuestions++;

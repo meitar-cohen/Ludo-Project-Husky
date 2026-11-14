@@ -1,7 +1,7 @@
 package View;
 
-import Model.Square;
 import javax.swing.JPanel;
+import Controller.GameController;
 import java.awt.*;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.Path2D;
@@ -49,7 +49,8 @@ class BoardDrawingPanel extends JPanel {
             drawCastle(g2, board, corner);
         }
         drawCentre(g2, board);
-        for (Map.Entry<Point, Square> entry : board.squareEntries()) {
+        for (Map.Entry<Point, GameController.SpecialSquareInfo> entry
+                : board.squareEntries()) {
             drawSpecial(g2, board, entry.getKey(), entry.getValue());
         }
         g2.setColor(new Color(126, 140, 173));
@@ -178,7 +179,8 @@ class BoardDrawingPanel extends JPanel {
     }
 
     private void drawSpecial(
-            Graphics2D g2, BoardPanel board, Point point, Square square) {
+            Graphics2D g2, BoardPanel board, Point point,
+            GameController.SpecialSquareInfo square) {
         int cs = board.cellSize();
         int x = board.originX() + point.x * cs;
         int y = board.originY() + point.y * cs;

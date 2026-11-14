@@ -1,18 +1,23 @@
 package Controller;
 
+import java.awt.Color;
 import java.util.Random;
 import java.util.HashSet;
 import java.util.Set;
 import Enums.RollAction;
 import Enums.Stage;
+import Enums.SquareType;
 import Model.Game;
 import Model.Player;
 import Model.Question;
+import Model.Square;
 import java.util.ArrayList;
 import java.util.List;
 
 /** Coordinates game setup, dice rolls, turns, and game phases. */
 public class GameController {
+    public static final int PIECES_PER_PLAYER = Game.PIECES_PER_PLAYER;
+
     private final Game game;
     private final MovementController pieces;
     private final Random random = new Random();
@@ -35,12 +40,133 @@ public class GameController {
         this.pieces = pieces;
     }
 
-    public Question getQuestion() {
-        return question;
+    public static GameController createNewGame(
+            String[] names, String[] colors, String difficulty) {
+        String validationError = validatePlayers(names, colors);
+        if (validationError != null) {
+            throw new IllegalArgumentException(validationError);
+        }
+        Game game = new Game(createPlayers(names, colors), difficulty);
+        return new GameController(game, new MovementController(game));
+    }
+
+    public static SpecialSquareInfo createSpecialSquare(
+            SquareType type, Color color, int direction) {
+        return new SpecialSquareInfo(new Square(type, color, direction));
+    }
+
+    public static final class SpecialSquareInfo {
+        private final Square square;
+
+        private SpecialSquareInfo(Square square) {
+            this.square = square;
+        }
+
+        public SquareType getType() {
+            return square.getType();
+        }
+
+        public Color getColor() {
+            return square.getColor();
+        }
+
+        public int getDirection() {
+            return square.getDirection();
+        }
     }
 
     public boolean isCorrectQuestionAnswer(int selectedIndex) {
         return selectedIndex == question.getCorrectIndex();
+    }
+
+    public String getQuestionText() {
+        return question.getText();
+    }
+
+    public String[] getQuestionOptions() {
+        return question.getOptions();
+    }
+
+    public String getQuestionDifficulty() {
+        return question.getDifficulty();
+    }
+
+    public int getCorrectQuestionAnswerIndex() {
+        return question.getCorrectIndex();
+    }
+
+    public MovementController getMovementController() {
+        return pieces;
+    }
+
+    public String[] getPlayerNames() {
+        String[] names = new String[game.getPlayerCount()];
+        for (int i = 0; i < names.length; i++) {
+            names[i] = game.getPlayer(i).getName();
+        }
+        return names;
+    }
+
+    public String[] getPlayerColors() {
+        String[] colors = new String[game.getPlayerCount()];
+        for (int i = 0; i < colors.length; i++) {
+            colors[i] = game.getPlayer(i).getColor();
+        }
+        return colors;
+    }
+
+    public String[] getRankingNames() {
+        Player[] ranking = getRanking();
+        String[] names = new String[ranking.length];
+        for (int i = 0; i < ranking.length; i++) {
+            names[i] = ranking[i].getName();
+        }
+        return names;
+    }
+
+    public String[] getRankingColors() {
+        Player[] ranking = getRanking();
+        String[] colors = new String[ranking.length];
+        for (int i = 0; i < ranking.length; i++) {
+            colors[i] = ranking[i].getColor();
+        }
+        return colors;
+    }
+
+    public String getCurrentPlayerName() {
+        return game.getCurrentPlayerName();
+    }
+
+    public String getCurrentPlayerColor() {
+        return game.getCurrentPlayerColor();
+    }
+
+    public int getCurrentPlayerIndex() {
+        return game.getCurrentPlayer();
+    }
+
+    public int getPlayerCount() {
+        return game.getPlayerCount();
+    }
+
+    public int getPendingSteps() {
+        return game.getPendingSteps();
+    }
+
+    public String getDifficulty() {
+        return game.getDifficulty();
+    }
+
+    public boolean isGameOver() {
+        return game.getStage() == Stage.DONE;
+    }
+
+    public boolean isSavedToHistory() {
+        return game.isSavedToHistory();
+    }
+
+    public String saveFinishedGame(HistoryController history) {
+        return history.saveFinishedGame(game, this);
     }
 
     /** Returns the first validation error, or null when the setup is valid. */
