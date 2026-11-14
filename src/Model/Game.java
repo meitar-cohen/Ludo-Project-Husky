@@ -122,10 +122,6 @@ public class Game {
         return players[playerIndex];
     }
 
-    public Player[] getPlayers() {
-        return players.clone();
-    }
-
     public List<Integer> getFinishOrder() {
         return new ArrayList<>(finishOrder);
     }

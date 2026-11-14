@@ -425,7 +425,7 @@ public class GameScreen extends JPanel {
 
     private void askQuestion(int pieceIndex) {
         Window owner = SwingUtilities.getWindowAncestor(this);
-        QuestionDialog dialog = new QuestionDialog(owner);
+        QuestionDialog dialog = new QuestionDialog(owner, turns);
         dialog.setVisible(true);
         boolean correct = dialog.isCorrect();
         int startStep = pieces.getPieceStep(pieceIndex);

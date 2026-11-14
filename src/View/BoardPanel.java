@@ -598,12 +598,6 @@ public class BoardPanel extends JPanel {
         repaint();
     }
 
-    public boolean canMoveActivePiece(int steps) {
-        if (!piecesOnBoard[activeCorner][selectedPieceIndex] || steps < 0) return false;
-        List<Point> route = currentPieceRoute(selectedPieceIndex);
-        return pieceSteps[activeCorner][selectedPieceIndex] + steps < route.size();
-    }
-
     private List<Point> innerRouteForCorner(int corner) {
         List<Point> base = innerPath();
         List<Point> result = new ArrayList<>();
@@ -635,13 +629,6 @@ public class BoardPanel extends JPanel {
             return middleRouteForCorner(activeCorner);
         }
         return activePath;
-    }
-
-    public void animateActivePiece(
-            int startStep,
-            int targetStep,
-            Runnable onDone) {
-        animatePiece(selectedPieceIndex, startStep, targetStep, onDone);
     }
 
     /**

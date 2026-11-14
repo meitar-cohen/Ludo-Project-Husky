@@ -4,19 +4,12 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.geom.RoundRectangle2D;
+import java.util.Locale;
+import Controller.GameController;
+import Model.Question;
 
 
 public class QuestionDialog extends JDialog {
-
-    static final String QUESTION =
-        "Which document defines the software requirements according to IEEE Std 830?";
-    static final String[] ANSWERS = {
-        "SRS - Software Requirements Specification",
-        "SDP - Software Development Plan",
-        "STD - Software Test Document",
-        "SDD - Software Design Description"
-    };
-    static final int CORRECT_INDEX = 0;
 
     static final Color NAVY = new Color(18, 27, 61);
     static final Color PRIMARY = new Color(75, 110, 248);
@@ -26,10 +19,13 @@ public class QuestionDialog extends JDialog {
 
     private int selected = -1;
     private boolean correct = false;
-    private final AnswerButton[] answerButtons = new AnswerButton[ANSWERS.length];
+    private final AnswerButton[] answerButtons;
 
-    public QuestionDialog(Window owner) {
+    public QuestionDialog(Window owner, GameController gameController) {
         super(owner, "Ludo - Question Challenge", ModalityType.APPLICATION_MODAL);
+        Question question = gameController.getQuestion();
+        String[] options = question.getOptions();
+        answerButtons = new AnswerButton[options.length];
         setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
         setResizable(false);
         JPanel root = new QuestionBackgroundPanel();
@@ -50,7 +46,8 @@ public class QuestionDialog extends JDialog {
         tag.setFont(new Font("Segoe UI", Font.BOLD, 12));
         tag.setForeground(PRIMARY);
         topLine.add(tag, BorderLayout.WEST);
-        JLabel level = new JLabel("  EASY  ");
+        JLabel level = new JLabel(
+                "  " + question.getDifficulty().toUpperCase(Locale.ROOT) + "  ");
         level.setOpaque(true);
         level.setBackground(new Color(225, 247, 235));
         level.setForeground(SUCCESS);
@@ -76,7 +73,7 @@ public class QuestionDialog extends JDialog {
         questionCard.setBorder(new EmptyBorder(14, 16, 14, 16));
         questionCard.setPreferredSize(new Dimension(582, 87));
         questionCard.setMaximumSize(new Dimension(Integer.MAX_VALUE, 87));
-        JTextArea prompt = new JTextArea(QUESTION);
+        JTextArea prompt = new JTextArea(question.getText());
         prompt.setEditable(false);
         prompt.setFocusable(false);
         prompt.setLineWrap(true);
@@ -99,9 +96,9 @@ public class QuestionDialog extends JDialog {
         confirm.setEnabled(false);
         ActionButton cont = new ActionButton("Continue", SUCCESS);
         cont.setVisible(false);
-        for (int i = 0; i < ANSWERS.length; i++) {
+        for (int i = 0; i < options.length; i++) {
             final int idx = i;
-            AnswerButton button = new AnswerButton(i, ANSWERS[i]);
+            AnswerButton button = new AnswerButton(i, options[i]);
             answerButtons[i] = button;
             button.setAlignmentX(Component.LEFT_ALIGNMENT);
             button.addActionListener(e -> {
@@ -112,7 +109,7 @@ public class QuestionDialog extends JDialog {
                 confirm.setEnabled(true);
             });
             content.add(button);
-            if (i != ANSWERS.length - 1) content.add(Box.createVerticalStrut(7));
+            if (i != options.length - 1) content.add(Box.createVerticalStrut(7));
         }
         content.add(Box.createVerticalStrut(11));
         QuestionCardPanel feedbackPanel = new QuestionCardPanel(new Color(241, 245, 255), 15);
@@ -142,9 +139,10 @@ public class QuestionDialog extends JDialog {
         card.add(footer, BorderLayout.SOUTH);
         confirm.addActionListener(e -> {
             if (selected < 0) return;
-            correct = selected == CORRECT_INDEX;
+            correct = gameController.isCorrectQuestionAnswer(selected);
             for (int i = 0; i < answerButtons.length; i++) {
-                int state = i == CORRECT_INDEX ? 2 : (i == selected ? 3 : 4);
+                int state = i == question.getCorrectIndex()
+                        ? 2 : (i == selected ? 3 : 4);
                 answerButtons[i].setVisualState(state);
                 answerButtons[i].setEnabled(false);
             }
@@ -153,7 +151,9 @@ public class QuestionDialog extends JDialog {
                 feedback.setForeground(SUCCESS);
                 feedbackPanel.setFill(new Color(229, 249, 239));
             } else {
-                feedback.setText("Not quite. The correct answer is A (SRS). Move 1 square back.");
+                char correctAnswer = (char) ('A' + question.getCorrectIndex());
+                feedback.setText("Not quite. The correct answer is "
+                        + correctAnswer + ". Move 1 square back.");
                 feedback.setForeground(ERROR);
                 feedbackPanel.setFill(new Color(255, 237, 240));
             }

@@ -1,14 +1,12 @@
 package Model;
 
-import java.util.Arrays;
-
 /**
  * מייצג משתתף במשחק.
  */
 public class Player {
     public static final int PIECES_COUNT = 4;
 
-    private String name;
+    private final String name;
     private String color;
     private final Piece[] pieces;
 
@@ -17,16 +15,12 @@ public class Player {
         this.color = requireText(color, "Player color");
         this.pieces = new Piece[PIECES_COUNT];
         for (int i = 0; i < PIECES_COUNT; i++) {
-            pieces[i] = new Piece(i);
+            pieces[i] = new Piece();
         }
     }
 
     public String getName() {
         return name;
-    }
-
-    public void setName(String name) {
-        this.name = requireText(name, "Player name");
     }
 
     public String getColor() {
@@ -42,10 +36,6 @@ public class Player {
             throw new IllegalArgumentException("Invalid piece index");
         }
         return pieces[index];
-    }
-
-    public Piece[] getPieces() {
-        return Arrays.copyOf(pieces, pieces.length);
     }
 
     public boolean hasPieceOnBoard() {

@@ -7,6 +7,7 @@ import Enums.RollAction;
 import Enums.Stage;
 import Model.Game;
 import Model.Player;
+import Model.Question;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -15,12 +16,31 @@ public class GameController {
     private final Game game;
     private final MovementController pieces;
     private final Random random = new Random();
+    private final Question question = new Question(
+            "Which document defines the software requirements according to IEEE Std 830?",
+            new String[]{
+                "SRS - Software Requirements Specification",
+                "SDP - Software Development Plan",
+                "STD - Software Test Document",
+                "SDD - Software Design Description"
+            },
+            0,
+            "Easy"
+    );
     private long startTimeMillis = -1;
     private long endTimeMillis = -1;
 
     public GameController(Game game, MovementController pieces) {
         this.game = game;
         this.pieces = pieces;
+    }
+
+    public Question getQuestion() {
+        return question;
+    }
+
+    public boolean isCorrectQuestionAnswer(int selectedIndex) {
+        return selectedIndex == question.getCorrectIndex();
     }
 
     /** Returns the first validation error, or null when the setup is valid. */
@@ -94,14 +114,6 @@ public class GameController {
         }
         game.setFirstTurnPulsePending(false);
         return true;
-    }
-
-    public boolean isInTakeOutStage() {
-        return game.getStage() == Stage.TAKE_OUT;
-    }
-
-    public boolean isInMoveStage() {
-        return game.getStage() == Stage.MOVE;
     }
 
     public int rollStepDie() {

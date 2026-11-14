@@ -6,20 +6,14 @@ import Enums.PieceState;
  * מייצג כלי יחיד במשחק.
  */
 public class Piece {
-    private final int index;
     private PieceState state;
     private int steps;
     private boolean inInnerPath;
     // SRS 3.2.4.3.2 - ברמה הקשה: הכלי נמצא במסלול האמצעי (64 משבצות)
     private boolean inMiddlePath;
 
-    public Piece(int index) {
-        this.index = index;
+    public Piece() {
         this.state = PieceState.CASTLE;
-    }
-
-    public int getIndex() {
-        return index;
     }
 
     public PieceState getState() {
