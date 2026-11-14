@@ -379,7 +379,7 @@ public class GameController {
     }
 
     /** Creates model players from the setup form values. */
-    public static Player[] createPlayers(String[] names, String[] colors) {
+    private static Player[] createPlayers(String[] names, String[] colors) {
         Player[] players = new Player[names.length];
         for (int i = 0; i < players.length; i++) {
             players[i] = new Player(names[i], colors[i]);

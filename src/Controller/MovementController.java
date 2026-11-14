@@ -184,8 +184,7 @@ public class MovementController {
         return game.isPlayerFinished(game.getCurrentPlayer());
     }
 
-    public boolean isClockwiseMoveAllowed(int currentStep, int steps,
-                                          int routeSize) {
+    private boolean isClockwiseMoveAllowed(int currentStep, int steps, int routeSize) {
         return currentStep >= 0 && steps >= 0
                 && currentStep + steps < routeSize;
     }
@@ -194,7 +193,7 @@ public class MovementController {
         return currentStep + steps;
     }
 
-    public boolean isMatchingArrow(Color arrowColor, Color pieceColor) {
+    private boolean isMatchingArrow(Color arrowColor, Color pieceColor) {
         return arrowColor != null && pieceColor != null
                 && arrowColor.equals(pieceColor);
     }

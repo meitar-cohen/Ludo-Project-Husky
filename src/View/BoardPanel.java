@@ -101,7 +101,7 @@ public class BoardPanel extends JPanel {
         });
     }
 
-    public static int cornerOf(String colorName) {
+    private static int cornerOf(String colorName) {
         for (int i = 0; i < 4; i++) {
             if (CORNER_COLOR_NAMES[i].equalsIgnoreCase(colorName)) {
                 return i;
