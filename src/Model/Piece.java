@@ -79,16 +79,6 @@ public class Piece {
         }
     }
 
-    public void moveTo(int steps) {
-        setSteps(steps);
-        state = PieceState.BOARD;
-    }
-
-    public void enterHomePath(int steps) {
-        setSteps(steps);
-        state = PieceState.HOME_PATH;
-    }
-
     public void finish() {
         steps = 6;
         state = PieceState.FINISHED;
