@@ -291,6 +291,18 @@ public class MovementController {
     }
 
     public boolean hasAnyLegalMove(int[] routeSizes) {
+        return hasAnyLegalMove(routeSizes, null);
+    }
+
+    /**
+     * SRS 3.2.4.3.2 - a move that reaches the piece's own arrow is legal even if the full
+     * number of steps would pass the end of the current ring, because the piece continues
+     * on the next path with the steps that are left.
+     *
+     * @param ownArrowSteps for every piece, the step of its own arrow on its current path,
+     *                      or -1 when there is none (may be null)
+     */
+    public boolean hasAnyLegalMove(int[] routeSizes, int[] ownArrowSteps) {
         if ((game.getStage() != Stage.MOVE
                 && game.getStage() != Stage.TAKE_OUT)
                 || routeSizes == null
@@ -322,6 +334,11 @@ public class MovementController {
             if (!inHome && routeSize == 52
                     && (isEasyGame() || game.isPieceInInnerPath(player, piece))
                     && destination <= routeSize + 6) {
+                return true;
+            }
+            if (!inHome && !isEasyGame() && !game.isPieceInInnerPath(player, piece)
+                    && ownArrowSteps != null && ownArrowSteps.length == Game.PIECES_PER_PLAYER
+                    && arrowWithinReach(current, steps, ownArrowSteps[piece]) >= 0) {
                 return true;
             }
         }

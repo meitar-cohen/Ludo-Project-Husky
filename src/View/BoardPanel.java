@@ -31,6 +31,12 @@ public class BoardPanel extends JPanel {
     public static final Color Q_HARD = new Color(235, 100, 100);
     public static final Color SURPRISE = new Color(150, 90, 200);
 
+    /**
+     * SRS 3.2.4.3.2 - on the outer and middle rings the arrow of a colour is 7 squares
+     * before that colour's corner (the arrows form a "staircase" next to the inner arrow).
+     */
+    private static final int ARROW_DISTANCE_FROM_CORNER = 7;
+
     private final int rings;
     private final int size;
     private int activeCorner;
@@ -227,10 +233,6 @@ public class BoardPanel extends JPanel {
                         qLevels[i], 0);
                 turns.addSpecialSquare(
                         ringCell(outer, c, 11), SquareType.STAR, null, 0);
-                int mid = (size - 1) / 2;
-                turns.addSpecialSquare(
-                        ringCell(outer, c, mid), SquareType.ARROW,
-                        CORNER_COLORS[c], (c + 1) % 4);
             }
             turns.addSpecialSquare(
                     ringCell(outer, (k + 1) % 4, 12),
@@ -252,10 +254,6 @@ public class BoardPanel extends JPanel {
                     turns.addSpecialSquare(
                             ringCell(second, c, 11),
                             SquareType.STAR, null, 0);
-                    turns.addSpecialSquare(
-                            ringCell(second, c, (size - 3) / 2),
-                            SquareType.ARROW, CORNER_COLORS[c],
-                            (c + 1) % 4);
                     if (i > 0) {
                         turns.addSpecialSquare(
                                 ringCell(second, c, 3),
@@ -265,6 +263,23 @@ public class BoardPanel extends JPanel {
                 turns.addSpecialSquare(
                         ringCell(second, (k + 2) % 4, 10),
                         SquareType.SURPRISE, SURPRISE, 0);
+            }
+            // SRS 3.2.4.3.2 - the arrow of each colour is 7 squares before the colour's corner
+            // and points inward, like in the sample boards of the project document.
+            // The arrows are placed last, so no other square can replace them.
+            List<Point> arrowRing = ringPath(0);
+            for (int c = 0; c < 4; c++) {
+                turns.addSpecialSquare(
+                        ringCell(arrowRing, c, arrowRing.size() - ARROW_DISTANCE_FROM_CORNER),
+                        SquareType.ARROW, CORNER_COLORS[c], c);
+            }
+            if (rings == 2) {
+                List<Point> middleRing = ringPath(1);
+                for (int c = 0; c < 4; c++) {
+                    turns.addSpecialSquare(
+                            ringCell(middleRing, c, middleRing.size() - ARROW_DISTANCE_FROM_CORNER),
+                            SquareType.ARROW, CORNER_COLORS[c], c);
+                }
             }
             for (int i = 0; i < outer.size(); i++) {
                 activePath.add(ringCell(outer, k, i));
@@ -577,22 +592,30 @@ public class BoardPanel extends JPanel {
         repaint();
     }
 
+    /**
+     * SRS 3.2.4.3.2 - the inner path (52 squares). The piece enters it on the square the
+     * arrow of the previous ring points to, which is the square just before the player's
+     * start square on the basic board, goes once around the board and ends on its own
+     * inner arrow, next to the home path.
+     */
     private List<Point> innerRouteForCorner(int corner) {
         List<Point> base = innerPath();
         List<Point> result = new ArrayList<>();
-        int first = corner * 13;
+        int first = corner * 13 - 1;
         for (int i = 0; i < base.size(); i++) {
-            result.add(base.get((first + i) % base.size()));
+            result.add(base.get(Math.floorMod(first + i, base.size())));
         }
         return result;
     }
 
-    /** SRS 3.2.4.3.2 - Hard level: the middle ring (64 squares), from the player's corner. */
+    /** SRS 3.2.4.3.2 - Hard level: the middle ring (64 squares), ending on the middle arrow. */
     private List<Point> middleRouteForCorner(int corner) {
         List<Point> middle = ringPath(1);
         List<Point> result = new ArrayList<>();
+        // the first square is the one the outer arrow points to; the last one is the middle arrow
+        int first = middle.size() - ARROW_DISTANCE_FROM_CORNER + 1;
         for (int i = 0; i < middle.size(); i++) {
-            result.add(ringCell(middle, corner, i));
+            result.add(ringCell(middle, corner, first + i));
         }
         return result;
     }

@@ -7,16 +7,19 @@ import javax.swing.Timer;
 
 import Controller.GameController;
 import Controller.MovementController;
-import Enums.Stage;
 import Enums.SquareType;
+import Enums.Stage;
 import Model.Game;
 import View.BoardPanel;
 import View.GameScreen;
 
 /**
- * SRS 3.2.4.3.2 - a piece moves to the next inner path when it passes over
- * OR stops on an arrow of its own colour.
- * Medium: outer (64) -> inner (52). Hard: outer (72) -> middle (64) -> inner (52).
+ * SRS 3.2.4.3.2 - a piece moves to the next path when it passes over OR stops on an arrow
+ * of its own colour. The arrows are 7 squares before the colour's corner:
+ * Medium: outer ring (arrow at step 57) -> inner path (52).
+ * Hard:   outer ring (arrow at step 65) -> middle ring (64, arrow at step 63) -> inner path (52).
+ * Stopping on the arrow puts the piece on the first square of the next path;
+ * each step that is left is then taken on the next path.
  */
 public class ArrowPassThroughCheck {
 
@@ -46,70 +49,91 @@ public class ArrowPassThroughCheck {
 
     // 1. החוק בבקר: מעבר דרך החץ, עצירה עליו, ומקרים שבהם החץ לא חל
     private static void testControllerRule() {
-        // Medium: own arrow at step 8 of the outer path
-        Game passing = gameAt("Medium", 5, 6);
-        MovementController pieces = new MovementController(passing);
-        check(pieces.findArrowOnMove(0, 8) == 8, "Medium: passing over the arrow is detected");
-
-        Game landing = gameAt("Medium", 5, 3);
-        check(new MovementController(landing).findArrowOnMove(0, 8) == 8,
+        Game passing = gameAt("Medium", 54, 6);
+        check(new MovementController(passing).findArrowOnMove(0, 57) == 57,
+                "Medium: passing over the arrow is detected");
+        Game landing = gameAt("Medium", 54, 3);
+        check(new MovementController(landing).findArrowOnMove(0, 57) == 57,
                 "Medium: stopping on the arrow is detected");
-
-        Game shortMove = gameAt("Medium", 2, 3);
-        check(new MovementController(shortMove).findArrowOnMove(0, 8) == -1,
+        Game shortMove = gameAt("Medium", 50, 4);
+        check(new MovementController(shortMove).findArrowOnMove(0, 57) == -1,
                 "Medium: a move that does not reach the arrow ignores it");
-
-        Game easy = gameAt("Easy", 5, 6);
-        check(new MovementController(easy).findArrowOnMove(0, 8) == -1,
+        Game easy = gameAt("Easy", 50, 12);
+        check(new MovementController(easy).findArrowOnMove(0, 57) == -1,
                 "Easy: there are no arrows between paths");
-
         Game inner = gameAt("Medium", 45, 6);
         inner.setPieceInInnerPath(true);
-        check(new MovementController(inner).findArrowOnMove(0, 50) == -1,
+        check(new MovementController(inner).findArrowOnMove(0, 51) == -1,
                 "Medium: the arrow on the inner path does not move the piece again");
 
-        // Hard: after the outer arrow, the remaining steps can reach the middle arrow
-        Game hard = gameAt("Hard", 7, 30);
+        // Hard: outer arrow (65) -> middle path, middle arrow (63) -> inner path
+        Game hard = gameAt("Hard", 63, 5);
         MovementController hardPieces = new MovementController(hard);
-        check(hardPieces.findArrowOnMove(0, 9) == 9, "Hard: outer arrow detected");
-        check(hardPieces.movePiece(0, 9, 72), "Hard: move to the outer arrow");
+        check(hardPieces.findArrowOnMove(0, 65) == 65, "Hard: outer arrow detected");
+        check(hardPieces.movePiece(0, 65, 72), "Hard: move to the outer arrow");
         check(hardPieces.enterNextPathFromArrow(0, BoardPanel.GREEN, BoardPanel.GREEN)
-                && hard.isPieceInMiddlePath(), "Hard: outer arrow leads to the middle path");
-        int remaining = 30 - (9 - 7);
-        check(hardPieces.findArrowOnRemainingSteps(0, remaining, 8) == 8,
-                "Hard: remaining steps reach the middle arrow");
-        check(hardPieces.continueMoveAfterArrow(0, 8, 64), "Hard: move to the middle arrow");
-        check(hardPieces.enterNextPathFromArrow(0, BoardPanel.GREEN, BoardPanel.GREEN)
-                && hard.isPieceInInnerPath() && !hard.isPieceInMiddlePath(),
-                "Hard: middle arrow leads to the inner path");
-        check(hardPieces.findArrowOnRemainingSteps(0, remaining - 8, 8) == -1,
-                "Hard: no arrow is used on the inner path");
-        check(hardPieces.continueMoveAfterArrow(0, remaining - 8, 52)
-                && hard.getPieceStep() == 20, "Hard: the rest of the move is on the inner path");
+                && hard.isPieceInMiddlePath() && !hard.isPieceInInnerPath(),
+                "Hard: the outer arrow leads to the middle path, not to the inner path");
+        check(hardPieces.continueMoveAfterArrow(0, 3, 64) && hard.getPieceStep() == 3,
+                "Hard: the 3 steps that are left are taken on the middle path");
+
+        Game middle = gameAt("Hard", 60, 5);
+        middle.setPieceInMiddlePath(true);
+        MovementController middlePieces = new MovementController(middle);
+        check(middlePieces.findArrowOnMove(0, 63) == 63, "Hard: middle arrow detected");
+        check(middlePieces.movePiece(0, 63, 64), "Hard: move to the middle arrow");
+        check(middlePieces.enterNextPathFromArrow(0, BoardPanel.GREEN, BoardPanel.GREEN)
+                && middle.isPieceInInnerPath() && !middle.isPieceInMiddlePath(),
+                "Hard: the middle arrow leads to the inner path");
+        check(middlePieces.continueMoveAfterArrow(0, 2, 52) && middle.getPieceStep() == 2,
+                "Hard: the 2 steps that are left are taken on the inner path");
+        check(!middlePieces.enterNextPathFromArrow(0, BoardPanel.GREEN, BoardPanel.GREEN),
+                "Hard: an arrow on the inner path does nothing");
 
         System.out.println("PASS - arrow rule in the controller");
     }
 
-    // 2. מיקום החצים על הלוח: 8 ב-64, 9 ב-72, ו-8 במסלול האמצעי
+    // 2. חוק המהלך החוקי: מהלך שמגיע לחץ חוקי גם כשמספר הצעדים חורג מסוף הטבעת
+    private static void testLegalMoveReachesArrow() {
+        // 10 steps from step 55 would pass the end of the 64-square ring, but the arrow is reached
+        Game game = gameAt("Medium", 55, 10);
+        MovementController pieces = new MovementController(game);
+        int[] sizes = {64, 64, 64, 64};
+        int[] arrows = {57, -1, -1, -1};
+        check(!pieces.hasAnyLegalMove(sizes),
+                "without arrow information the move looks like it leaves the ring");
+        check(pieces.hasAnyLegalMove(sizes, arrows),
+                "a move that reaches the arrow is legal");
+        // a move that stops short of the arrow, but is still on the ring, is legal too
+        Game normal = gameAt("Medium", 30, 10);
+        check(new MovementController(normal).hasAnyLegalMove(sizes, arrows),
+                "a normal move on the ring is legal");
+        System.out.println("PASS - a move that reaches the arrow is legal");
+    }
+
+    // 3. מיקום החצים והמסלולים על הלוח
     private static void testBoardArrowSteps() {
         BoardPanel medium = new BoardPanel(
                 TestPlayers.gameControllerForBoard(
                         "Medium", new String[]{"Green", "Red"}));
         medium.setActivePlayerColor("Green");
         check(medium.placeActivePieceOnStart(0), "Medium: place piece");
-        check(medium.getActiveRouteSize(0) == 64 && medium.getOwnArrowStep(0) == 8,
-                "Medium: own arrow at step 8 of the 64 path");
+        check(medium.getActiveRouteSize(0) == 64 && medium.getOwnArrowStep(0) == 57,
+                "Medium: own arrow at step 57 of the 64 ring");
+        check(medium.showActivePieceInInnerPath(0, 0)
+                && medium.getActiveRouteSize(0) == 52 && medium.getOwnArrowStep(0) == -1,
+                "Medium: inner path has 52 squares and no arrow to use");
 
         BoardPanel hard = new BoardPanel(
                 TestPlayers.gameControllerForBoard(
                         "Hard", new String[]{"Green", "Red"}));
         hard.setActivePlayerColor("Green");
         check(hard.placeActivePieceOnStart(0), "Hard: place piece");
-        check(hard.getActiveRouteSize(0) == 72 && hard.getOwnArrowStep(0) == 9,
-                "Hard: own arrow at step 9 of the 72 path");
+        check(hard.getActiveRouteSize(0) == 72 && hard.getOwnArrowStep(0) == 65,
+                "Hard: own arrow at step 65 of the 72 ring");
         check(hard.showActivePieceInMiddlePath(0, 0)
-                && hard.getActiveRouteSize(0) == 64 && hard.getOwnArrowStep(0) == 8,
-                "Hard: middle path has 64 squares and its own arrow at step 8");
+                && hard.getActiveRouteSize(0) == 64 && hard.getOwnArrowStep(0) == 63,
+                "Hard: middle path has 64 squares and its own arrow at step 63");
         check(hard.showActivePieceInInnerPath(0, 0)
                 && !hard.isActivePieceInMiddlePath(0)
                 && hard.getActiveRouteSize(0) == 52 && hard.getOwnArrowStep(0) == -1,
@@ -124,9 +148,10 @@ public class ArrowPassThroughCheck {
         System.out.println("PASS - arrow positions on the board");
     }
 
-    // 3. מסך המשחק: לחיצה על כלי שעובר את החץ
-    private static void testScreen(String level, int startStep, int pendingSteps,
-                                   int expectedStep, boolean expectInner) throws Exception {
+    // 4. מסך המשחק: לחיצה על כלי שעובר את החץ או עוצר עליו
+    private static void testScreen(String level, boolean startOnMiddle, int startStep,
+                                   int pendingSteps, String expectedPath,
+                                   int expectedStep) throws Exception {
         final GameScreen[] view = new GameScreen[1];
         final Game[] game = new Game[1];
         final BoardPanel[] board = new BoardPanel[1];
@@ -139,14 +164,20 @@ public class ArrowPassThroughCheck {
                 board[0] = (BoardPanel) field(view[0], "board");
                 board[0].setActivePlayerColor("Green");
                 check(board[0].placeActivePieceOnStart(0), level + ": setup piece");
+                removeEventSquares(board[0]);
                 game[0].selectPiece(0);
                 game[0].setPieceOnBoard(true);
+                if (startOnMiddle) {
+                    check(board[0].showActivePieceInMiddlePath(0, startStep),
+                            level + ": setup middle path");
+                    game[0].setPieceInMiddlePath(true);
+                } else {
+                    board[0].animatePiece(0, startStep, startStep, null);
+                }
                 game[0].setPieceStep(startStep);
                 game[0].setStage(Stage.MOVE);
                 game[0].setLastStepDie(5);
                 game[0].setPendingSteps(pendingSteps);
-                board[0].animatePiece(0, startStep, startStep, null);
-                removeEventSquares(board[0]);
                 Method click = GameScreen.class.getDeclaredMethod("onBoardPieceClicked", int.class);
                 click.setAccessible(true);
                 click.invoke(view[0], 0);
@@ -161,17 +192,22 @@ public class ArrowPassThroughCheck {
         Thread.sleep(220L * (pendingSteps + 4) + 800);
         SwingUtilities.invokeAndWait(() -> {
             try {
-                check(game[0].isPieceInInnerPath(0, 0) == expectInner,
-                        level + ": piece reached the inner path = " + expectInner);
-                check(!game[0].isPieceInMiddlePath(0, 0),
-                        level + ": piece is not left on the middle path");
+                String where = level + " " + (startOnMiddle ? "middle " : "outer ") + startStep
+                        + " + " + pendingSteps;
+                boolean inner = "inner".equals(expectedPath);
+                boolean middle = "middle".equals(expectedPath);
+                check(game[0].isPieceInInnerPath(0, 0) == inner
+                        && game[0].isPieceInMiddlePath(0, 0) == middle,
+                        where + ": the piece must be on the " + expectedPath + " path");
                 check(game[0].getPieceStep(0, 0) == expectedStep,
-                        level + ": model step " + game[0].getPieceStep(0, 0) + " expected " + expectedStep);
-                check(game[0].getCurrentPlayer() == 1, level + ": turn passed");
+                        where + ": model step " + game[0].getPieceStep(0, 0)
+                                + " expected " + expectedStep);
+                check(game[0].getCurrentPlayer() == 1, where + ": turn passed");
                 board[0].setActivePlayerColor("Green");
-                check(board[0].isActivePieceInInnerPath(0) == expectInner
+                check(board[0].isActivePieceInInnerPath(0) == inner
+                        && board[0].isActivePieceInMiddlePath(0) == middle
                         && board[0].getActivePieceStep() == expectedStep,
-                        level + ": board shows the same position as the model");
+                        where + ": board shows the same position as the model");
                 ((Timer) field(view[0], "gameTimer")).stop();
             } catch (Throwable t) {
                 error[0] = t;
@@ -180,8 +216,8 @@ public class ArrowPassThroughCheck {
         if (error[0] != null) {
             throw new AssertionError(level, error[0]);
         }
-        System.out.println("PASS - " + level + " screen: " + pendingSteps
-                + " steps from step " + startStep);
+        System.out.println("PASS - " + level + " screen: " + (startOnMiddle ? "middle " : "outer ")
+                + startStep + " + " + pendingSteps + " steps -> " + expectedPath + " step " + expectedStep);
     }
 
     /** Question and surprise squares open dialogs; remove them so the move is deterministic. */
@@ -193,67 +229,20 @@ public class ArrowPassThroughCheck {
 
     public static void main(String[] args) throws Exception {
         testControllerRule();
+        testLegalMoveReachesArrow();
         testBoardArrowSteps();
-        // Medium: from step 6, 4 steps -> arrow at 8, 2 steps left -> inner step 2
-        testScreen("Medium", 6, 4, 2, true);
-        // Medium: stopping exactly on the arrow -> inner step 0
-        testScreen("Medium", 5, 3, 0, true);
-        // Hard: from step 7, 30 steps -> outer arrow 9 (28 left) -> middle arrow 8 (20 left) -> inner step 20
-        testScreen("Hard", 7, 30, 20, true);
-        // Hard: from step 7, 5 steps -> outer arrow 9 (3 left) -> middle step 3
-        testMiddleStop();
+        // Medium: from step 55, 4 steps -> arrow at 57 (2 steps), 2 left -> inner step 2
+        testScreen("Medium", false, 55, 4, "inner", 2);
+        // Medium: stopping exactly on the arrow -> first square of the inner path
+        testScreen("Medium", false, 54, 3, "inner", 0);
+        // Medium: a move that does not reach the arrow stays on the ring
+        testScreen("Medium", false, 50, 4, "outer", 54);
+        // Hard: from step 63, 5 steps -> outer arrow at 65 (2 steps), 3 left -> middle step 3
+        testScreen("Hard", false, 63, 5, "middle", 3);
+        // Hard: a long move: 30 steps from step 62 -> arrow at 65 (3 steps), 27 left on the middle ring
+        testScreen("Hard", false, 62, 30, "middle", 27);
+        // Hard: from the middle ring, step 60, 5 steps -> middle arrow at 63, 2 left -> inner step 2
+        testScreen("Hard", true, 60, 5, "inner", 2);
         System.out.println("All arrow pass-through checks passed.");
-    }
-
-    // Hard: the piece stays on the middle path when the steps do not reach the middle arrow
-    private static void testMiddleStop() throws Exception {
-        final GameScreen[] view = new GameScreen[1];
-        final Game[] game = new Game[1];
-        final BoardPanel[] board = new BoardPanel[1];
-        final Throwable[] error = {null};
-        SwingUtilities.invokeAndWait(() -> {
-            try {
-                view[0] = new GameScreen(TestPlayers.gameController(
-                        new String[]{"A", "B"}, new String[]{"Green", "Red"}, "Hard"), "Hard");
-                game[0] = (Game) field(field(view[0], "turns"), "game");
-                board[0] = (BoardPanel) field(view[0], "board");
-                board[0].setActivePlayerColor("Green");
-                board[0].placeActivePieceOnStart(0);
-                game[0].selectPiece(0);
-                game[0].setPieceOnBoard(true);
-                game[0].setPieceStep(7);
-                game[0].setStage(Stage.MOVE);
-                game[0].setLastStepDie(5);
-                game[0].setPendingSteps(5);
-                board[0].animatePiece(0, 7, 7, null);
-                removeEventSquares(board[0]);
-                Method click = GameScreen.class.getDeclaredMethod("onBoardPieceClicked", int.class);
-                click.setAccessible(true);
-                click.invoke(view[0], 0);
-            } catch (Throwable t) {
-                error[0] = t;
-            }
-        });
-        if (error[0] != null) {
-            throw new AssertionError("Hard middle", error[0]);
-        }
-        Thread.sleep(220L * 9 + 800);
-        SwingUtilities.invokeAndWait(() -> {
-            try {
-                check(game[0].isPieceInMiddlePath(0, 0) && !game[0].isPieceInInnerPath(0, 0),
-                        "Hard: piece is on the middle path");
-                check(game[0].getPieceStep(0, 0) == 3, "Hard: middle step 3");
-                board[0].setActivePlayerColor("Green");
-                check(board[0].isActivePieceInMiddlePath(0) && board[0].getActivePieceStep() == 3,
-                        "Hard: board shows the piece on the middle path");
-                ((Timer) field(view[0], "gameTimer")).stop();
-            } catch (Throwable t) {
-                error[0] = t;
-            }
-        });
-        if (error[0] != null) {
-            throw new AssertionError("Hard middle", error[0]);
-        }
-        System.out.println("PASS - Hard screen: piece stops on the middle path");
     }
 }

@@ -168,7 +168,7 @@ public class GameScreen extends JPanel {
         RollAction action = turnController.finishRoll(stepDie, boostDie);
         if (action == RollAction.TAKE_OUT
                 && pieces.canChooseBoardMoveInsteadOfTakeOut()
-                && pieces.hasAnyLegalMove(getCurrentRouteSizes())) {
+                && pieces.hasAnyLegalMove(getCurrentRouteSizes(), getCurrentArrowSteps())) {
         	int choice = GameDialogs.chooseMove(this);
             if (choice == 1
                     && pieces.chooseBoardMoveInsteadOfTakeOut()) {
@@ -184,7 +184,7 @@ public class GameScreen extends JPanel {
             );
             sidebar.setRollButton(false, "Select Your Piece");
         } else if (action == RollAction.MOVE) {
-            if (!pieces.hasAnyLegalMove(getCurrentRouteSizes())) {
+            if (!pieces.hasAnyLegalMove(getCurrentRouteSizes(), getCurrentArrowSteps())) {
                 passWhenNoLegalMove();
                 return;
             }
@@ -227,6 +227,15 @@ public class GameScreen extends JPanel {
             routeSizes[piece] = board.getActiveRouteSize(piece);
         }
         return routeSizes;
+    }
+
+    /** SRS 3.2.4.3.2 - for every piece, the step of its own arrow on its current path (-1 if none). */
+    private int[] getCurrentArrowSteps() {
+        int[] arrowSteps = new int[GameController.PIECES_PER_PLAYER];
+        for (int piece = 0; piece < GameController.PIECES_PER_PLAYER; piece++) {
+            arrowSteps[piece] = board.getOwnArrowStep(piece);
+        }
+        return arrowSteps;
     }
 
     private void passWhenNoLegalMove() {
