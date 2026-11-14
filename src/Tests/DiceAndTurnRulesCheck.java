@@ -11,6 +11,7 @@ import Controller.GameController;
 import Controller.MovementController;
 import Enums.Stage;
 import Enums.SquareType;
+import Model.Die;
 import Model.Game;
 import View.BoardPanel;
 import View.GameScreen;
@@ -43,11 +44,17 @@ public class DiceAndTurnRulesCheck {
     }
 
     // SRS 3.2.3.3.2 - קוביית צעדים 1-6, Boost 1-3 בבינונית, UltraBoost 1-6 בקשה
-    private static void testDiceRanges() {
+    private static void testDiceRanges() throws Exception {
         String[] levels = {"Easy", "Medium", "Hard"};
         int[] faces = {0, 3, 6};
         for (int l = 0; l < levels.length; l++) {
-            GameController controller = controllerFor(newGame(levels[l]));
+            Game game = newGame(levels[l]);
+            GameController controller = controllerFor(game);
+            Die stepDie = (Die) field(controller.getTurnController(), "stepDie");
+            Die boostDie = (Die) field(controller.getTurnController(), "boostDie");
+            check(stepDie.getFaces() == 6 && stepDie.getValue() == 0, levels[l] + ": initial step die");
+            check(faces[l] == 0 ? boostDie == null : boostDie != null && boostDie.getValue() == 0,
+                    levels[l] + ": initial boost die");
             check(controller.getTurnController().getBoostDieFaces() == faces[l], levels[l] + ": bonus die faces");
             boolean[] stepSeen = new boolean[7];
             boolean[] boostSeen = new boolean[7];
@@ -55,11 +62,14 @@ public class DiceAndTurnRulesCheck {
                 int step = controller.getTurnController().rollStepDie();
                 int boost = controller.getTurnController().rollBoostDie();
                 check(step >= 1 && step <= 6, levels[l] + ": step die out of range: " + step);
+                check(stepDie.getValue() == step, levels[l] + ": step die stores the roll");
                 if (faces[l] == 0) {
                     check(boost == 0, levels[l] + ": no bonus die");
                 } else {
                     check(boost >= 1 && boost <= faces[l],
                             levels[l] + ": bonus die out of range: " + boost);
+                    check(boostDie.getFaces() == faces[l] && boostDie.getValue() == boost,
+                            levels[l] + ": boost die stores its own roll");
                     boostSeen[boost] = true;
                 }
                 stepSeen[step] = true;
@@ -70,8 +80,27 @@ public class DiceAndTurnRulesCheck {
             for (int v = 1; v <= faces[l]; v++) {
                 check(boostSeen[v], levels[l] + ": bonus die never showed " + v);
             }
+            check(game.getLastStepDie() == 0, levels[l] + ": rolling alone does not register a turn");
         }
         System.out.println("PASS - dice ranges in Easy, Medium and Hard");
+    }
+
+    private static void testDieValidation() {
+        try {
+            new Die(0);
+            throw new AssertionError("A die cannot have zero faces");
+        } catch (IllegalArgumentException expected) {
+            // Expected.
+        }
+        Die die = new Die(3);
+        for (int value : new int[]{0, 4}) {
+            try {
+                die.setValue(value);
+                throw new AssertionError("Die value outside its range: " + value);
+            } catch (IllegalArgumentException expected) {
+                check(die.getValue() == 0, "Invalid values must not change the die");
+            }
+        }
     }
 
     // SRS 3.2.3.3.5 - תור נוסף אחרי 6, וביטול השישייה השלישית ברצף
@@ -206,6 +235,7 @@ public class DiceAndTurnRulesCheck {
 
     public static void main(String[] args) throws Exception {
         testDiceRanges();
+        testDieValidation();
         testSixesRule();
         testClock();
         testScreen();

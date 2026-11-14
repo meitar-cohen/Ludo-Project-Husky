@@ -4,6 +4,7 @@ import java.util.Random;
 
 import Enums.RollAction;
 import Enums.Stage;
+import Model.Die;
 import Model.Game;
 
 /** Manages dice rolls, turn phases, and transitions between players. */
@@ -11,10 +12,19 @@ public class TurnController {
     private final Game game;
     private final MovementController pieces;
     private final Random random = new Random();
+    private final Die stepDie = new Die(6);
+    private final Die boostDie;
 
     public TurnController(Game game, MovementController pieces) {
         this.game = game;
         this.pieces = pieces;
+        if ("Hard".equals(game.getDifficulty())) {
+            this.boostDie = new Die(6);
+        } else if ("Medium".equals(game.getDifficulty())) {
+            this.boostDie = new Die(3);
+        } else {
+            this.boostDie = null;
+        }
     }
 
     public boolean canRoll() {
@@ -30,22 +40,20 @@ public class TurnController {
     }
 
     public int rollStepDie() {
-        return random.nextInt(6) + 1;
+        return rollDie(stepDie);
     }
 
     public int rollBoostDie() {
-        int faces = getBoostDieFaces();
-        return faces == 0 ? 0 : random.nextInt(faces) + 1;
+        return boostDie == null ? 0 : rollDie(boostDie);
     }
 
     public int getBoostDieFaces() {
-        if ("Hard".equals(game.getDifficulty())) {
-            return 6;
-        }
-        if ("Medium".equals(game.getDifficulty())) {
-            return 3;
-        }
-        return 0;
+        return boostDie == null ? 0 : boostDie.getFaces();
+    }
+
+    private int rollDie(Die die) {
+        die.setValue(random.nextInt(die.getFaces()) + 1);
+        return die.getValue();
     }
 
     public boolean registerRollAndCheckThirdSix(int stepDie) {
