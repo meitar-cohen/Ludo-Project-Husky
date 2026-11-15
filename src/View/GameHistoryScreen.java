@@ -1,7 +1,6 @@
 package View;
 
 import Controller.HistoryController;
-import Controller.HistoryController.HistoryEntry;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -10,7 +9,6 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.RoundRectangle2D;
-import java.util.List;
 
 /**
  * Game history screen.
@@ -24,7 +22,8 @@ public class GameHistoryScreen extends JFrame {
     private static final Color LIGHT = new Color(243, 246, 253);
     private final JPanel rankingCards = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 2));
     private final JLabel rankingGameLabel = new JLabel();
-    private final List<HistoryEntry> history;
+    private final HistoryController controller;
+    private final int historySize;
     private final int skippedRows;
     private final String historyError;
     private final String historyFileName;
@@ -36,7 +35,9 @@ public class GameHistoryScreen extends JFrame {
 
     public GameHistoryScreen(HistoryController controller) {
         // SRS 3.2.8.3.4 - the saved games are read from the history file
-        this.history = controller.loadHistoryEntries();
+        this.controller = controller;
+        controller.loadHistory();
+        this.historySize = controller.getLoadedHistorySize();
         this.skippedRows = controller.getSkippedRows();
         this.historyError = controller.getLastError();
         this.historyFileName = controller.getHistoryFileName();
@@ -63,7 +64,7 @@ public class GameHistoryScreen extends JFrame {
         main.add(content, BorderLayout.CENTER);
         main.add(createFooter(), BorderLayout.SOUTH);
         setContentPane(background);
-        if (!history.isEmpty()) {
+        if (historySize > 0) {
             table.setRowSelectionInterval(0, 0);   // show the standings of the newest game
         }
     }
@@ -92,7 +93,7 @@ public class GameHistoryScreen extends JFrame {
         subtitle.setAlignmentX(Component.LEFT_ALIGNMENT);
         headings.add(subtitle);
         header.add(headings, BorderLayout.CENTER);
-        int saved = history.size();
+        int saved = historySize;
         JLabel count = new JLabel(saved == 0 ? "  NO SAVED GAMES  "
                 : "  " + saved + (saved == 1 ? " SAVED GAME  " : " SAVED GAMES  "));
         count.setFont(new Font("Segoe UI", Font.BOLD, 12));
@@ -117,13 +118,13 @@ public class GameHistoryScreen extends JFrame {
         DefaultTableModel model = new DefaultTableModel(new Object[0][columns.length], columns) {
             @Override public boolean isCellEditable(int row, int column) { return false; }
         };
-        for (HistoryEntry game : history) {
+        for (int i = 0; i < historySize; i++) {
             model.addRow(new Object[] {
-                "#" + game.getGameId(),
-                game.getTimestamp().replace(";", "  "),
-                HistoryController.toDisplayDifficulty(game.getDifficulty()),
-                game.getWinner(),
-                game.getDuration()
+                "#" + controller.getLoadedGameId(i),
+                controller.getLoadedGameTimestamp(i).replace(";", "  "),
+                HistoryController.toDisplayDifficulty(controller.getLoadedGameDifficulty(i)),
+                controller.getLoadedGameWinner(i),
+                controller.getLoadedGameDuration(i)
             });
         }
         table = new JTable(model);
@@ -190,15 +191,16 @@ public class GameHistoryScreen extends JFrame {
 
     /** Shows the final standings of the selected game. */
     private void showRanking(int index) {
-        if (index < 0 || index >= history.size()) {
+        if (index < 0 || index >= historySize) {
             return;
         }
-        HistoryEntry game = history.get(index);
-        rankingGameLabel.setText("Game #" + game.getGameId() + "  |  "
-                + HistoryController.toDisplayDifficulty(game.getDifficulty()) + "  |  " + game.getDuration());
+        rankingGameLabel.setText("Game #" + controller.getLoadedGameId(index) + "  |  "
+                + HistoryController.toDisplayDifficulty(
+                        controller.getLoadedGameDifficulty(index)) + "  |  "
+                + controller.getLoadedGameDuration(index));
         rankingCards.removeAll();
         String[] places = {"1ST", "2ND", "3RD", "4TH"};
-        String[] names = game.getPlaceNames();
+        String[] names = controller.getLoadedGamePlaceNames(index);
         for (int i = 0; i < names.length; i++) {
             if (names[i].isEmpty()) {
                 continue;   // fewer than 4 players
@@ -229,7 +231,7 @@ public class GameHistoryScreen extends JFrame {
         String text;
         if (historyError != null) {
             text = historyError;
-        } else if (history.isEmpty()) {
+        } else if (historySize == 0) {
             text = "No completed games to display.";
         } else {
             text = "Games are read from " + historyFileName + ".";

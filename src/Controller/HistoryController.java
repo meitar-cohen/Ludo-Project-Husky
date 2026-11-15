@@ -36,6 +36,7 @@ public class HistoryController {
     private final File historyFile;
     private int skippedRows;
     private String lastError;
+    private List<GameRecord> loadedHistory = Collections.emptyList();
 
     public HistoryController() {
         this(defaultHistoryFile());
@@ -88,21 +89,46 @@ public class HistoryController {
         try {
             List<GameRecord> games = new ArrayList<>(readGames());
             Collections.reverse(games);
+            loadedHistory = games;
             return games;
         } catch (IOException | RuntimeException e) {
             skippedRows = 0;
             lastError = "The history file could not be read: " + e.getMessage();
+            loadedHistory = Collections.emptyList();
             return new ArrayList<>();
         }
     }
 
-    public List<HistoryEntry> loadHistoryEntries() {
-        List<GameRecord> records = loadHistory();
-        List<HistoryEntry> entries = new ArrayList<>();
-        for (GameRecord record : records) {
-            entries.add(new HistoryEntry(record));
-        }
-        return entries;
+    public int getLoadedHistorySize() {
+        return loadedHistory.size();
+    }
+
+    public int getLoadedGameId(int index) {
+        return getLoadedGame(index).getGameId();
+    }
+
+    public String getLoadedGameDifficulty(int index) {
+        return getLoadedGame(index).getDifficulty();
+    }
+
+    public String getLoadedGameTimestamp(int index) {
+        return getLoadedGame(index).getTimestamp();
+    }
+
+    public String getLoadedGameWinner(int index) {
+        return getLoadedGame(index).getWinner();
+    }
+
+    public String getLoadedGameDuration(int index) {
+        return getLoadedGame(index).getDuration();
+    }
+
+    public String[] getLoadedGamePlaceNames(int index) {
+        return getLoadedGame(index).getPlaceNames();
+    }
+
+    private GameRecord getLoadedGame(int index) {
+        return loadedHistory.get(index);
     }
 
     public String getHistoryFileName() {
@@ -306,43 +332,4 @@ public class HistoryController {
                 HISTORY_FILE_NAME);
     }
 
-    public static final class HistoryEntry {
-        private final int gameId;
-        private final String difficulty;
-        private final String timestamp;
-        private final String[] placeNames;
-        private final String duration;
-
-        private HistoryEntry(GameRecord record) {
-            gameId = record.getGameId();
-            difficulty = record.getDifficulty();
-            timestamp = record.getTimestamp();
-            placeNames = record.getPlaceNames();
-            duration = record.getDuration();
-        }
-
-        public int getGameId() {
-            return gameId;
-        }
-
-        public String getDifficulty() {
-            return difficulty;
-        }
-
-        public String getTimestamp() {
-            return timestamp;
-        }
-
-        public String[] getPlaceNames() {
-            return placeNames.clone();
-        }
-
-        public String getWinner() {
-            return placeNames[0];
-        }
-
-        public String getDuration() {
-            return duration;
-        }
-    }
 }
