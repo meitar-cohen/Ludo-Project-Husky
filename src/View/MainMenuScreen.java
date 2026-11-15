@@ -12,6 +12,8 @@ import java.awt.geom.Path2D;
 import java.awt.geom.RoundRectangle2D;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 public class MainMenuScreen extends JFrame {
 
@@ -59,7 +61,7 @@ public class MainMenuScreen extends JFrame {
     }
 
     private static Image loadAppIcon() {
-        try (InputStream iconStream = MainMenuScreen.class.getResourceAsStream("/Resources/app-icon.png")) {
+        try (InputStream iconStream = openAppIconStream()) {
             if (iconStream == null) {
                 return null;
             }
@@ -71,6 +73,11 @@ public class MainMenuScreen extends JFrame {
         } catch (IOException e) {
             return null;
         }
+    }
+
+    private static InputStream openAppIconStream() throws IOException {
+        InputStream iconStream = MainMenuScreen.class.getResourceAsStream("/resources/app-icon.png");
+        return iconStream != null ? iconStream : Files.newInputStream(Paths.get("resources", "app-icon.png"));
     }
 
     private JPanel createMenuCard() {
