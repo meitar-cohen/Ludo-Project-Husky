@@ -1,6 +1,7 @@
 package Controller;
 
 import java.awt.Color;
+
 import java.awt.Point;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -12,8 +13,12 @@ import Enums.Stage;
 import Enums.SquareType;
 import Model.Game;
 import Model.Player;
-import Model.Question;
+import Model.QuestionEvent;
+import Model.QuestionEventCreator;
 import Model.Square;
+import java.io.IOException;
+import Model.QuestionBank;
+import Model.QuestionRepository;
 
 /** Coordinates game setup, board state, questions, and game results. */
 public class GameController {
@@ -22,26 +27,38 @@ public class GameController {
     private final Game game;
     private final MovementController pieces;
     private final TurnController turnController;
-    private final Question question = new Question(
-            "Which document defines the software requirements according to IEEE Std 830?",
-            new String[]{
-                "SRS - Software Requirements Specification",
-                "SDP - Software Development Plan",
-                "STD - Software Test Document",
-                "SDD - Software Design Description"
-            },
-            0,
-            "Easy"
-    );
+    // מאגר השאלות שנטען מקובץ ה-CSV
+    private final QuestionBank questionBank;
+
+    // אירוע השאלה הנוכחי שנוצר באמצעות Factory Method
+    private QuestionEvent currentQuestionEvent;
     private long startTimeMillis = -1;
     private long endTimeMillis = -1;
 
-    public GameController(Game game, MovementController pieces) {
-        this.game = game;
-        this.pieces = pieces;
-        this.turnController = new TurnController(game, pieces);
-        initializeBoard();
-    }
+
+	public GameController(Game game, MovementController pieces) {
+	    this.game = game;
+	    this.pieces = pieces;
+	    this.turnController = new TurnController(game, pieces);
+	
+	    // טעינת השאלות מתוך קובץ ה-CSV הקיים
+	    try {
+	        this.questionBank = new QuestionBank(
+	                QuestionRepository.loadProjectQuestions()
+	        );
+	    } catch (IOException exception) {
+	        throw new IllegalStateException(
+	                "Unable to load questions from CSV",
+	                exception
+	        );
+	    }
+	
+	    // אתחול אירוע שאלה קלה באמצעות Factory Method
+	    selectQuestion("easy");
+	
+	    initializeBoard();
+	}
+
 
     public static GameController createNewGame(
             String[] names, String[] colors, String difficulty) {
@@ -53,25 +70,68 @@ public class GameController {
         return new GameController(game, new MovementController(game));
     }
 
+	
+
+    // בחירת שאלה באמצעות Factory Method לפי רמת הקושי
+    public void selectQuestion(String difficulty) {
+
+        if (difficulty == null || difficulty.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Question difficulty is required");
+        }
+
+        // בחירת היוצר המתאים לרמת הקושי
+        QuestionEventCreator creator = switch (
+                difficulty.trim().toLowerCase(java.util.Locale.ROOT)) {
+
+            case "easy" ->
+                    new QuestionEventCreator.Easy(questionBank);
+
+            case "medium" ->
+                    new QuestionEventCreator.Medium(questionBank);
+
+            case "hard" ->
+                    new QuestionEventCreator.Hard(questionBank);
+
+            default -> throw new IllegalArgumentException(
+                    "Unsupported question difficulty: " + difficulty);
+        };
+
+        // יצירת האירוע באמצעות Factory Method
+        currentQuestionEvent = creator.create();
+    }
+
+    // בדיקת נכונות התשובה באמצעות האירוע הנוכחי
     public boolean isCorrectQuestionAnswer(int selectedIndex) {
-        return selectedIndex == question.getCorrectIndex();
+        return currentQuestionEvent.isCorrectAnswer(selectedIndex);
     }
 
+    // החזרת נוסח השאלה מתוך האירוע הנוכחי
     public String getQuestionText() {
-        return question.getText();
+        return currentQuestionEvent.getQuestion().getText();
     }
 
+    // החזרת אפשרויות התשובה
     public String[] getQuestionOptions() {
-        return question.getOptions();
+        return currentQuestionEvent.getQuestion().getOptions();
     }
 
+    // החזרת רמת הקושי של השאלה
     public String getQuestionDifficulty() {
-        return question.getDifficulty();
+        return currentQuestionEvent.getQuestion().getDifficulty();
     }
 
-    public int getCorrectQuestionAnswerIndex() {
-        return question.getCorrectIndex();
+    // מספר הצעדים נקבע לפי סוג האירוע שנוצר
+    public int getCurrentQuestionMoveSteps() {
+        return currentQuestionEvent.getMoveSteps();
     }
+
+    // החזרת האינדקס של התשובה הנכונה
+    public int getCorrectQuestionAnswerIndex() {
+        return currentQuestionEvent.getQuestion().getCorrectIndex();
+    }
+
+
 
     public MovementController getMovementController() {
         return pieces;
@@ -155,6 +215,21 @@ public class GameController {
         game.getBoard().putSpecialSquare(
                 new Point(position), new Square(type, color, direction));
     }
+    
+
+	/**
+	 * הוספת משבצת מיוחדת עם רמת קושי לשאלה.
+	 * רמת הקושי נשמרת במודל ואינה תלויה בצבע המשבצת.
+	 */
+	public void addSpecialSquare(Point position, SquareType type,
+	        Color color, int direction, String questionDifficulty) {
+	
+	    game.getBoard().putSpecialSquare(
+	            new Point(position),
+	            new Square(type, color, direction, questionDifficulty)
+	    );
+	}
+
 
     public void randomizeSpecialSquares(List<List<Point>> routes, int rings, Set<Point> excludedCells, Color[] questionColors, Color surprise) {
         removeSpecialSquares(
@@ -200,21 +275,34 @@ public class GameController {
             addSpecialSquare(
                     available.get(index++), SquareType.STAR, null, 0);
         }
-        for (int i = 0; i < easyQuestions; i++) {
-            addSpecialSquare(
-                    available.get(index++), SquareType.QUESTION,
-                    questionColors[0], 0);
-        }
-        for (int i = 0; i < mediumQuestions; i++) {
-            addSpecialSquare(
-                    available.get(index++), SquareType.QUESTION,
-                    questionColors[1], 0);
-        }
-        for (int i = 0; i < hardQuestions; i++) {
-            addSpecialSquare(
-                    available.get(index++), SquareType.QUESTION,
-                    questionColors[2], 0);
-        }
+
+		for (int i = 0; i < easyQuestions; i++) {
+		    addSpecialSquare(
+		            available.get(index++),
+		            SquareType.QUESTION,
+		            questionColors[0],
+		            0,
+		            "easy");
+		}
+		
+		for (int i = 0; i < mediumQuestions; i++) {
+		    addSpecialSquare(
+		            available.get(index++),
+		            SquareType.QUESTION,
+		            questionColors[1],
+		            0,
+		            "medium");
+		}
+		
+		for (int i = 0; i < hardQuestions; i++) {
+		    addSpecialSquare(
+		            available.get(index++),
+		            SquareType.QUESTION,
+		            questionColors[2],
+		            0,
+		            "hard");
+		}
+
         for (int i = 0; i < surprises; i++) {
             addSpecialSquare(
                     available.get(index++), SquareType.SURPRISE,
@@ -240,6 +328,12 @@ public class GameController {
     public SquareType getSpecialSquareType(Point position) {
         Square square = game.getBoard().getSpecialSquare(position);
         return square == null ? null : square.getType();
+    }
+    
+    // שליפת רמת הקושי של משבצת שאלה מתוך המודל
+    public String getSpecialSquareQuestionDifficulty(Point position) {
+        Square square = game.getBoard().getSpecialSquare(position);
+        return square == null ? null : square.getQuestionDifficulty();
     }
 
     public Color getSpecialSquareColor(Point position) {
