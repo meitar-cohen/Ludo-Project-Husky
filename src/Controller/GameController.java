@@ -183,6 +183,21 @@ public class GameController {
         game.getBoard().putSpecialSquare(
                 new Point(position), new Square(type, color, direction));
     }
+    
+
+	/**
+	 * הוספת משבצת מיוחדת עם רמת קושי לשאלה.
+	 * רמת הקושי נשמרת במודל ואינה תלויה בצבע המשבצת.
+	 */
+	public void addSpecialSquare(Point position, SquareType type,
+	        Color color, int direction, String questionDifficulty) {
+	
+	    game.getBoard().putSpecialSquare(
+	            new Point(position),
+	            new Square(type, color, direction, questionDifficulty)
+	    );
+	}
+
 
     public void randomizeSpecialSquares(List<List<Point>> routes, int rings, Set<Point> excludedCells, Color[] questionColors, Color surprise) {
         removeSpecialSquares(
@@ -228,21 +243,34 @@ public class GameController {
             addSpecialSquare(
                     available.get(index++), SquareType.STAR, null, 0);
         }
-        for (int i = 0; i < easyQuestions; i++) {
-            addSpecialSquare(
-                    available.get(index++), SquareType.QUESTION,
-                    questionColors[0], 0);
-        }
-        for (int i = 0; i < mediumQuestions; i++) {
-            addSpecialSquare(
-                    available.get(index++), SquareType.QUESTION,
-                    questionColors[1], 0);
-        }
-        for (int i = 0; i < hardQuestions; i++) {
-            addSpecialSquare(
-                    available.get(index++), SquareType.QUESTION,
-                    questionColors[2], 0);
-        }
+
+		for (int i = 0; i < easyQuestions; i++) {
+		    addSpecialSquare(
+		            available.get(index++),
+		            SquareType.QUESTION,
+		            questionColors[0],
+		            0,
+		            "easy");
+		}
+		
+		for (int i = 0; i < mediumQuestions; i++) {
+		    addSpecialSquare(
+		            available.get(index++),
+		            SquareType.QUESTION,
+		            questionColors[1],
+		            0,
+		            "medium");
+		}
+		
+		for (int i = 0; i < hardQuestions; i++) {
+		    addSpecialSquare(
+		            available.get(index++),
+		            SquareType.QUESTION,
+		            questionColors[2],
+		            0,
+		            "hard");
+		}
+
         for (int i = 0; i < surprises; i++) {
             addSpecialSquare(
                     available.get(index++), SquareType.SURPRISE,
@@ -268,6 +296,12 @@ public class GameController {
     public SquareType getSpecialSquareType(Point position) {
         Square square = game.getBoard().getSpecialSquare(position);
         return square == null ? null : square.getType();
+    }
+    
+    // שליפת רמת הקושי של משבצת שאלה מתוך המודל
+    public String getSpecialSquareQuestionDifficulty(Point position) {
+        Square square = game.getBoard().getSpecialSquare(position);
+        return square == null ? null : square.getQuestionDifficulty();
     }
 
     public Color getSpecialSquareColor(Point position) {
