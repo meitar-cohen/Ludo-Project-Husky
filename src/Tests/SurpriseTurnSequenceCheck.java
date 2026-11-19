@@ -28,7 +28,7 @@ public final class SurpriseTurnSequenceCheck {
         check(game.getCurrentPlayer() == 0
                 && !game.isSkipNextTurnPending(1)
                 && !game.isSkipNextTurnPending(2),
-                "Two skipped turns were not consumed correctly");
+                "Two skipped turns were not consumed correctly"); 
         turns.passTurn();
         check(game.getCurrentPlayer() == 1,
                 "Player B did not return after the skipped turn");
