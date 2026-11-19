@@ -23,6 +23,7 @@ public class GameScreen extends JPanel {
     // 3D prototype: the whole game is shown on a 2.5D board (Board3DPanel) instead of the flat one.
     private final boolean threeD;
     private Board3DPanel board3D;
+    private final WorldTheme theme;
     private JLabel boardTitle;
 
     private final BoardPanel board;
@@ -45,7 +46,13 @@ public class GameScreen extends JPanel {
 
     /** @param threeD true = play on the 3D board (3D prototype) */
     public GameScreen(GameController turns, String difficulty, boolean threeD) {
+        this(turns, difficulty, threeD, Themes.defaultTheme());
+    }
+
+    /** @param theme the world of the 3D version (Strategy pattern, see {@link WorldTheme}); ignored in 2D */
+    GameScreen(GameController turns, String difficulty, boolean threeD, WorldTheme theme) {
         this.threeD = threeD;
+        this.theme = theme;
         this.turns = turns;
         this.difficulty = difficulty == null ? "Easy" : difficulty;
         this.history = new HistoryController();
@@ -79,13 +86,13 @@ public class GameScreen extends JPanel {
         level.setFont(new Font("Segoe UI", Font.BOLD, 12));
         level.setBorder(new EmptyBorder(3, 10, 3, 10));
         if (threeD) {
-            JLabel mode3d = new JLabel("  3D PROTOTYPE  ");
+            JLabel mode3d = new JLabel("  3D  ·  " + theme.title().toUpperCase() + "  ");
             mode3d.setOpaque(true);
             mode3d.setBackground(new Color(255, 190, 75));
             mode3d.setForeground(INK);
             mode3d.setFont(new Font("Segoe UI", Font.BOLD, 12));
             mode3d.setBorder(new EmptyBorder(3, 10, 3, 10));
-            mode3d.setToolTipText("Piece moves are shown in the 2.5D action view");
+            mode3d.setToolTipText("3D world: " + theme.title());
             headerBadges.add(mode3d);
         }
         headerBadges.add(level);
@@ -128,7 +135,7 @@ public class GameScreen extends JPanel {
             // the flat board is not shown: it only keeps the piece positions, the 3D board draws them
             board.setSize(700, 700);
             board.setStepDelay(190);
-            board3D = new Board3DPanel(board);
+            board3D = new Board3DPanel(board, theme);
             boardCard.add(board3D, BorderLayout.CENTER);
         } else {
             boardCard.add(board, BorderLayout.CENTER);

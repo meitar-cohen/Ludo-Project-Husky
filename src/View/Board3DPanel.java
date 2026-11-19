@@ -2,6 +2,15 @@ package View;
 
 import Enums.SquareType;
 import View.Mesh3D.Poly;
+import View.WorldTheme.Animated;
+import View.WorldTheme.Backdrop;
+import View.WorldTheme.Decor;
+import View.WorldTheme.HouseBuilder;
+import View.WorldTheme.HouseFloor;
+import View.WorldTheme.IslandStyle;
+import View.WorldTheme.Prop;
+import View.WorldTheme.PropPlanner;
+import View.WorldTheme.PropView;
 
 import javax.swing.AbstractAction;
 import javax.swing.JComponent;
@@ -55,9 +64,7 @@ class Board3DPanel extends JPanel {
     private static final double PITCH_DEGREES = 16;     // low camera right behind the piece
     private static final double CHASE_BACK = 7.0;       // distance behind the piece
     private static final double CHASE_HEIGHT = 3.4;     // height above the board
-    private static final double SUN_AZIMUTH = 0.9;
     private static final int TRACK = 1, CASTLE = 2, CENTER = 3;
-    private static final Color HAZE = new Color(214, 232, 250);
     private static final double HOP_SECONDS = 0.17;
     private static final double TRAIL_SECONDS = 0.55;
     private static final BasicStroke THIN = new BasicStroke(0.9f);
@@ -69,21 +76,27 @@ class Board3DPanel extends JPanel {
     private final MinimapPanel minimap;
     private final Camera3D cam = new Camera3D();
     private final AssetCache cache = new AssetCache();
+    /** One board square is CELL world units wide (twice the old size); pieces and houses keep their size. */
+    static final double CELL = 2;
+    private final WorldTheme theme;
+    private final IslandStyle style;
+    private final Color haze;
     private final int n;
     private final int rings;
-    private final double half;
+    private final double half;          // half of the board, in squares
+    private final double halfW;         // half of the board, in world units
     private final double platformHalf;
 
     // --- static scene (built once) ----------------------------------------------
     private final int[][] kind;
     private final List<Poly> statics = new ArrayList<>();
     private final List<Poly> soil = new ArrayList<>();
-    private final List<Tree> trees = new ArrayList<>();
+    private final List<Prop> props = new ArrayList<>();
     private final List<Caster> casters = new ArrayList<>();
-    private final List<double[]> flags = new ArrayList<>();            // x, z, y, pole height, corner
+    private final List<Decor> decors = new ArrayList<>();              // animated parts of the houses
     private final List<double[]> grassPatches = new ArrayList<>();     // x, z, radius, shade
     private final List<double[]> flowers = new ArrayList<>();          // x, z, colour index
-    private final List<SkyObject> skyObjects = new ArrayList<>();
+    private final PropView propView = new PropView();
     private final Map<String, Shape> glyphCache = new HashMap<>();
     private final Shape crack;
 
@@ -116,7 +129,7 @@ class Board3DPanel extends JPanel {
     private boolean goHover;
     private Runnable rollAction;
     private BooleanSupplier rollEnabled;
-    private BufferedImage vignette, sunScaled, cornerMask;
+    private BufferedImage vignette, cornerMask;
     // adaptive detail: 0 = full, 1 = reduced, 2 = low. Chosen from the measured time of the frames.
     private int quality;
     private double frameMillis = 12;
@@ -131,11 +144,20 @@ class Board3DPanel extends JPanel {
     private double shadowX, shadowZ;
 
     Board3DPanel(BoardPanel board) {
+        this(board, Themes.defaultTheme());
+    }
+
+    /** @param theme the world the game is played in (Strategy pattern, see {@link WorldTheme}) */
+    Board3DPanel(BoardPanel board, WorldTheme theme) {
         this.board = board;
+        this.theme = theme;
+        this.style = theme.island();
+        this.haze = theme.fogColor();
         this.n = board.getBoardSize();
         this.rings = board.getRings();
         this.half = n / 2.0;
-        this.platformHalf = half + 3.4;
+        this.halfW = half * CELL;
+        this.platformHalf = halfW + 5.0;
         setOpaque(false);
         setLayout(null);
         kind = new int[n][n];
@@ -146,8 +168,8 @@ class Board3DPanel extends JPanel {
         c.lineTo(0.30, 0.16);
         crack = new BasicStroke(0.018f).createStrokedShape(c);
         classifyCells();
-        buildCastles();
-        buildTrees();
+        buildHouses();
+        buildProps();
         buildIsland();
         double lx = 0.55, ly = 0.80, lz = -0.25, ll = Math.sqrt(lx * lx + ly * ly + lz * lz);
         lightX = lx / ll;
@@ -163,20 +185,6 @@ class Board3DPanel extends JPanel {
         for (int i = 0; i < 170; i++) {
             double[] p = randomMarginPoint(random, 0.55, 0.3);
             flowers.add(new double[]{p[0], p[1], random.nextInt(4)});
-        }
-        skyObjects.add(new SkyObject(0, 0, SUN_AZIMUTH, 0.17, 1.0, 1f, 0));
-        skyObjects.add(new SkyObject(2, 0, 2.2, 0.27, 0.5, 0.9f, 0));
-        skyObjects.add(new SkyObject(2, 0, 5.1, 0.22, 0.4, 0.9f, 0));
-        skyObjects.add(new SkyObject(2, 0, 3.7, 0.31, 0.45, 0.9f, 0));
-        for (int i = 0; i < 9; i++) {           // clouds above the horizon
-            skyObjects.add(new SkyObject(1, random.nextInt(6), random.nextDouble() * 6.28,
-                    0.04 + random.nextDouble() * 0.30, 0.35 + random.nextDouble() * 0.45,
-                    0.45f + random.nextFloat() * 0.4f, 0.01 + random.nextDouble() * 0.02));
-        }
-        for (int i = 0; i < 12; i++) {          // sea of clouds round the island
-            skyObjects.add(new SkyObject(1, random.nextInt(6), random.nextDouble() * 6.28,
-                    0.38 + random.nextDouble() * 0.60, 0.4 + random.nextDouble() * 0.6,
-                    0.45f + random.nextFloat() * 0.4f, 0.006 + random.nextDouble() * 0.012));
         }
         for (int i = 0; i < visuals.length; i++) {
             visuals[i] = new PieceVisual();
@@ -288,9 +296,6 @@ class Board3DPanel extends JPanel {
         double dt = Math.min(0.05, (now - lastNanos) / 1e9);
         lastNanos = now;
         time += dt;
-        for (SkyObject o : skyObjects) {
-            o.az += o.speed * dt * 0.1;
-        }
         updatePieces();
         updateFocus();
         updateChase(dt);
@@ -381,6 +386,7 @@ class Board3DPanel extends JPanel {
         PieceVisual v = visuals[focusKey];
         int corner = focusKey / 4, idx = focusKey % 4;
         double dx = 0, dz = 0;
+        double targetX = v.curX, targetZ = v.curZ;
         if (v.onBoard) {
             Point a = board.pieceCell(corner, idx);
             Point b = board.routeCell(corner, idx, 3);
@@ -396,9 +402,18 @@ class Board3DPanel extends JPanel {
         } else {
             // a piece waiting in its castle: look towards the castle from the board side, so the
             // camera is not inside the keep and the castle towers up in the background
+            // (the camera aims at the middle of the group, so all waiting pieces are in view)
+            double gx = 0, gz = 0;
+            for (int k = 0; k < 4; k++) {
+                double[] pad = padPosition(corner, k);
+                gx += pad[0] / 4;
+                gz += pad[1] / 4;
+            }
             double[] corner0 = castlePoint(corner, 0, 0);
-            dx = corner0[0] - v.curX;
-            dz = corner0[1] - v.curZ;
+            dx = corner0[0] - gx;
+            dz = corner0[1] - gz;
+            targetX = gx;
+            targetZ = gz;
         }
         double targetHeading = chaseHeading;
         if (dx != 0 || dz != 0) {
@@ -406,16 +421,16 @@ class Board3DPanel extends JPanel {
         }
         if (!chaseInit) {
             chaseInit = true;
-            chaseX = v.curX;
-            chaseZ = v.curZ;
+            chaseX = targetX;
+            chaseZ = targetZ;
             chaseHeading = targetHeading;
             return;
         }
         double diff = Math.atan2(Math.sin(targetHeading - chaseHeading), Math.cos(targetHeading - chaseHeading));
         chaseHeading += diff * (1 - Math.exp(-4.5 * dt));
         double k = 1 - Math.exp(-7.0 * dt);
-        chaseX += (v.curX - chaseX) * k;
-        chaseZ += (v.curZ - chaseZ) * k;
+        chaseX += (targetX - chaseX) * k;
+        chaseZ += (targetZ - chaseZ) * k;
     }
 
     // ------------------------------------------------------------------
@@ -454,26 +469,27 @@ class Board3DPanel extends JPanel {
         }
     }
 
-    /** Local castle coordinates (u, v from the outer corner of the 6x6 block) to world x / z. */
+    /** Local coordinates of a player's block (world units from its outer corner) to world x / z. */
     private double[] castlePoint(int corner, double u, double v) {
         Point o = board.castleOrigin(corner);
         boolean right = corner == 1 || corner == 2;
         boolean bottom = corner >= 2;
-        double gx = (right ? o.x + 6 : o.x) + (right ? -u : u);
-        double gy = (bottom ? o.y + 6 : o.y) + (bottom ? -v : v);
-        return new double[]{gx - half, half - gy};
+        double outerX = ((right ? o.x + 6 : o.x) - half) * CELL;
+        double outerZ = (half - (bottom ? o.y + 6 : o.y)) * CELL;
+        return new double[]{outerX + (right ? -u : u), outerZ + (bottom ? v : -v)};
     }
 
-    /** Standing place of a piece waiting in its castle. */
+    /** Standing place of a piece waiting in its house (the world decides where). */
     private double[] padPosition(int corner, int slot) {
-        return castlePoint(corner, 3.25 + 1.45 * (slot % 2), 3.25 + 1.45 * (slot / 2));
+        double[] local = theme.padLocal(slot);
+        return castlePoint(corner, local[0], local[1]);
     }
 
     private double[] randomMarginPoint(Random random, double fromFrame, double fromEdge) {
         while (true) {
             double x = (random.nextDouble() * 2 - 1) * (platformHalf - fromEdge);
             double z = (random.nextDouble() * 2 - 1) * (platformHalf - fromEdge);
-            if (Math.abs(x) > half + 0.45 + fromFrame || Math.abs(z) > half + 0.45 + fromFrame) {
+            if (Math.abs(x) > halfW + 0.9 + fromFrame || Math.abs(z) > halfW + 0.9 + fromFrame) {
                 if (Math.abs(x) + Math.abs(z) < platformHalf * 2 - 3.6) {
                     return new double[]{x, z};
                 }
@@ -481,84 +497,236 @@ class Board3DPanel extends JPanel {
         }
     }
 
-    private void buildCastles() {
+    /** Lets the world (strategy) build the house of every player. */
+    private void buildHouses() {
         Mesh3D mesh = new Mesh3D();
         for (int corner = 0; corner < 4; corner++) {
-            Color color = BoardPanel.cornerColor(corner);
-            Color wall = Mesh3D.mix(color, new Color(206, 186, 160), 0.62);
-            Color wallDark = Mesh3D.mix(wall, Color.BLACK, 0.20);
-            Color roof = Mesh3D.mix(color, Color.BLACK, 0.06);
-            double y = BOARD_TOP;
-            // keep with turret
-            localBox(mesh, corner, 0.3, 2.6, 0.3, 2.6, y, y + 3.3, wall, true, 2);
-            mesh.addDoorsToLastBox(0.40, 0.60, 0.40);
-            mesh.addBannersToLastBox(color, 0.14, 0.86);
-            rectCaster(corner, 0.3, 2.6, 0.3, 2.6, 0, 3.3);
-            localBattlements(mesh, corner, 0.3, 2.6, 0.3, 2.6, y + 3.3, 0.36, wallDark);
-            double[] c = castlePoint(corner, 1.45, 1.45);
-            mesh.addPrism(c[0], c[1], 0.74, y + 3.3, y + 4.8, 10, wall, true, 3);
-            mesh.addPrism(c[0], c[1], 0.88, y + 4.8, y + 5.05, 10, wallDark, false, 0);
-            mesh.addPyramid(c[0], c[1], 1.0, y + 5.05, 2.3, 10, roof);
-            circleCaster(c[0], c[1], 0.74, 3.3, 4.8, 1.0, BOARD_TOP);
-            circleCaster(c[0], c[1], 1.0, 5.05, 7.35, 0.03, BOARD_TOP);
-            flags.add(new double[]{c[0], c[1], y + 7.35, 1.15, corner});
-            // outer walls with arched wooden gates and banners
-            localBox(mesh, corner, 2.6, 5.5, 0.15, 0.62, y, y + 1.3, wall, true, 0);
-            mesh.addDoorsToLastBox(0.42, 0.58, 0.62);
-            mesh.addBannersToLastBox(color, 0.14, 0.86);
-            localBattlements(mesh, corner, 2.6, 5.5, 0.15, 0.62, y + 1.3, 0.3, wallDark);
-            rectCaster(corner, 2.6, 5.5, 0.15, 0.62, 0, 1.6);
-            localBox(mesh, corner, 0.15, 0.62, 2.6, 5.5, y, y + 1.3, wall, true, 0);
-            mesh.addDoorsToLastBox(0.42, 0.58, 0.62);
-            mesh.addBannersToLastBox(color, 0.14, 0.86);
-            localBattlements(mesh, corner, 0.15, 0.62, 2.6, 5.5, y + 1.3, 0.3, wallDark);
-            rectCaster(corner, 0.15, 0.62, 2.6, 5.5, 0, 1.6);
-            // round towers at the two far ends of the walls
-            double[][] towers = {{5.3, 0.55}, {0.55, 5.3}};
-            for (double[] t : towers) {
-                double[] p = castlePoint(corner, t[0], t[1]);
-                mesh.addPrism(p[0], p[1], 0.6, y, y + 2.9, 10, wall, true, 3);
-                mesh.addPrism(p[0], p[1], 0.72, y + 2.9, y + 3.14, 10, wallDark, false, 0);
-                mesh.addPyramid(p[0], p[1], 0.84, y + 3.14, 1.75, 10, roof);
-                circleCaster(p[0], p[1], 0.6, 0, 2.9, 1.0, BOARD_TOP);
-                circleCaster(p[0], p[1], 0.84, 3.14, 4.89, 0.03, BOARD_TOP);
-                flags.add(new double[]{p[0], p[1], y + 4.89, 0.9, corner});
-            }
+            theme.buildHouse(new HouseBuilderImpl(corner, mesh));
         }
         statics.addAll(mesh.polys());
     }
 
-    private void localBox(Mesh3D mesh, int corner, double u0, double u1, double v0, double v1,
-                          double y0, double y1, Color color, boolean brick, int windows) {
-        double[] a = castlePoint(corner, u0, v0);
-        double[] b = castlePoint(corner, u1, v1);
-        mesh.addBox(Math.min(a[0], b[0]), Math.max(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[1], b[1]),
-                y0, y1, color, brick, windows);
+    /** Lets the world (strategy) place trees, rocks, tyres... around the board. */
+    private void buildProps() {
+        final Random random = new Random(5);
+        theme.createProps(new PropPlanner() {
+            @Override public Random random() {
+                return random;
+            }
+            @Override public double[] marginPoint(double fromFrame, double fromEdge) {
+                return randomMarginPoint(random, fromFrame, fromEdge);
+            }
+            @Override public void add(String kind, double x, double z, double height, Color color) {
+                props.add(new Prop(kind, x, 0, z, height, color, random.nextDouble()));
+            }
+            @Override public void shadow(double x, double z, double radius, double height) {
+                circleCaster(x, z, radius, 0, height, 2.6, 0);
+            }
+        });
     }
 
-    private void localBattlements(Mesh3D mesh, int corner, double u0, double u1, double v0, double v1,
-                                  double y, double height, Color color) {
-        double[] a = castlePoint(corner, u0, v0);
-        double[] b = castlePoint(corner, u1, v1);
-        mesh.addBattlements(Math.min(a[0], b[0]), Math.max(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[1], b[1]),
-                y, height, color);
+    /** The tools a world gets to build one house, in the local coordinates of the player's block. */
+    private final class HouseBuilderImpl implements HouseBuilder {
+        private final int corner;
+        private final Mesh3D mesh;
+
+        HouseBuilderImpl(int corner, Mesh3D mesh) {
+            this.corner = corner;
+            this.mesh = mesh;
+        }
+
+        @Override public int corner() { return corner; }
+        @Override public Color color() { return BoardPanel.cornerColor(corner); }
+        @Override public Mesh3D mesh() { return mesh; }
+        @Override public double baseY() { return BOARD_TOP; }
+        @Override public double[] point(double u, double v) { return castlePoint(corner, u, v); }
+
+        @Override
+        public void box(double u0, double u1, double v0, double v1, double h0, double h1, Color c,
+                        boolean brick, int windows) {
+            double[] a = point(u0, v0), b = point(u1, v1);
+            mesh.addBox(Math.min(a[0], b[0]), Math.max(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[1], b[1]),
+                    BOARD_TOP + h0, BOARD_TOP + h1, c, brick, windows);
+        }
+
+        @Override
+        public void battlements(double u0, double u1, double v0, double v1, double h, double height, Color c) {
+            double[] a = point(u0, v0), b = point(u1, v1);
+            mesh.addBattlements(Math.min(a[0], b[0]), Math.max(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[1], b[1]),
+                    BOARD_TOP + h, height, c);
+        }
+
+        @Override
+        public void prism(double u, double v, double r, double h0, double h1, int sides, Color c,
+                          boolean brick, int windowFacets) {
+            double[] p = point(u, v);
+            mesh.addPrism(p[0], p[1], r, BOARD_TOP + h0, BOARD_TOP + h1, sides, c, brick, windowFacets);
+        }
+
+        @Override
+        public void pyramid(double u, double v, double r, double h0, double height, int sides, Color c) {
+            double[] p = point(u, v);
+            mesh.addPyramid(p[0], p[1], r, BOARD_TOP + h0, height, sides, c);
+        }
+
+        @Override
+        public void pyramidStriped(double u, double v, double r, double h0, double height, int sides, Color c1, Color c2) {
+            double[] p = point(u, v);
+            mesh.addPyramidStriped(p[0], p[1], r, BOARD_TOP + h0, height, sides, c1, c2);
+        }
+
+        @Override
+        public void roundFrustum(double u, double v, double r0, double r1, double h0, double h1, int sides, Color c) {
+            double[] p = point(u, v);
+            mesh.addRoundFrustum(p[0], p[1], r0, r1, BOARD_TOP + h0, BOARD_TOP + h1, sides, c);
+        }
+
+        @Override
+        public void frustum(double bu0, double bu1, double bv0, double bv1, double h0,
+                            double tu0, double tu1, double tv0, double tv1, double h1, Color c) {
+            double[] b0 = point(bu0, bv0), b1 = point(bu1, bv1), t0 = point(tu0, tv0), t1 = point(tu1, tv1);
+            mesh.addFrustum(Math.min(b0[0], b1[0]), Math.max(b0[0], b1[0]), Math.min(b0[1], b1[1]), Math.max(b0[1], b1[1]),
+                    BOARD_TOP + h0, Math.min(t0[0], t1[0]), Math.max(t0[0], t1[0]), Math.min(t0[1], t1[1]),
+                    Math.max(t0[1], t1[1]), BOARD_TOP + h1, c);
+        }
+
+        @Override
+        public void cylinder(boolean alongU, double u, double v, double h, double radius, double length,
+                             int sides, Color c) {
+            double[] p = point(u, v);
+            mesh.addAxisCylinder(alongU, p[0], BOARD_TOP + h, p[1], radius, length, sides, c);
+        }
+
+        @Override public void doors(double u0, double u1, double height) { mesh.addDoorsToLastBox(u0, u1, height); }
+        @Override public void banners(Color c, double... positions) { mesh.addBannersToLastBox(c, positions); }
+        @Override public void windowColor(Color c) { mesh.windowColorOfLastBox(c); }
+        @Override public void doorColor(Color c) { mesh.doorColorOfLastBox(c); }
+        @Override public void label(String text, Color c) { mesh.addLabelToLastBox(text, c); }
+        @Override public int mark() { return mesh.mark(); }
+        @Override public void glowSince(int mark) { mesh.emissiveSince(mark); }
+        @Override public void tinySince(int mark) { mesh.smallSince(mark); }
+
+        @Override
+        public void shadowRect(double u0, double u1, double v0, double v1, double h0, double h1) {
+            rectCaster(corner, u0, u1, v0, v1, h0, h1);
+        }
+
+        @Override
+        public void shadowCircle(double u, double v, double r, double h0, double h1, double topScale) {
+            double[] p = point(u, v);
+            circleCaster(p[0], p[1], r, h0, h1, topScale, BOARD_TOP);
+        }
+
+        @Override
+        public void decor(String kind, double u, double v, double h, double size) {
+            double[] p = point(u, v);
+            decors.add(new Decor(kind, corner, color(), p[0], BOARD_TOP + h, p[1], size));
+        }
+
+        @Override
+        public void prop(String kind, double u, double v, double h, double height, Color c) {
+            double[] p = point(u, v);
+            props.add(new Prop(kind, p[0], BOARD_TOP + h, p[1], height, c, (u * 7 + v * 13) % 1.0));
+        }
     }
 
-    private void buildTrees() {
-        Random random = new Random(5);
-        for (int i = 0; i < 18; i++) {
-            double[] p = randomMarginPoint(random, 1.6, 0.9);
-            double s = 0.6 + random.nextDouble() * 0.4;
-            Color leaf = new Color(46 + random.nextInt(30), 134 + random.nextInt(45), 62 + random.nextInt(25));
-            trees.add(new Tree(p[0], p[1], s, leaf, false));
-            circleCaster(p[0], p[1], 0.35 * s, 0, 2.2 * s, 2.6, 0);
+    /** The tools a world gets to paint the flat ground of one block. */
+    private final class FloorImpl implements HouseFloor {
+        private final Graphics2D g;
+        private final int corner;
+
+        FloorImpl(Graphics2D g, int corner) {
+            this.g = g;
+            this.corner = corner;
         }
-        for (int i = 0; i < 16; i++) {
-            double[] p = randomMarginPoint(random, 0.5, 0.7);
-            double s = 0.5 + random.nextDouble() * 0.3;
-            Color leaf = new Color(70 + random.nextInt(30), 150 + random.nextInt(40), 70 + random.nextInt(25));
-            trees.add(new Tree(p[0], p[1], s, leaf, true));
+
+        @Override public Graphics2D g() { return g; }
+        @Override public int corner() { return corner; }
+        @Override public Color color() { return BoardPanel.cornerColor(corner); }
+        @Override public double time() { return time; }
+
+        @Override
+        public void quad(double u0, double u1, double v0, double v1, Color c) {
+            double[] a = castlePoint(corner, u0, v0), b = castlePoint(corner, u1, v0);
+            double[] d = castlePoint(corner, u1, v1), e = castlePoint(corner, u0, v1);
+            Path2D path = flatPath(new double[]{a[0], b[0], d[0], e[0]}, new double[]{a[1], b[1], d[1], e[1]}, BOARD_TOP + 0.01);
+            if (path != null) {
+                g.setColor(c);
+                g.fill(path);
+            }
         }
+
+        @Override
+        public void disc(double u, double v, double r, Color c) {
+            double[] p = castlePoint(corner, u, v);
+            Path2D path = discPath(p[0], p[1], BOARD_TOP + 0.02, r, 18);
+            if (path != null) {
+                g.setColor(c);
+                g.fill(path);
+            }
+        }
+
+        @Override
+        public void ring(double u, double v, double r, Color c, float width) {
+            double[] p = castlePoint(corner, u, v);
+            Path2D path = discPath(p[0], p[1], BOARD_TOP + 0.02, r, 18);
+            if (path != null) {
+                g.setColor(c);
+                g.setStroke(new BasicStroke(width));
+                g.draw(path);
+            }
+        }
+
+        @Override
+        public boolean detailed() {
+            double[] mid = castlePoint(corner, 6, 6);
+            return quality == 0 && cam.depthOf(mid[0], BOARD_TOP, mid[1]) < 22;
+        }
+
+        @Override
+        public void lines(double[] seg, Color c, float width) {
+            Path2D path = new Path2D.Double();
+            boolean any = false;
+            for (int i = 0; i + 3 < seg.length; i += 4) {
+                double[] a = castlePoint(corner, seg[i], seg[i + 1]), b = castlePoint(corner, seg[i + 2], seg[i + 3]);
+                if (cam.project(a[0], BOARD_TOP + 0.012, a[1], tmpA) && cam.project(b[0], BOARD_TOP + 0.012, b[1], tmpB)) {
+                    path.moveTo(tmpA[0], tmpA[1]);
+                    path.lineTo(tmpB[0], tmpB[1]);
+                    any = true;
+                }
+            }
+            if (any) {
+                g.setColor(c);
+                g.setStroke(new BasicStroke(width));
+                g.draw(path);
+            }
+        }
+
+        @Override
+        public void line(double u0, double v0, double u1, double v1, Color c, float width) {
+            double[] a = castlePoint(corner, u0, v0), b = castlePoint(corner, u1, v1);
+            if (cam.project(a[0], BOARD_TOP + 0.012, a[1], tmpA) && cam.project(b[0], BOARD_TOP + 0.012, b[1], tmpB)) {
+                g.setColor(c);
+                g.setStroke(new BasicStroke(width));
+                g.draw(new Line2D.Double(tmpA[0], tmpA[1], tmpB[0], tmpB[1]));
+            }
+        }
+    }
+
+    /** What a world gets to paint its moving parts. */
+    private final class AnimatedImpl implements Animated {
+        private final Graphics2D g;
+
+        AnimatedImpl(Graphics2D g) {
+            this.g = g;
+        }
+
+        @Override public Graphics2D g() { return g; }
+        @Override public double time() { return time; }
+        @Override public double focal() { return cam.focal; }
+        @Override public double[] right() { return cam.rightOnGround(); }
+        @Override public boolean project(double x, double y, double z, double[] out) { return cam.project(x, y, z, out); }
+        @Override public List<Decor> decors() { return decors; }
     }
 
     // --- shadow casters ---------------------------------------------------------
@@ -610,7 +778,7 @@ class Board3DPanel extends JPanel {
         }
         double[] ys = {0, -1.3, -3.8, -9.5};
         double[] shrink = {1.0, 0.975, 0.80, 0.22};
-        Color[] colors = {new Color(158, 142, 120), new Color(124, 90, 60), new Color(96, 76, 60)};
+        Color[] colors = style.soil;
         Random random = new Random(9);
         int m = rim.size();
         double[][] jitter = new double[4][m];
@@ -694,8 +862,8 @@ class Board3DPanel extends JPanel {
                 } else if (cell != null) {
                     List<Integer> group = sharers.get(cell.x * 1000 + cell.y);
                     double[] off = shareOffset(group.indexOf(key), group.size());
-                    tx = cell.x + 0.5 - half + off[0];
-                    tz = half - (cell.y + 0.5) + off[1];
+                    tx = (cell.x + 0.5 - half) * CELL + off[0];
+                    tz = (half - (cell.y + 0.5)) * CELL + off[1];
                 } else {
                     double[] pad = padPosition(corner, idx);
                     tx = pad[0];
@@ -718,7 +886,7 @@ class Board3DPanel extends JPanel {
                     v.tgtX = tx;
                     v.tgtZ = tz;
                     double dist = Math.hypot(tx - v.srcX, tz - v.srcZ);
-                    boolean step = dist <= 1.7;
+                    boolean step = dist <= 1.7 * CELL;
                     v.dur = step ? HOP_SECONDS : Math.min(1.0, 0.4 + 0.045 * dist);
                     v.hopH = step ? 0.85 : Math.min(2.6, 1.0 + 0.1 * dist);
                     v.t0 = time;
@@ -848,14 +1016,7 @@ class Board3DPanel extends JPanel {
         g.setClip(0, 0, w, h);      // a plain rectangle keeps every draw call on the fast path
         setupCamera(w, h);
 
-        g.setColor(new Color(18, 76, 192));
-        g.fillRect(0, 0, w, h);
-        if (skyShift < 0) {
-            g.setColor(new Color(96, 156, 232));
-            g.fillRect(0, (int) (h + skyShift) - 1, w, (int) (-skyShift) + 2);
-        }
-        g.drawImage(cache.sky(w, h), 0, (int) Math.round(skyShift), null);
-        drawSkyObjects(g, w, h);
+        theme.paintBackdrop(new Backdrop(g, w, h, skyShift, cam.heading, cam.focal, cam.centerX, time, cache, quality));
         if (quality >= 2) {
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
         }
@@ -867,7 +1028,7 @@ class Board3DPanel extends JPanel {
         drawGroundEffects(g);
         drawObjects(g);
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        drawFlags(g);
+        theme.paintAnimated(new AnimatedImpl(g));
         if (quality < 2) {
             drawVignette(g, w, h);
         }
@@ -943,48 +1104,6 @@ class Board3DPanel extends JPanel {
         skyShift = (cam.centerY - focal * Math.tan(cam.pitch)) - h * AssetCache.HORIZON;
     }
 
-    // --- sky ---------------------------------------------------------------------------
-
-    private void drawSkyObjects(Graphics2D g, int w, int h) {
-        double ref = Math.max(0.6, w / 1000.0);
-        int index = 0;
-        for (SkyObject o : skyObjects) {
-            index++;
-            if (quality > 0 && o.type == 1 && (index & 1) == 0) {
-                continue;
-            }
-            double da = Math.atan2(Math.sin(o.az - cam.heading), Math.cos(o.az - cam.heading));
-            if (Math.abs(da) > 1.25) {
-                continue;
-            }
-            double x = cam.centerX + cam.focal * Math.tan(da);
-            double y = h * o.yFrac + skyShift;
-            BufferedImage sprite;
-            double size;
-            if (o.type == 0) {
-                size = w * 0.75;
-                if (sunScaled == null || sunScaled.getWidth() != (int) size) {
-                    sunScaled = new BufferedImage((int) size, (int) size, BufferedImage.TYPE_INT_ARGB);
-                    Graphics2D sg = sunScaled.createGraphics();
-                    sg.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
-                    sg.drawImage(cache.sun(), 0, 0, (int) size, (int) size, null);
-                    sg.dispose();
-                }
-                sprite = sunScaled;
-            } else if (o.type == 2) {
-                sprite = cache.islet();
-                size = 150 * ref * o.scale * 2.2;
-            } else {
-                sprite = cache.cloud(o.sprite);
-                size = sprite.getWidth() * o.scale * ref * 0.8;
-            }
-            double ratio = sprite.getHeight() / (double) sprite.getWidth();
-            g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, o.alpha));
-            g.drawImage(sprite, (int) (x - size / 2), (int) (y - size * ratio / 2), (int) size, (int) (size * ratio), null);
-        }
-        g.setComposite(AlphaComposite.SrcOver);
-    }
-
     // --- island, board slab ------------------------------------------------------------
 
     private void drawIsland(Graphics2D g) {
@@ -1004,12 +1123,15 @@ class Board3DPanel extends JPanel {
         Path2D top = flatPath(xs, zs, 0);
         if (top != null) {
             Rectangle2D b = top.getBounds2D();
-            g.setPaint(new GradientPaint(0, (float) Math.max(b.getMaxY(), b.getMinY() + 2), new Color(150, 212, 104),
-                    0, (float) b.getMinY(), new Color(90, 170, 74)));
+            g.setPaint(new GradientPaint(0, (float) Math.max(b.getMaxY(), b.getMinY() + 2), style.topNear,
+                    0, (float) b.getMinY(), style.topFar));
             g.fill(top);
-            g.setColor(new Color(70, 52, 36, 200));
+            g.setColor(style.rim);
             g.setStroke(new BasicStroke(3f));
             g.draw(top);
+            if (style.kerbs != null) {
+                drawKerbs(g, xs, zs);
+            }
         }
         for (double[] patch : grassPatches) {
             if (quality > 0 || cam.depthOf(patch[0], 0, patch[1]) > 40) {
@@ -1017,13 +1139,13 @@ class Board3DPanel extends JPanel {
             }
             Path2D disc = discPath(patch[0], patch[1], 0.01, patch[2], 14);
             if (disc != null) {
-                g.setColor(patch[3] < 0.5 ? new Color(150, 214, 100, 110) : new Color(50, 130, 56, 80));
+                g.setColor(patch[3] < 0.5 ? style.patchLight : style.patchDark);
                 g.fill(disc);
             }
         }
-        Color[] petals = {new Color(255, 255, 255), new Color(255, 224, 80), new Color(255, 150, 190), new Color(190, 170, 255)};
+        Color[] petals = style.petals;
         for (double[] f : flowers) {
-            if (quality > 0 || !cam.project(f[0], 0.02, f[1], tmpA) || tmpA[2] > 36 || tmpA[0] < -10 || tmpA[0] > panelW + 10) {
+            if (petals == null || quality > 0 || !cam.project(f[0], 0.02, f[1], tmpA) || tmpA[2] > 36 || tmpA[0] < -10 || tmpA[0] > panelW + 10) {
                 continue;
             }
             double r = Math.max(1.0, 0.075 * cam.focal / tmpA[2]);
@@ -1032,10 +1154,37 @@ class Board3DPanel extends JPanel {
         }
     }
 
+    /** Red-and-white style kerb stones along the edge of the island. */
+    private void drawKerbs(Graphics2D g, double[] xs, double[] zs) {
+        int m = xs.length;
+        for (int i = 0; i < m; i++) {
+            int j = (i + 1) % m;
+            double dx = xs[j] - xs[i], dz = zs[j] - zs[i];
+            double len = Math.hypot(dx, dz);
+            int pieces = Math.max(1, (int) Math.round(len / 2.2));
+            double nx = -dz / len, nz = dx / len;               // normal of the edge
+            double mx = (xs[i] + xs[j]) / 2, mz = (zs[i] + zs[j]) / 2;
+            if (nx * -mx + nz * -mz < 0) {                      // make it point to the middle of the island
+                nx = -nx;
+                nz = -nz;
+            }
+            for (int k = 0; k < pieces; k++) {
+                double t0 = k / (double) pieces, t1 = (k + 1) / (double) pieces;
+                double ax = xs[i] + dx * t0, az = zs[i] + dz * t0, bx = xs[i] + dx * t1, bz = zs[i] + dz * t1;
+                Path2D kerb = flatPath(new double[]{ax, bx, bx + nx * 0.9, ax + nx * 0.9},
+                        new double[]{az, bz, bz + nz * 0.9, az + nz * 0.9}, 0.03);
+                if (kerb != null) {
+                    g.setColor(style.kerbs[k & 1]);
+                    g.fill(kerb);
+                }
+            }
+        }
+    }
+
     private void drawBoardSlab(Graphics2D g) {
-        double o = half + 0.45;
+        double o = halfW + 0.9;
         double[][] corners = {{-o, -o}, {o, -o}, {o, o}, {-o, o}};
-        Color stone = new Color(150, 122, 98);
+        Color stone = Mesh3D.mix(style.frame, Color.WHITE, 0.2);
         for (int i = 0; i < 4; i++) {
             double[] a = corners[i], b = corners[(i + 1) % 4];
             double mx = (a[0] + b[0]) / 2, mz = (a[1] + b[1]) / 2;
@@ -1048,22 +1197,22 @@ class Board3DPanel extends JPanel {
         }
         Path2D frame = flatPath(new double[]{-o, o, o, -o}, new double[]{-o, -o, o, o}, BOARD_TOP);
         if (frame != null) {
-            g.setColor(new Color(120, 88, 64));
+            g.setColor(style.frame);
             g.fill(frame);
             g.setColor(new Color(70, 48, 34));
             g.setStroke(new BasicStroke(1.6f));
             g.draw(frame);
         }
-        double t = half + 0.12;
+        double t = halfW + 0.25;
         Path2D trim = flatPath(new double[]{-t, t, t, -t}, new double[]{-t, -t, t, t}, BOARD_TOP + 0.01);
         if (trim != null) {
-            g.setColor(new Color(222, 184, 100));
+            g.setColor(style.trim);
             g.setStroke(new BasicStroke(2f));
             g.draw(trim);
         }
-        Path2D base = flatPath(new double[]{-half, half, half, -half}, new double[]{-half, -half, half, half}, BOARD_TOP);
+        Path2D base = flatPath(new double[]{-halfW, halfW, halfW, -halfW}, new double[]{-halfW, -halfW, halfW, halfW}, BOARD_TOP);
         if (base != null) {
-            g.setColor(new Color(160, 148, 134));
+            g.setColor(style.boardBase);
             g.fill(base);
         }
     }
@@ -1079,13 +1228,13 @@ class Board3DPanel extends JPanel {
             }
         }
         for (int corner = 0; corner < 4; corner++) {
-            drawCastleFloor(g, corner);
+            drawHouseFloor(g, corner);
         }
         drawCenter(g);
     }
 
     private void drawTrackCell(Graphics2D g, int x, int y) {
-        double wx = x + 0.5 - half, wz = half - (y + 0.5);
+        double wx = (x + 0.5 - half) * CELL, wz = (half - (y + 0.5)) * CELL;
         double depth = cam.depthOf(wx, BOARD_TOP, wz);
         if (depth < -1.0 || depth > 46) {
             return;
@@ -1095,7 +1244,7 @@ class Board3DPanel extends JPanel {
         Color home = board.homeCellColor(p);
         SquareType type = board.specialSquareType(p);
         Color special = board.specialSquareColor(p);
-        Color base = ((x + y) & 1) == 0 ? new Color(238, 234, 226) : new Color(224, 219, 209);
+        Color base = ((x + y) & 1) == 0 ? style.tileLight : style.tileDark;
         if (home != null) {
             base = Mesh3D.mix(home, Color.WHITE, 0.60);
         }
@@ -1169,11 +1318,11 @@ class Board3DPanel extends JPanel {
         hsh ^= hsh >>> 13;
         hsh *= 0x5bd1e995;
         hsh ^= hsh >>> 15;
-        double wx = x + 0.5 - half, wz = half - (y + 0.5);
+        double wx = (x + 0.5 - half) * CELL, wz = (half - (y + 0.5)) * CELL;
         Color dot = new Color(60, 50, 40, 46);
         for (int k = 0; k < 3; k++) {
             int b = (hsh >>> (k * 8)) & 255;
-            double ox = ((b & 15) / 15.0 - 0.5) * 0.6, oz = ((b >> 4) / 15.0 - 0.5) * 0.6;
+            double ox = ((b & 15) / 15.0 - 0.5) * 0.6 * CELL, oz = ((b >> 4) / 15.0 - 0.5) * 0.6 * CELL;
             drawShapeAt(g, PEBBLE, wx + ox, wz + oz, 1, 0, 0, 1, 0.045 + 0.04 * ((b >> 2) & 3) / 3.0, dot);
         }
         if ((hsh & 7) == 0) {
@@ -1215,60 +1364,22 @@ class Board3DPanel extends JPanel {
         }
     }
 
-    private void drawCastleFloor(Graphics2D g, int corner) {
-        Color color = BoardPanel.cornerColor(corner);
-        double[] a = castlePoint(corner, 0, 0), b = castlePoint(corner, 6, 6);
-        double x0 = Math.min(a[0], b[0]), x1 = Math.max(a[0], b[0]);
-        double z0 = Math.min(a[1], b[1]), z1 = Math.max(a[1], b[1]);
-        Path2D outer = flatPath(new double[]{x0 + 0.03, x1 - 0.03, x1 - 0.03, x0 + 0.03},
-                new double[]{z0 + 0.03, z0 + 0.03, z1 - 0.03, z1 - 0.03}, BOARD_TOP);
-        if (outer == null || !onScreen(outer.getBounds2D())) {
+    private void drawHouseFloor(Graphics2D g, int corner) {
+        double[] a = castlePoint(corner, 0, 0), b = castlePoint(corner, 6 * CELL, 6 * CELL);
+        Path2D bounds = flatPath(new double[]{a[0], b[0], b[0], a[0]}, new double[]{a[1], a[1], b[1], b[1]}, BOARD_TOP);
+        if (bounds == null || !onScreen(bounds.getBounds2D())) {
             return;
         }
-        g.setColor(Mesh3D.mix(color, Color.WHITE, 0.48));
-        g.fill(outer);
-        g.setColor(Mesh3D.mix(color, Color.BLACK, 0.1));
-        g.setStroke(new BasicStroke(2.2f));
-        g.draw(outer);
-        double[] c0 = castlePoint(corner, 2.65, 2.65), c1 = castlePoint(corner, 5.9, 5.9);
-        double yx0 = Math.min(c0[0], c1[0]), yx1 = Math.max(c0[0], c1[0]);
-        double yz0 = Math.min(c0[1], c1[1]), yz1 = Math.max(c0[1], c1[1]);
-        Path2D yard = flatPath(new double[]{yx0, yx1, yx1, yx0}, new double[]{yz0, yz0, yz1, yz1}, BOARD_TOP + 0.01);
-        if (yard != null) {
-            g.setColor(new Color(236, 230, 218, 240));
-            g.fill(yard);
-            g.setColor(new Color(120, 108, 96, 70));
-            g.setStroke(new BasicStroke(1f));
-            for (int i = 1; i < 4; i++) {
-                double fx = yx0 + (yx1 - yx0) * i / 4, fz = yz0 + (yz1 - yz0) * i / 4;
-                if (cam.project(fx, BOARD_TOP + 0.012, yz0, tmpA) && cam.project(fx, BOARD_TOP + 0.012, yz1, tmpB)) {
-                    g.draw(new Line2D.Double(tmpA[0], tmpA[1], tmpB[0], tmpB[1]));
-                }
-                if (cam.project(yx0, BOARD_TOP + 0.012, fz, tmpA) && cam.project(yx1, BOARD_TOP + 0.012, fz, tmpB)) {
-                    g.draw(new Line2D.Double(tmpA[0], tmpA[1], tmpB[0], tmpB[1]));
-                }
-            }
-        }
-        for (int slot = 0; slot < 4; slot++) {
-            double[] pad = padPosition(corner, slot);
-            Path2D disc = discPath(pad[0], pad[1], BOARD_TOP + 0.02, 0.62, 18);
-            if (disc != null) {
-                g.setColor(Mesh3D.mix(color, Color.WHITE, 0.35));
-                g.fill(disc);
-                g.setColor(color.darker());
-                g.setStroke(new BasicStroke(1.8f));
-                g.draw(disc);
-            }
-        }
+        theme.paintHouseFloor(new FloorImpl(g, corner));
     }
 
     private void drawCenter(Graphics2D g) {
         double y = BOARD_TOP + 0.02;
         double[][][] tri = {
-                {{-1.5, 1.5}, {-1.5, -1.5}, {0, 0}},    // left, green
-                {{-1.5, 1.5}, {1.5, 1.5}, {0, 0}},      // top, yellow
-                {{1.5, 1.5}, {1.5, -1.5}, {0, 0}},      // right, blue
-                {{-1.5, -1.5}, {1.5, -1.5}, {0, 0}}};   // bottom, red
+                {{-1.5 * CELL, 1.5 * CELL}, {-1.5 * CELL, -1.5 * CELL}, {0, 0}},    // left, green
+                {{-1.5 * CELL, 1.5 * CELL}, {1.5 * CELL, 1.5 * CELL}, {0, 0}},      // top, yellow
+                {{1.5 * CELL, 1.5 * CELL}, {1.5 * CELL, -1.5 * CELL}, {0, 0}},      // right, blue
+                {{-1.5 * CELL, -1.5 * CELL}, {1.5 * CELL, -1.5 * CELL}, {0, 0}}};   // bottom, red
         for (int corner = 0; corner < 4; corner++) {
             Path2D path = flatPath(new double[]{tri[corner][0][0], tri[corner][1][0], tri[corner][2][0]},
                     new double[]{tri[corner][0][1], tri[corner][1][1], tri[corner][2][1]}, y);
@@ -1280,7 +1391,7 @@ class Board3DPanel extends JPanel {
                 g.draw(path);
             }
         }
-        Path2D disc = discPath(0, 0, y + 0.01, 0.58, 22);
+        Path2D disc = discPath(0, 0, y + 0.01, 0.58 * CELL, 22);
         if (disc != null) {
             g.setColor(Color.WHITE);
             g.fill(disc);
@@ -1434,29 +1545,16 @@ class Board3DPanel extends JPanel {
     private static final class Item {
         final double depth;
         final Poly poly;
-        final Tree tree;
+        final Prop prop;
         final int pawnKey;
         final double[] sx, sy;
-        Item(double depth, Poly poly, Tree tree, int pawnKey, double[] sx, double[] sy) {
+        Item(double depth, Poly poly, Prop prop, int pawnKey, double[] sx, double[] sy) {
             this.depth = depth;
             this.poly = poly;
-            this.tree = tree;
+            this.prop = prop;
             this.pawnKey = pawnKey;
             this.sx = sx;
             this.sy = sy;
-        }
-    }
-
-    private static final class Tree {
-        final double x, z, scale;
-        final Color leaf;
-        final boolean bush;
-        Tree(double x, double z, double scale, Color leaf, boolean bush) {
-            this.x = x;
-            this.z = z;
-            this.scale = scale;
-            this.leaf = leaf;
-            this.bush = bush;
         }
     }
 
@@ -1486,8 +1584,8 @@ class Board3DPanel extends JPanel {
             }
             items.add(new Item(depth, p, null, -1, Arrays.copyOf(cam.sx, count), Arrays.copyOf(cam.sy, count)));
         }
-        for (Tree t : trees) {
-            double depth = cam.depthOf(t.x, 0, t.z);
+        for (Prop t : props) {
+            double depth = cam.depthOf(t.x, t.y, t.z);
             if (depth < 1.0 || depth > 60) {
                 continue;
             }
@@ -1514,46 +1612,33 @@ class Board3DPanel extends JPanel {
         for (Item item : items) {
             if (item.poly != null) {
                 fillPoly(g, item.poly, item.sx, item.sy, item.sx.length, item.depth, quality == 0);
-            } else if (item.tree != null) {
-                drawTree(g, item.tree);
+            } else if (item.prop != null) {
+                drawProp(g, item.prop);
             } else {
                 drawPawnItem(g, item.pawnKey / 4, item.pawnKey % 4, turn, visuals[item.pawnKey], item.depth);
             }
         }
     }
 
-    private void drawTree(Graphics2D g, Tree t) {
-        double height = (t.bush ? 1.0 : 2.8) * t.scale;
-        if (!cam.project(t.x, 0, t.z, tmpA) || !cam.project(t.x, height, t.z, tmpB)) {
+    /** Draws a prop with the painter of the world. */
+    private void drawProp(Graphics2D g, Prop p) {
+        if (!cam.project(p.x, p.y, p.z, tmpA) || !cam.project(p.x, p.y + p.height, p.z, tmpB)) {
             return;
         }
         double x = tmpA[0], ground = tmpA[1], ph = ground - tmpB[1];
-        if (x < -ph || x > panelW + ph) {
+        if (ph < 1 || x < -ph || x > panelW + ph) {
             return;
         }
-        double fog = fogAt(tmpA[2]);
-        Color leaf = fog > 0 ? Mesh3D.mix(t.leaf, HAZE, fog) : t.leaf;
-        if (!t.bush) {
-            g.setPaint(new GradientPaint((float) (x - ph * 0.04), 0f, new Color(92, 64, 44),
-                    (float) (x + ph * 0.04), 0f, new Color(140, 100, 66)));
-            g.fill(new Rectangle2D.Double(x - ph * 0.04, ground - ph * 0.46, ph * 0.08, ph * 0.46));
-        }
-        double[][] blobs = t.bush
-                ? new double[][]{{-0.22, -0.34, 0.30}, {0.22, -0.34, 0.30}, {0, -0.5, 0.34}}
-                : new double[][]{{0, -0.50, 0.30}, {-0.20, -0.62, 0.25}, {0.20, -0.62, 0.25},
-                        {-0.12, -0.84, 0.22}, {0.14, -0.80, 0.21}, {0, -0.68, 0.28}};
-        for (double[] b : blobs) {
-            double r = ph * b[2], cx = x + ph * b[0], cy = ground + ph * b[1];
-            if (quality > 0) {
-                g.setColor(leaf);
-                g.fill(new Ellipse2D.Double(cx - r, cy - r, r * 2, r * 2));
-                continue;
-            }
-            g.setPaint(new RadialGradientPaint(new Point2D.Double(cx + r * 0.35, cy - r * 0.40), (float) (r * 1.5),
-                    new float[]{0f, 0.5f, 1f},
-                    new Color[]{Mesh3D.mix(leaf, Color.WHITE, 0.38), leaf, Mesh3D.mix(leaf, Color.BLACK, 0.45)}));
-            g.fill(new Ellipse2D.Double(cx - r, cy - r, r * 2, r * 2));
-        }
+        propView.g = g;
+        propView.prop = p;
+        propView.x = x;
+        propView.ground = ground;
+        propView.ph = ph;
+        propView.fog = fogAt(tmpA[2]);
+        propView.fogColor = haze;
+        propView.time = time;
+        propView.quality = quality;
+        theme.paintProp(propView);
     }
 
     // --- pawns ------------------------------------------------------------------------------
@@ -1571,7 +1656,8 @@ class Board3DPanel extends JPanel {
     private void drawPawnItem(Graphics2D g, int corner, int idx, int turn, PieceVisual v, double depth) {
         boolean selectable = isSelectable(corner, idx, turn, v);
         double bob = selectable ? 0.14 * (0.5 + 0.5 * Math.sin(time * 7 + idx)) : 0;
-        double lift = v.curH + bob;
+        boolean resting = !v.onBoard && !v.finished;                 // waiting in its house
+        double lift = v.curH + bob + (resting ? theme.restLift() : 0);
         if (!cam.project(v.curX, BOARD_TOP + lift, v.curZ, tmpA)
                 || !cam.project(v.curX, BOARD_TOP + lift + PAWN_HEIGHT * v.scale, v.curZ, tmpB)) {
             return;
@@ -1586,10 +1672,15 @@ class Board3DPanel extends JPanel {
             squash = Math.max(0, 1 - (time - (v.t0 + v.dur)) / 0.12);
         }
         boolean small = ph < 70;
-        BufferedImage sprite = small ? cache.pawnHalf(BoardPanel.cornerColor(corner)) : cache.pawn(BoardPanel.cornerColor(corner));
+        BufferedImage sprite = small ? cache.pawnHalf(theme, BoardPanel.cornerColor(corner), corner)
+                : cache.pawn(theme, BoardPanel.cornerColor(corner), corner);
+        double tilt = resting && !v.hopping ? theme.restTilt() : 0;
         double scale = ph / AssetCache.PAWN_BODY;
         double dw = AssetCache.PAWN_W * scale, dh = AssetCache.PAWN_H * scale;
         AffineTransform keep = g.getTransform();
+        if (tilt != 0) {
+            g.rotate(tilt, x, groundY);
+        }
         g.translate(x, groundY);
         g.scale(1 + 0.16 * squash, 1 - 0.2 * squash);
         g.translate(-x, -groundY);
@@ -1597,7 +1688,7 @@ class Board3DPanel extends JPanel {
                 (int) Math.round(dw), (int) Math.round(dh), null);
         g.setTransform(keep);
         if (selectable) {
-            double w = ph * 0.75;
+            double w = ph * (tilt != 0 ? 1.1 : 0.75);
             hits.add(new Hit(corner, idx, board.pieceInCastle(corner, idx),
                     new Rectangle2D.Double(x - w / 2, groundY - ph * 1.05, w, ph * 1.2), depth));
         }
@@ -1634,62 +1725,6 @@ class Board3DPanel extends JPanel {
             }
             prev = new double[]{tmpA[0], tmpA[1]};
             prevDepth = tmpA[2];
-        }
-    }
-
-    // --- flags (animated, drawn every frame) ---------------------------------------------------
-
-    private void drawFlags(Graphics2D g) {
-        double[] right = cam.rightOnGround();
-        for (double[] f : flags) {
-            if (!cam.project(f[0], f[2], f[1], tmpA) || !cam.project(f[0], f[2] + f[3], f[1], tmpB)
-                    || tmpA[2] > 60) {
-                continue;
-            }
-            Color color = BoardPanel.cornerColor((int) f[4]);
-            g.setColor(new Color(70, 52, 42));
-            g.setStroke(new BasicStroke(Math.max(1.4f, (float) (tmpA[1] - tmpB[1]) * 0.05f)));
-            g.draw(new Line2D.Double(tmpA[0], tmpA[1], tmpB[0], tmpB[1]));
-            int segments = 7;
-            double len = 1.0, top = f[2] + f[3], flagH = 0.52;
-            double phase = f[0] * 1.7 + f[1] * 2.3;
-            double[][] upper = new double[segments + 1][2], lower = new double[segments + 1][2];
-            boolean ok = true;
-            for (int i = 0; i <= segments && ok; i++) {
-                double t = i / (double) segments;
-                double wave = Math.sin(time * 5.5 + phase - t * 4.2) * 0.10 * t;
-                double px = f[0] + right[0] * len * t, pz = f[1] + right[1] * len * t;
-                if (!cam.project(px, top - 0.03 + wave, pz, tmpA)) {
-                    ok = false;
-                    break;
-                }
-                upper[i][0] = tmpA[0];
-                upper[i][1] = tmpA[1];
-                if (!cam.project(px, top - flagH * (1 - 0.35 * t) + wave, pz, tmpA)) {
-                    ok = false;
-                    break;
-                }
-                lower[i][0] = tmpA[0];
-                lower[i][1] = tmpA[1];
-            }
-            if (!ok) {
-                continue;
-            }
-            Path2D ribbon = new Path2D.Double();
-            ribbon.moveTo(upper[0][0], upper[0][1]);
-            for (int i = 1; i <= segments; i++) {
-                ribbon.lineTo(upper[i][0], upper[i][1]);
-            }
-            for (int i = segments; i >= 0; i--) {
-                ribbon.lineTo(lower[i][0], lower[i][1]);
-            }
-            ribbon.closePath();
-            g.setPaint(new GradientPaint((float) upper[0][0], 0f, Mesh3D.mix(color, Color.WHITE, 0.22),
-                    (float) upper[segments][0] + 0.01f, 0f, Mesh3D.mix(color, Color.BLACK, 0.25)));
-            g.fill(ribbon);
-            g.setColor(new Color(0, 0, 0, 70));
-            g.setStroke(new BasicStroke(1f));
-            g.draw(ribbon);
         }
     }
 
@@ -1749,7 +1784,11 @@ class Board3DPanel extends JPanel {
     }
 
     private void fillPolyImpl(Graphics2D g, Poly p, double[] sx, double[] sy, int count, double depth, boolean details) {
-        double light = p.twoSided ? 0.95 : 0.46 + 0.62 * Math.max(0, p.nx * lightX + p.ny * lightY + p.nz * lightZ);
+        double light = p.twoSided ? 0.95 : theme.ambientLight()
+                + theme.directLight() * Math.max(0, p.nx * lightX + p.ny * lightY + p.nz * lightZ);
+        if (p.emissive) {
+            light = 1.12;       // glowing parts are not shaded
+        }
         double fog = fogAt(depth);
         Color lit = shade(p.color, light);
         Path2D path = new Path2D.Double();
@@ -1767,18 +1806,18 @@ class Board3DPanel extends JPanel {
         }
         double area0 = (maxX - minX) * (maxY - minY);
         // gradients and outlines are only worth their cost on polygons that are big on screen
-        boolean shaded = details && area0 > 700 && maxY - minY > 3
+        boolean shaded = details && !p.emissive && area0 > 700 && maxY - minY > 3
                 && ((p.x.length == 4 && Math.abs(p.ny) < 0.6) || p.x.length == 3);
         if (shaded) {
             // lighter towards the top, darker towards the foot (ambient occlusion)
             Color top = shade(lit, 1.12), bottom = shade(lit, 0.70);
             if (fog > 0) {
-                top = Mesh3D.mix(top, HAZE, fog);
-                bottom = Mesh3D.mix(bottom, HAZE, fog);
+                top = Mesh3D.mix(top, haze, fog);
+                bottom = Mesh3D.mix(bottom, haze, fog);
             }
             g.setPaint(new GradientPaint(0, (float) minY, top, 0, (float) maxY, bottom));
         } else {
-            g.setColor(fog > 0 ? Mesh3D.mix(lit, HAZE, fog) : lit);
+            g.setColor(fog > 0 ? Mesh3D.mix(lit, haze, fog) : lit);
         }
         g.fill(path);
         if (!details || count != p.x.length || area0 < 150) {
@@ -1834,7 +1873,7 @@ class Board3DPanel extends JPanel {
         if (p.windows != null) {
             for (double[] win : p.windows) {
                 Path2D w = arch(sx, sy, win[0], win[1], win[2], win[3]);
-                g.setColor(Mesh3D.mix(p.windowColor, HAZE, fog));
+                g.setColor(Mesh3D.mix(p.windowColor, haze, fog));
                 g.fill(w);
                 g.setColor(new Color(255, 255, 255, (int) (80 * (1 - fog))));
                 g.setStroke(new BasicStroke(1f));
@@ -1844,10 +1883,10 @@ class Board3DPanel extends JPanel {
         if (p.doors != null) {
             for (double[] d : p.doors) {
                 Path2D door = arch(sx, sy, d[0], d[1], d[2], d[3]);
-                g.setColor(Mesh3D.mix(new Color(46, 28, 20), HAZE, fog));
+                g.setColor(Mesh3D.mix(Mesh3D.mix(p.doorColor, Color.BLACK, 0.6), haze, fog));
                 g.fill(door);
                 Path2D plank = arch(sx, sy, d[0] + 0.012, d[1] - 0.012, d[2], d[3] - 0.015);
-                g.setColor(Mesh3D.mix(new Color(112, 72, 42), HAZE, fog));
+                g.setColor(Mesh3D.mix(p.doorColor, haze, fog));
                 g.fill(plank);
                 g.setColor(new Color(40, 24, 16, 160));
                 g.setStroke(new BasicStroke(1f));
@@ -1859,6 +1898,26 @@ class Board3DPanel extends JPanel {
                 g.setColor(new Color(30, 20, 14));
                 g.draw(door);
             }
+        }
+        if (p.label != null && count == 4 && area > 500) {
+            Shape glyph = glyph(p.label);
+            double[] c0 = face(sx, sy, 0.5, 0.5), cr = face(sx, sy, 0.6, 0.5), cu = face(sx, sy, 0.5, 0.6);
+            double ex = (cr[0] - c0[0]) * 10, ey = (cr[1] - c0[1]) * 10;
+            double fx = (cu[0] - c0[0]) * 10, fy = (cu[1] - c0[1]) * 10;
+            double faceH = Math.max(0.01, p.y[2] - p.y[0]), faceW = Math.max(0.01, p.widthWorld);
+            double scaleY = 0.55, scaleX = scaleY * faceH / faceW;
+            Rectangle2D gb = glyph.getBounds2D();
+            if (gb.getWidth() * scaleX > 0.9) {
+                double f = 0.9 / (gb.getWidth() * scaleX);
+                scaleX *= f;
+                scaleY *= f;
+            }
+            Graphics2D gg = (Graphics2D) g.create();
+            gg.transform(new AffineTransform(ex, ey, -fx, -fy, c0[0], c0[1]));
+            gg.scale(scaleX, scaleY);
+            gg.setColor(Mesh3D.mix(p.labelColor, haze, fog));
+            gg.fill(glyph);
+            gg.dispose();
         }
         if (p.banners != null && p.bannerColor != null) {
             for (double[] bn : p.banners) {
@@ -1875,7 +1934,7 @@ class Board3DPanel extends JPanel {
                     }
                 }
                 banner.closePath();
-                g.setColor(Mesh3D.mix(shade(p.bannerColor, 0.55 + 0.45 * light), HAZE, fog));
+                g.setColor(Mesh3D.mix(shade(p.bannerColor, 0.55 + 0.45 * light), haze, fog));
                 g.fill(banner);
                 g.setColor(new Color(0, 0, 0, 80));
                 g.draw(banner);
@@ -1942,8 +2001,8 @@ class Board3DPanel extends JPanel {
     }
 
     private Path2D cellPath(int x, int y, double inset) {
-        double x0 = x + inset - half, x1 = x + 1 - inset - half;
-        double z0 = half - (y + 1 - inset), z1 = half - (y + inset);
+        double x0 = (x + inset - half) * CELL, x1 = (x + 1 - inset - half) * CELL;
+        double z0 = (half - (y + 1 - inset)) * CELL, z1 = (half - (y + inset)) * CELL;
         return flatPath(new double[]{x0, x1, x1, x0}, new double[]{z0, z0, z1, z1}, BOARD_TOP);
     }
 
@@ -1977,11 +2036,11 @@ class Board3DPanel extends JPanel {
     private void drawShapeAt(Graphics2D g, Shape shape, double wx, double wz,
                              double ax, double az, double bx, double bz, double size, Color color) {
         double y = BOARD_TOP + 0.03;
-        if (!cam.project(wx, y, wz, tmpA) || !cam.project(wx + ax, y, wz + az, tmpB)) {
+        if (!cam.project(wx, y, wz, tmpA) || !cam.project(wx + ax * CELL, y, wz + az * CELL, tmpB)) {
             return;
         }
         double ox = tmpA[0], oy = tmpA[1], ex = tmpB[0], ey = tmpB[1];
-        if (!cam.project(wx + bx, y, wz + bz, tmpB)) {
+        if (!cam.project(wx + bx * CELL, y, wz + bz * CELL, tmpB)) {
             return;
         }
         AffineTransform at = new AffineTransform(ex - ox, ey - oy, tmpB[0] - ox, tmpB[1] - oy, ox, oy);
@@ -2110,7 +2169,7 @@ class Board3DPanel extends JPanel {
         }
         g.setColor(new Color(10, 16, 44));
         g.fill(new Ellipse2D.Double(bcx - br + 8, bcy - br + 8, 2 * br - 16, 2 * br - 16));
-        BufferedImage sprite = cache.pawnHalf(color);
+        BufferedImage sprite = cache.pawnHalf(theme, color, corner);
         double scale = 36.0 / (AssetCache.PAWN_BODY / 2.0);
         g.drawImage(sprite, (int) (bcx - sprite.getWidth() * scale / 2),
                 (int) (bcy + 18 - (AssetCache.PAWN_GROUND / 2.0) * scale),
@@ -2203,20 +2262,5 @@ class Board3DPanel extends JPanel {
         g.fill(arrowHead);
     }
 
-    private static final class SkyObject {
-        final int type;          // 0 sun, 1 cloud, 2 rock
-        final int sprite;
-        double az;               // direction in the sky (radians)
-        final double yFrac, scale, speed;
-        final float alpha;
-        SkyObject(int type, int sprite, double az, double yFrac, double scale, float alpha, double speed) {
-            this.type = type;
-            this.sprite = sprite;
-            this.az = az;
-            this.yFrac = yFrac;
-            this.scale = scale;
-            this.alpha = alpha;
-            this.speed = speed;
-        }
-    }
+
 }
