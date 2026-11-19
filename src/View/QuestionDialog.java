@@ -23,8 +23,12 @@ public class QuestionDialog extends JDialog {
     public QuestionDialog(Window owner, GameController gameController) {
         super(owner, "Ludo - Question Challenge", ModalityType.APPLICATION_MODAL);
         MainMenuScreen.applyAppIcon(this);
-        String[] options = gameController.getQuestionOptions();
-        answerButtons = new AnswerButton[options.length];
+		String[] options = gameController.getQuestionOptions();
+		// קבלת מספר צעדי התנועה לפי רמת השאלה מה-Controller
+		int questionSteps = gameController.getCurrentQuestionMoveSteps();
+		// התאמת הטקסט ליחיד או לרבים
+		String squareLabel = questionSteps == 1 ? "square" : "squares";
+		answerButtons = new AnswerButton[options.length];
         setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
         setResizable(false);
         JPanel root = new QuestionBackgroundPanel();
@@ -125,7 +129,9 @@ public class QuestionDialog extends JDialog {
         card.add(content, BorderLayout.CENTER);
         JPanel footer = new JPanel(new BorderLayout(8, 0));
         footer.setOpaque(false);
-        JLabel rule = new JLabel("Correct: +1 square    |    Wrong: -1 square");
+		JLabel rule = new JLabel(
+		        "Correct: +" + questionSteps + " " + squareLabel
+		        + "    |    Wrong: -" + questionSteps + " " + squareLabel);
         rule.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         rule.setForeground(MUTED);
         footer.add(rule, BorderLayout.WEST);
@@ -145,18 +151,25 @@ public class QuestionDialog extends JDialog {
                 answerButtons[i].setVisualState(state);
                 answerButtons[i].setEnabled(false);
             }
-            if (correct) {
-                feedback.setText("Correct! Your piece moves 1 square forward.");
-                feedback.setForeground(SUCCESS);
-                feedbackPanel.setFill(new Color(229, 249, 239));
-            } else {
-                char correctAnswer = (char) (
-                        'A' + gameController.getCorrectQuestionAnswerIndex());
-                feedback.setText("Not quite. The correct answer is "
-                        + correctAnswer + ". Move 1 square back.");
-                feedback.setForeground(ERROR);
-                feedbackPanel.setFill(new Color(255, 237, 240));
-            }
+            
+		if (correct) {
+		    // הודעה על תשובה נכונה בהתאם לרמת השאלה
+		    feedback.setText("Correct! Your piece moves "
+		            + questionSteps + " " + squareLabel + " forward.");
+		    feedback.setForeground(SUCCESS);
+		    feedbackPanel.setFill(new Color(229, 249, 239));
+		} else {
+		    // הודעה על תשובה שגויה והצגת התשובה הנכונה
+		    char correctAnswer = (char) (
+		            'A' + gameController.getCorrectQuestionAnswerIndex());
+		
+		    feedback.setText("Not quite. The correct answer is "
+		            + correctAnswer + ". Move "
+		            + questionSteps + " " + squareLabel + " back.");
+		    feedback.setForeground(ERROR);
+		    feedbackPanel.setFill(new Color(255, 237, 240));
+		}
+
             ((CardLayout) actions.getLayout()).show(actions, "CONTINUE");
             getRootPane().setDefaultButton(cont);
         });
