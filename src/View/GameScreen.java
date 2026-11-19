@@ -446,15 +446,28 @@ public class GameScreen extends JPanel {
 	    dialog.setVisible(true);
 	    boolean correct = dialog.isCorrect();
 
+
+        // מיקום הכלי לפני התנועה בעקבות השאלה
         int startStep = pieces.getPieceStep(pieceIndex);
+
+        // מספר הצעדים נקבע לפי רמת השאלה שנבחרה
+        int questionSteps = turns.getCurrentQuestionMoveSteps();
+
+        // חישוב מיקום היעד לפי נכונות התשובה
         int targetStep = pieces.getAnswerMoveTarget(
-            correct,
-            board.getActiveRouteSize(pieceIndex)
-        );
-        setStatus(correct
-            ? "Correct! Move 1 square forward."
-            : "Wrong answer. Move 1 square back."
-        );
+                correct,
+                questionSteps,
+                board.getActiveRouteSize(pieceIndex));
+
+        // עדכון ההודעה בהתאם לתוצאת התנועה
+        if (targetStep == startStep) {
+            setStatus("Question answered. Piece stays in place at route boundary.");
+        } else {
+            setStatus(correct
+                    ? "Correct! Move " + questionSteps + " square(s) forward."
+                    : "Wrong answer. Move " + questionSteps + " square(s) back.");
+        }
+
         if (!pieces.applyEventMovement(
                 pieceIndex,
                 targetStep,
