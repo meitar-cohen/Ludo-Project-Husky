@@ -18,6 +18,53 @@ public final class QuestionRepository {
     private QuestionRepository() {
         // אין צורך ליצור מופע של מחלקת שירות זו.
     }
+    
+
+	/**
+	 * טעינת מאגר השאלות מתיקיית data של הפרויקט
+	 * או מתיקיית data שלצד קובץ ה-JAR.
+	 */
+	public static List<Question> loadProjectQuestions()
+	        throws IOException {
+	
+	    // נתיב ברירת מחדל לפי תיקיית העבודה הנוכחית
+	    Path csvPath = Path.of(
+	            System.getProperty("user.dir"),
+	            "data",
+	            "questions_Husky.csv"
+	    );
+	
+	    try {
+	        // זיהוי המיקום שממנו רץ קוד ה-Java
+	        Path codeLocation = Path.of(
+	                QuestionRepository.class
+	                        .getProtectionDomain()
+	                        .getCodeSource()
+	                        .getLocation()
+	                        .toURI()
+	        );
+	
+	        // ב-Eclipse: תיקיית הפרויקט שמכילה את bin
+	        // ב-JAR: התיקייה שמכילה את קובץ ההרצה
+	        Path baseDirectory = codeLocation.getParent();
+	
+	        if (baseDirectory != null) {
+	            Path candidate = baseDirectory.resolve("data")
+	                    .resolve("questions_Husky.csv");
+	
+	            if (Files.isRegularFile(candidate)) {
+	                csvPath = candidate;
+	            }
+	        }
+	
+	    } catch (Exception exception) {
+	        // אם לא זוהה מיקום הקוד, נשתמש בתיקיית העבודה
+	    }
+	
+	    // שימוש במנגנון הקריאה שכבר מימשנו ובדקנו
+	    return loadFromCsv(csvPath);
+	}
+
 
     // טעינת כל השאלות מהקובץ
     public static List<Question> loadFromCsv(Path file)

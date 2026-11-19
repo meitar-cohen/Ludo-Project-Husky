@@ -1,6 +1,7 @@
 package Controller;
 
 import java.awt.Color;
+
 import java.awt.Point;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -14,6 +15,9 @@ import Model.Game;
 import Model.Player;
 import Model.Question;
 import Model.Square;
+import java.io.IOException;
+import Model.QuestionBank;
+import Model.QuestionRepository;
 
 /** Coordinates game setup, board state, questions, and game results. */
 public class GameController {
@@ -22,26 +26,38 @@ public class GameController {
     private final Game game;
     private final MovementController pieces;
     private final TurnController turnController;
-    private final Question question = new Question(
-            "Which document defines the software requirements according to IEEE Std 830?",
-            new String[]{
-                "SRS - Software Requirements Specification",
-                "SDP - Software Development Plan",
-                "STD - Software Test Document",
-                "SDD - Software Design Description"
-            },
-            0,
-            "Easy"
-    );
+ // מאגר השאלות שנטען מקובץ ה-CSV
+    private final QuestionBank questionBank;
+
+    // השאלה שנבחרה לאירוע השאלה הנוכחי
+    private Question currentQuestion;
     private long startTimeMillis = -1;
     private long endTimeMillis = -1;
 
-    public GameController(Game game, MovementController pieces) {
-        this.game = game;
-        this.pieces = pieces;
-        this.turnController = new TurnController(game, pieces);
-        initializeBoard();
-    }
+
+	public GameController(Game game, MovementController pieces) {
+	    this.game = game;
+	    this.pieces = pieces;
+	    this.turnController = new TurnController(game, pieces);
+	
+	    // טעינת השאלות מתוך קובץ ה-CSV הקיים
+	    try {
+	        this.questionBank = new QuestionBank(
+	                QuestionRepository.loadProjectQuestions()
+	        );
+	    } catch (IOException exception) {
+	        throw new IllegalStateException(
+	                "Unable to load questions from CSV",
+	                exception
+	        );
+	    }
+	
+	    // אתחול השאלה הנוכחית בשאלה קלה מהמאגר
+	    this.currentQuestion = questionBank.drawQuestion("easy");
+	
+	    initializeBoard();
+	}
+
 
     public static GameController createNewGame(
             String[] names, String[] colors, String difficulty) {
@@ -53,25 +69,37 @@ public class GameController {
         return new GameController(game, new MovementController(game));
     }
 
-    public boolean isCorrectQuestionAnswer(int selectedIndex) {
-        return selectedIndex == question.getCorrectIndex();
-    }
+	
+	 // בחירת שאלה חדשה לפי רמת הקושי המבוקשת
+	 public void selectQuestion(String difficulty) {
+	     this.currentQuestion = questionBank.drawQuestion(difficulty);
+	 }
+	
+	 // בדיקת נכונות התשובה לשאלה הנוכחית
+	 public boolean isCorrectQuestionAnswer(int selectedIndex) {
+	     return selectedIndex == currentQuestion.getCorrectIndex();
+	 }
+	
+	 // החזרת נוסח השאלה הנוכחית
+	 public String getQuestionText() {
+	     return currentQuestion.getText();
+	 }
+	
+	 // החזרת אפשרויות התשובה
+	 public String[] getQuestionOptions() {
+	     return currentQuestion.getOptions();
+	 }
+	
+	 // החזרת רמת הקושי של השאלה
+	 public String getQuestionDifficulty() {
+	     return currentQuestion.getDifficulty();
+	 }
+	
+	 // החזרת האינדקס של התשובה הנכונה
+	 public int getCorrectQuestionAnswerIndex() {
+	     return currentQuestion.getCorrectIndex();
+	 }
 
-    public String getQuestionText() {
-        return question.getText();
-    }
-
-    public String[] getQuestionOptions() {
-        return question.getOptions();
-    }
-
-    public String getQuestionDifficulty() {
-        return question.getDifficulty();
-    }
-
-    public int getCorrectQuestionAnswerIndex() {
-        return question.getCorrectIndex();
-    }
 
     public MovementController getMovementController() {
         return pieces;

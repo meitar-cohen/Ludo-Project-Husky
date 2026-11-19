@@ -2,7 +2,6 @@
 package Tests;
 
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.List;
 
 import Model.Question;
@@ -22,12 +21,8 @@ public class QuestionRepositoryCheck {
 
     public static void main(String[] args) throws IOException {
 
-        // הגדרת הנתיב למאגר השאלות הקיים
-        Path file = Path.of("data", "questions_Husky.csv");
-
-        // טעינת השאלות באמצעות המחלקה החדשה
-        List<Question> questions =
-                QuestionRepository.loadFromCsv(file);
+    	List<Question> questions =
+    	        QuestionRepository.loadProjectQuestions();
 
         // בדיקה שכל השאלות הקיימות נטענו
         check(questions.size() >= 11,
