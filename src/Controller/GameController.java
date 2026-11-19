@@ -13,7 +13,8 @@ import Enums.Stage;
 import Enums.SquareType;
 import Model.Game;
 import Model.Player;
-import Model.Question;
+import Model.QuestionEvent;
+import Model.QuestionEventCreator;
 import Model.Square;
 import java.io.IOException;
 import Model.QuestionBank;
@@ -26,11 +27,11 @@ public class GameController {
     private final Game game;
     private final MovementController pieces;
     private final TurnController turnController;
- // מאגר השאלות שנטען מקובץ ה-CSV
+    // מאגר השאלות שנטען מקובץ ה-CSV
     private final QuestionBank questionBank;
 
-    // השאלה שנבחרה לאירוע השאלה הנוכחי
-    private Question currentQuestion;
+    // אירוע השאלה הנוכחי שנוצר באמצעות Factory Method
+    private QuestionEvent currentQuestionEvent;
     private long startTimeMillis = -1;
     private long endTimeMillis = -1;
 
@@ -52,8 +53,8 @@ public class GameController {
 	        );
 	    }
 	
-	    // אתחול השאלה הנוכחית בשאלה קלה מהמאגר
-	    this.currentQuestion = questionBank.drawQuestion("easy");
+	    // אתחול אירוע שאלה קלה באמצעות Factory Method
+	    selectQuestion("easy");
 	
 	    initializeBoard();
 	}
@@ -70,50 +71,65 @@ public class GameController {
     }
 
 	
-	 // בחירת שאלה חדשה לפי רמת הקושי המבוקשת
-	 public void selectQuestion(String difficulty) {
-	     this.currentQuestion = questionBank.drawQuestion(difficulty);
-	 }
-	
-	 // בדיקת נכונות התשובה לשאלה הנוכחית
-	 public boolean isCorrectQuestionAnswer(int selectedIndex) {
-	     return selectedIndex == currentQuestion.getCorrectIndex();
-	 }
-	
-	 // החזרת נוסח השאלה הנוכחית
-	 public String getQuestionText() {
-	     return currentQuestion.getText();
-	 }
-	
-	 // החזרת אפשרויות התשובה
-	 public String[] getQuestionOptions() {
-	     return currentQuestion.getOptions();
-	 }
-	
-	 // החזרת רמת הקושי של השאלה
-	public String getQuestionDifficulty() {
-	    return currentQuestion.getDifficulty();
-	}
-	
-	// חישוב מספר הצעדים בהתאם לרמת השאלה הנוכחית
-	public int getCurrentQuestionMoveSteps() {
-	
-	    return switch (currentQuestion.getDifficulty()
-	            .toLowerCase(java.util.Locale.ROOT)) {
-	
-	        case "easy" -> 1;
-	        case "medium" -> 2;
-	        case "hard" -> 3;
-	
-	        default -> throw new IllegalStateException(
-	                "Unsupported question difficulty: "
-	                        + currentQuestion.getDifficulty());
-	    };
-	}
-	
-	public int getCorrectQuestionAnswerIndex() {
-	    return currentQuestion.getCorrectIndex();
-	}
+
+    // בחירת שאלה באמצעות Factory Method לפי רמת הקושי
+    public void selectQuestion(String difficulty) {
+
+        if (difficulty == null || difficulty.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Question difficulty is required");
+        }
+
+        // בחירת היוצר המתאים לרמת הקושי
+        QuestionEventCreator creator = switch (
+                difficulty.trim().toLowerCase(java.util.Locale.ROOT)) {
+
+            case "easy" ->
+                    new QuestionEventCreator.Easy(questionBank);
+
+            case "medium" ->
+                    new QuestionEventCreator.Medium(questionBank);
+
+            case "hard" ->
+                    new QuestionEventCreator.Hard(questionBank);
+
+            default -> throw new IllegalArgumentException(
+                    "Unsupported question difficulty: " + difficulty);
+        };
+
+        // יצירת האירוע באמצעות Factory Method
+        currentQuestionEvent = creator.create();
+    }
+
+    // בדיקת נכונות התשובה באמצעות האירוע הנוכחי
+    public boolean isCorrectQuestionAnswer(int selectedIndex) {
+        return currentQuestionEvent.isCorrectAnswer(selectedIndex);
+    }
+
+    // החזרת נוסח השאלה מתוך האירוע הנוכחי
+    public String getQuestionText() {
+        return currentQuestionEvent.getQuestion().getText();
+    }
+
+    // החזרת אפשרויות התשובה
+    public String[] getQuestionOptions() {
+        return currentQuestionEvent.getQuestion().getOptions();
+    }
+
+    // החזרת רמת הקושי של השאלה
+    public String getQuestionDifficulty() {
+        return currentQuestionEvent.getQuestion().getDifficulty();
+    }
+
+    // מספר הצעדים נקבע לפי סוג האירוע שנוצר
+    public int getCurrentQuestionMoveSteps() {
+        return currentQuestionEvent.getMoveSteps();
+    }
+
+    // החזרת האינדקס של התשובה הנכונה
+    public int getCorrectQuestionAnswerIndex() {
+        return currentQuestionEvent.getQuestion().getCorrectIndex();
+    }
 
 
 
