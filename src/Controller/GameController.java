@@ -91,14 +91,30 @@ public class GameController {
 	 }
 	
 	 // החזרת רמת הקושי של השאלה
-	 public String getQuestionDifficulty() {
-	     return currentQuestion.getDifficulty();
-	 }
+	public String getQuestionDifficulty() {
+	    return currentQuestion.getDifficulty();
+	}
 	
-	 // החזרת האינדקס של התשובה הנכונה
-	 public int getCorrectQuestionAnswerIndex() {
-	     return currentQuestion.getCorrectIndex();
-	 }
+	// חישוב מספר הצעדים בהתאם לרמת השאלה הנוכחית
+	public int getCurrentQuestionMoveSteps() {
+	
+	    return switch (currentQuestion.getDifficulty()
+	            .toLowerCase(java.util.Locale.ROOT)) {
+	
+	        case "easy" -> 1;
+	        case "medium" -> 2;
+	        case "hard" -> 3;
+	
+	        default -> throw new IllegalStateException(
+	                "Unsupported question difficulty: "
+	                        + currentQuestion.getDifficulty());
+	    };
+	}
+	
+	public int getCorrectQuestionAnswerIndex() {
+	    return currentQuestion.getCorrectIndex();
+	}
+
 
 
     public MovementController getMovementController() {
