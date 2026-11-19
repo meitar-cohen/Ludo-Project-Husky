@@ -422,11 +422,30 @@ public class GameScreen extends JPanel {
         endTurnOrExtraTurn();
     }
 
-    private void askQuestion(int pieceIndex) {
-        Window owner = SwingUtilities.getWindowAncestor(this);
-        QuestionDialog dialog = new QuestionDialog(owner, turns);
-        dialog.setVisible(true);
-        boolean correct = dialog.isCorrect();
+
+	private void askQuestion(int pieceIndex) {
+	
+	    // קבלת רמת השאלה מהמשבצת שעליה הכלי נחת
+	    String questionDifficulty =
+	            board.getQuestionDifficultyAtStep(
+	                    pieceIndex,
+	                    pieces.getPieceStep(pieceIndex));
+	
+	    // מניעת הפעלת שאלה ללא רמת קושי מוגדרת
+	    if (questionDifficulty == null) {
+	        throw new IllegalStateException(
+	                "Question square has no difficulty");
+	    }
+	
+	    // בחירת שאלה אקראית מהמאגר ברמה המתאימה
+	    turns.selectQuestion(questionDifficulty);
+	
+	    // פתיחת חלון השאלה הקיים
+	    Window owner = SwingUtilities.getWindowAncestor(this);
+	    QuestionDialog dialog = new QuestionDialog(owner, turns);
+	    dialog.setVisible(true);
+	    boolean correct = dialog.isCorrect();
+
         int startStep = pieces.getPieceStep(pieceIndex);
         int targetStep = pieces.getAnswerMoveTarget(
             correct,

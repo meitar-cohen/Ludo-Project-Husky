@@ -490,6 +490,34 @@ public class BoardPanel extends JPanel {
         }
         return "NONE";
     }
+    
+
+    /**
+     * מחזירה את רמת הקושי של משבצת השאלה
+     * לפי מיקום הכלי במסלול הפעיל.
+     */
+    public String getQuestionDifficultyAtStep(
+            int pieceIndex, int step) {
+
+        // בדיקת תקינות הכלי ומצבו בלוח
+        if (pieceIndex < 0 || pieceIndex >= 4
+                || !piecesOnBoard[activeCorner][pieceIndex]
+                || piecesInHomePath[activeCorner][pieceIndex]) {
+            return null;
+        }
+
+        // איתור המשבצת במסלול הפעיל של הכלי
+        List<Point> route = currentPieceRoute(pieceIndex);
+
+        if (step < 0 || step >= route.size()) {
+            return null;
+        }
+
+        // קבלת רמת הקושי מה-Controller ומה-Model
+        return turns.getSpecialSquareQuestionDifficulty(
+                route.get(step));
+    }
+
 
     /**
      */
