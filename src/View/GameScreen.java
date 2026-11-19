@@ -148,6 +148,11 @@ public class GameScreen extends JPanel {
         // SRS 3.2.1.3.3 - the game clock starts with the first roll.
         turns.startGameClock();
         board.setActivePlayerColor(turns.getCurrentPlayerColor());
+
+        sidebar.setBoostMode(
+                turnController.isUltraBoostRollPending(),
+                "Hard".equals(difficulty) ? 6 : 3);
+
         int stepDie = turnController.rollStepDie();
         int boostDie = turnController.rollBoostDie();
         sidebar.setFormula(" ");
@@ -483,35 +488,29 @@ public class GameScreen extends JPanel {
         );
     }
 
-    private void showSurprise(int pieceIndex) {
-        Window owner = SwingUtilities.getWindowAncestor(this);
-        SurpriseDialog dialog = new SurpriseDialog(owner);
-        dialog.setVisible(true);
-        int startStep = pieces.getPieceStep(pieceIndex);
-        int targetStep = pieces.getSurpriseMoveTarget(
-                board.getActiveRouteSize(pieceIndex));
-        if (!pieces.applyEventMovement(
-                pieceIndex,
-                targetStep,
-                board.getActiveRouteSize(pieceIndex))) {
-            throw new IllegalStateException(
-                    "Surprise movement is not legal");
-        }
-        setStatus("Surprise! Move back 3 squares.");
-        board.animatePiece(
-                pieceIndex,
-                startStep,
-                targetStep,
-                this::endTurnOrExtraTurn
-        );
-    }
+	private void showSurprise(int pieceIndex) {
+	    new SurpriseFlow(
+	            turns,
+	            turnController,
+	            board,
+	            pieceIndex,
+	            SwingUtilities.getWindowAncestor(this),
+	            this::endTurnOrExtraTurn,
+	            this::passTurn,
+	            this::setStatus
+	    ).run();
+	}
 
     private void endTurnOrExtraTurn() {
         if (turnController.hasExtraTurn()) {
             turnController.grantExtraTurn();
             board.clearHighlight();
             sidebar.setRollButton(true, "Roll Again");
-            setStatus(turns.getCurrentPlayerName() + " rolled a 6 - roll again!");
+
+            setStatus(turnController.isUltraBoostRollPending()
+                    ? "Surprise! Roll again with UltraBoost."
+                    : turns.getCurrentPlayerName()
+                            + " rolled a 6 - roll again!");
         } else {
             passTurn();
         }

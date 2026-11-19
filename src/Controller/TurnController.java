@@ -14,6 +14,24 @@ public class TurnController {
     private final Random random = new Random();
     private final Die stepDie = new Die(6);
     private final Die boostDie;
+    private final Die ultraBoostDie = new Die(6);
+    private boolean surpriseExtraTurnPending;
+    private boolean ultraBoostOnNextRoll;
+
+    // בקשה לתור נוסף בעקבות הפתעה
+    public void requestSurpriseExtraTurn() {
+        surpriseExtraTurnPending = true;
+    }
+
+    // האם ההטלה הבאה משתמשת ב-UltraBoost
+    public boolean isUltraBoostRollPending() {
+        return ultraBoostOnNextRoll;
+    }
+
+    // סימון הפסד התור הבא
+    public void markSkipNextTurn(int playerIndex) {
+        game.markSkipNextTurn(playerIndex);
+    }
 
     public TurnController(Game game, MovementController pieces) {
         this.game = game;
@@ -44,10 +62,16 @@ public class TurnController {
     }
 
     public int rollBoostDie() {
+        if (ultraBoostOnNextRoll) {
+            return rollDie(ultraBoostDie);
+        }
         return boostDie == null ? 0 : rollDie(boostDie);
     }
 
     public int getBoostDieFaces() {
+        if (ultraBoostOnNextRoll) {
+            return 6;
+        }
         return boostDie == null ? 0 : boostDie.getFaces();
     }
 
@@ -58,6 +82,13 @@ public class TurnController {
 
     public boolean registerRollAndCheckThirdSix(int stepDie) {
         game.setLastStepDie(stepDie);
+
+        // תור UltraBoost אינו נפסל בגלל שלוש שישיות
+        if (ultraBoostOnNextRoll) {
+            game.setConsecutiveSixes(0);
+            return false;
+        }
+
         if (stepDie != 6) {
             game.setConsecutiveSixes(0);
             return false;
@@ -71,15 +102,29 @@ public class TurnController {
     }
 
     public boolean hasExtraTurn() {
-        return game.getLastStepDie() == 6;
+        if (game.isSkipNextTurnPending(game.getCurrentPlayer())) {
+            return false;
+        }
+
+        return surpriseExtraTurnPending
+                || game.getLastStepDie() == 6;
     }
 
     public void grantExtraTurn() {
+        if (surpriseExtraTurnPending) {
+            surpriseExtraTurnPending = false;
+            ultraBoostOnNextRoll = true;
+            game.setConsecutiveSixes(0);
+        }
+
         game.setStage(Stage.ROLL);
     }
 
     public RollAction finishRoll(int stepDie, int boostDie) {
         game.setPendingSteps(calculateSteps(stepDie, boostDie));
+
+        // UltraBoost תקף להטלה אחת בלבד
+        ultraBoostOnNextRoll = false;
         if (stepDie == 6 && game.hasPieceInCastle()) {
             game.setStage(Stage.TAKE_OUT);
             return RollAction.TAKE_OUT;
@@ -101,20 +146,52 @@ public class TurnController {
     }
 
     public void passTurn() {
+
+        // צריכת עונש דילוג על תור נוסף שנובע משישייה
+        if (game.getLastStepDie() == 6
+                && game.isSkipNextTurnPending(game.getCurrentPlayer())) {
+            game.consumeSkippedTurn(game.getCurrentPlayer());
+        }
+
         game.setConsecutiveSixes(0);
+        surpriseExtraTurnPending = false;
+        ultraBoostOnNextRoll = false;
+
         int total = game.getPlayerCount();
         int active = 0;
+
         for (int player = 0; player < total; player++) {
             if (!game.isPlayerFinished(player)) {
                 active++;
             }
         }
+
         if (active <= 1) {
             game.setStage(Stage.DONE);
             return;
         }
+
+        // חיפוש השחקן הבא תוך דילוג על שחקנים עם עונש
         for (int offset = 1; offset <= total; offset++) {
-            int candidate = (game.getCurrentPlayer() + offset) % total;
+            int candidate =
+                    (game.getCurrentPlayer() + offset) % total;
+
+            if (!game.isPlayerFinished(candidate)) {
+                if (game.consumeSkippedTurn(candidate)) {
+                    continue;
+                }
+
+                game.setCurrentPlayer(candidate);
+                game.setStage(Stage.ROLL);
+                return;
+            }
+        }
+
+        // כאשר כולם דילגו, חוזרים לשחקן הזמין הראשון
+        for (int offset = 1; offset <= total; offset++) {
+            int candidate =
+                    (game.getCurrentPlayer() + offset) % total;
+
             if (!game.isPlayerFinished(candidate)) {
                 game.setCurrentPlayer(candidate);
                 game.setStage(Stage.ROLL);

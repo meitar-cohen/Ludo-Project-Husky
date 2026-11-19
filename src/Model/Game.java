@@ -44,7 +44,31 @@ public class Game {
         for (int i = 0; i < players.length; i++) {
             piecesInCastleByPlayer[i] = PIECES_PER_PLAYER;
         }
+
         this.selectedPieceIndex = 0;
+    }
+
+    // שמירת השחקנים שצריכים להפסיד את התור הבא
+    private final java.util.Set<Integer> skipNextTurns =
+            new java.util.HashSet<>();
+
+    // סימון שחקן שיפסיד את התור הבא
+    public void markSkipNextTurn(int playerIndex) {
+        if (playerIndex < 0 || playerIndex >= players.length) {
+            throw new IllegalArgumentException(
+                    "Invalid player index");
+        }
+        skipNextTurns.add(playerIndex);
+    }
+
+    // בדיקה וצריכה של עונש הדילוג פעם אחת בלבד
+    public boolean consumeSkippedTurn(int playerIndex) {
+        return skipNextTurns.remove(playerIndex);
+    }
+
+    // בדיקה אם לשחקן ממתין עונש דילוג
+    public boolean isSkipNextTurnPending(int playerIndex) {
+        return skipNextTurns.contains(playerIndex);
     }
 
     public int getPiecesInCastle(int playerIndex) {

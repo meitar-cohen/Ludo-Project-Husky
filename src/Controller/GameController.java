@@ -26,6 +26,7 @@ public class GameController {
 
     private final Game game;
     private final MovementController pieces;
+    private final SurpriseController surpriseController;
     private final TurnController turnController;
     // מאגר השאלות שנטען מקובץ ה-CSV
     private final QuestionBank questionBank;
@@ -40,6 +41,8 @@ public class GameController {
 	    this.game = game;
 	    this.pieces = pieces;
 	    this.turnController = new TurnController(game, pieces);
+	    this.surpriseController =
+	            new SurpriseController(game, pieces, this.turnController);
 	
 	    // טעינת השאלות מתוך קובץ ה-CSV הקיים
 	    try {
@@ -132,6 +135,10 @@ public class GameController {
     }
 
 
+
+    public SurpriseController getSurpriseController() {
+        return surpriseController;
+    }
 
     public MovementController getMovementController() {
         return pieces;
