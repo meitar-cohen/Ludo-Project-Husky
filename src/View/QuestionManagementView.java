@@ -71,7 +71,13 @@ public final class QuestionManagementView extends JFrame {
         this.controller = controller;
         setTitle("Ludo - Question Management");
         MainMenuScreen.applyAppIcon(this);
-        setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+        // גם לחיצה על X מחזירה לתפריט הראשי ולא משאירה חלון ריק.
+        setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override public void windowClosing(java.awt.event.WindowEvent e) {
+                returnToMainMenu();
+            }
+        });
         setMinimumSize(new Dimension(950, 660));
         setSize(1130, 790);
         setLocationRelativeTo(null);
@@ -196,12 +202,14 @@ public final class QuestionManagementView extends JFrame {
                 12, Font.PLAIN, MUTED);
         footer.add(note, BorderLayout.WEST);
         JButton back = button("Back to Main Menu", true, false);
-        back.addActionListener(e -> {
-            new MainMenuScreen().setVisible(true);
-            dispose();
-        });
+        back.addActionListener(e -> returnToMainMenu());
         footer.add(back, BorderLayout.EAST);
         return footer;
+    }
+
+    private void returnToMainMenu() {
+        new MainMenuScreen().setVisible(true);
+        dispose();
     }
 
     private void configureTable() {
