@@ -182,6 +182,11 @@ public class GameScreen extends JPanel {
         // SRS 3.2.1.3.3 - the game clock starts with the first roll.
         turns.startGameClock();
         board.setActivePlayerColor(turns.getCurrentPlayerColor());
+
+        sidebar.setBoostMode(
+                turnController.isUltraBoostRollPending(),
+                "Hard".equals(difficulty) ? 6 : 3);
+
         int stepDie = turnController.rollStepDie();
         int boostDie = turnController.rollBoostDie();
         sidebar.setFormula(" ");
@@ -462,20 +467,52 @@ public class GameScreen extends JPanel {
         endTurnOrExtraTurn();
     }
 
-    private void askQuestion(int pieceIndex) {
-        Window owner = SwingUtilities.getWindowAncestor(this);
-        QuestionDialog dialog = new QuestionDialog(owner, turns);
-        dialog.setVisible(true);
-        boolean correct = dialog.isCorrect();
+
+	private void askQuestion(int pieceIndex) {
+	
+	    // קבלת רמת השאלה מהמשבצת שעליה הכלי נחת
+	    String questionDifficulty =
+	            board.getQuestionDifficultyAtStep(
+	                    pieceIndex,
+	                    pieces.getPieceStep(pieceIndex));
+	
+	    // מניעת הפעלת שאלה ללא רמת קושי מוגדרת
+	    if (questionDifficulty == null) {
+	        throw new IllegalStateException(
+	                "Question square has no difficulty");
+	    }
+	
+	    // בחירת שאלה אקראית מהמאגר ברמה המתאימה
+	    turns.selectQuestion(questionDifficulty);
+	
+	    // פתיחת חלון השאלה הקיים
+	    Window owner = SwingUtilities.getWindowAncestor(this);
+	    QuestionDialog dialog = new QuestionDialog(owner, turns);
+	    dialog.setVisible(true);
+	    boolean correct = dialog.isCorrect();
+
+
+        // מיקום הכלי לפני התנועה בעקבות השאלה
         int startStep = pieces.getPieceStep(pieceIndex);
+
+        // מספר הצעדים נקבע לפי רמת השאלה שנבחרה
+        int questionSteps = turns.getCurrentQuestionMoveSteps();
+
+        // חישוב מיקום היעד לפי נכונות התשובה
         int targetStep = pieces.getAnswerMoveTarget(
-            correct,
-            board.getActiveRouteSize(pieceIndex)
-        );
-        setStatus(correct
-            ? "Correct! Move 1 square forward."
-            : "Wrong answer. Move 1 square back."
-        );
+                correct,
+                questionSteps,
+                board.getActiveRouteSize(pieceIndex));
+
+        // עדכון ההודעה בהתאם לתוצאת התנועה
+        if (targetStep == startStep) {
+            setStatus("Question answered. Piece stays in place at route boundary.");
+        } else {
+            setStatus(correct
+                    ? "Correct! Move " + questionSteps + " square(s) forward."
+                    : "Wrong answer. Move " + questionSteps + " square(s) back.");
+        }
+
         if (!pieces.applyEventMovement(
                 pieceIndex,
                 targetStep,
@@ -491,35 +528,29 @@ public class GameScreen extends JPanel {
         );
     }
 
-    private void showSurprise(int pieceIndex) {
-        Window owner = SwingUtilities.getWindowAncestor(this);
-        SurpriseDialog dialog = new SurpriseDialog(owner);
-        dialog.setVisible(true);
-        int startStep = pieces.getPieceStep(pieceIndex);
-        int targetStep = pieces.getSurpriseMoveTarget(
-                board.getActiveRouteSize(pieceIndex));
-        if (!pieces.applyEventMovement(
-                pieceIndex,
-                targetStep,
-                board.getActiveRouteSize(pieceIndex))) {
-            throw new IllegalStateException(
-                    "Surprise movement is not legal");
-        }
-        setStatus("Surprise! Move back 3 squares.");
-        board.animatePiece(
-                pieceIndex,
-                startStep,
-                targetStep,
-                this::endTurnOrExtraTurn
-        );
-    }
+	private void showSurprise(int pieceIndex) {
+	    new SurpriseFlow(
+	            turns,
+	            turnController,
+	            board,
+	            pieceIndex,
+	            SwingUtilities.getWindowAncestor(this),
+	            this::endTurnOrExtraTurn,
+	            this::passTurn,
+	            this::setStatus
+	    ).run();
+	}
 
     private void endTurnOrExtraTurn() {
         if (turnController.hasExtraTurn()) {
             turnController.grantExtraTurn();
             board.clearHighlight();
             sidebar.setRollButton(true, "Roll Again");
-            setStatus(turns.getCurrentPlayerName() + " rolled a 6 - roll again!");
+
+            setStatus(turnController.isUltraBoostRollPending()
+                    ? "Surprise! Roll again with UltraBoost."
+                    : turns.getCurrentPlayerName()
+                            + " rolled a 6 - roll again!");
         } else {
             passTurn();
         }

@@ -75,12 +75,36 @@ public class MovementController {
         return game.getSelectedPiece().getSteps();
     }
 
-    public int getAnswerMoveTarget(boolean correct, int routeSize) {
-        int change = correct ? 1 : -1;
-        int target = getClockwiseTarget(game.getSelectedPiece().getSteps(), change);
-        return target >= 0 && target < routeSize
-                ? target : game.getSelectedPiece().getSteps();
-    }
+
+	 // שמירת התאימות למתודה הישנה של תנועה בצעד אחד
+	 public int getAnswerMoveTarget(boolean correct, int routeSize) {
+	     return getAnswerMoveTarget(correct, 1, routeSize);
+	 }
+	
+	 // חישוב יעד התנועה לפי מספר צעדי השאלה
+	 public int getAnswerMoveTarget(
+	         boolean correct, int questionSteps, int routeSize) {
+	
+	     // אימות טווח הצעדים החוקי של שאלות
+	     if (questionSteps < 1 || questionSteps > 3) {
+	         throw new IllegalArgumentException(
+	                 "Question movement must be 1-3 steps");
+	     }
+	
+	     // מיקום הכלי הנוכחי
+	     int current = game.getSelectedPiece().getSteps();
+	
+	     // תשובה נכונה מקדמת ותשובה שגויה מחזירה אחורה
+	     int change = correct ? questionSteps : -questionSteps;
+	
+	     // חישוב מיקום היעד
+	     int target = getClockwiseTarget(current, change);
+	
+	     // שמירת ההתנהגות הקיימת בגבולות המסלול
+	     return target >= 0 && target < routeSize
+	             ? target : current;
+	 }
+
 
     public int getSurpriseMoveTarget(int routeSize) {
         int target = game.getSelectedPiece().getSteps() - 3;
@@ -131,6 +155,37 @@ public class MovementController {
             return false;
         }
         game.getSelectedPiece().setSteps(targetStep);
+        return true;
+    }
+
+    // סיום כלי בעקבות הפתעה
+    public boolean finishPieceFromSurprise(int pieceIndex) {
+        if (game.getStage() != Stage.BUSY
+                || !game.selectPiece(pieceIndex)) {
+            return false;
+        }
+        return finishSelectedPiece();
+    }
+
+    // החזרת כלי לטירה בעקבות הפתעה
+    public boolean returnPieceToCastleFromSurprise(int pieceIndex) {
+        if (game.getStage() != Stage.BUSY
+                || !game.selectPiece(pieceIndex)) {
+            return false;
+        }
+
+        Piece piece = game.getSelectedPiece();
+
+        if (!piece.isOnBoard() || piece.isFinished()) {
+            return false;
+        }
+
+        piece.setOnBoard(false);
+        piece.setSteps(0);
+        piece.setInInnerPath(false);
+        piece.setInMiddlePath(false);
+
+        game.setPiecesInCastle(game.getPiecesInCastle() + 1);
         return true;
     }
 
