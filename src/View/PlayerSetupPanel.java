@@ -241,9 +241,21 @@ public class PlayerSetupPanel extends JPanel {
             return;
         }
         // Last step before the game: 2D (classic) or the 3D version?
-        Boolean threeD = ViewVersionDialog.choose(window);
-        if (threeD == null) {
-            return;     // "Back": stay on the player details
+        Boolean threeD;
+        WorldTheme theme = null;
+        while (true) {
+            threeD = ViewVersionDialog.choose(window);
+            if (threeD == null) {
+                return;     // "Back": stay on the player details
+            }
+            if (!threeD) {
+                break;
+            }
+            // 3D: which world? ("Back" there returns to the question 2D or 3D)
+            theme = ThemeChoiceDialog.choose(window);
+            if (theme != null) {
+                break;
+            }
         }
         errorLabel.setForeground(new Color(25, 150, 112));
         errorLabel.setText("Success! Loading game...");
@@ -251,7 +263,7 @@ public class PlayerSetupPanel extends JPanel {
         frame.setTitle("Ludo - Game");
         GameController gameController =
                 GameController.createNewGame(names, colors, difficulty);
-        frame.setContentPane(new GameScreen(gameController, difficulty, threeD));
+        frame.setContentPane(new GameScreen(gameController, difficulty, threeD, theme == null ? Themes.defaultTheme() : theme));
         frame.setSize(1150, 800);
         frame.setLocationRelativeTo(null);
         frame.revalidate();

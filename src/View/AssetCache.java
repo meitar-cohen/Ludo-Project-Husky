@@ -25,6 +25,7 @@ final class AssetCache {
     private BufferedImage sky, sun, islet;
     private final BufferedImage[] clouds = new BufferedImage[6];
     private final Map<Integer, BufferedImage> pawns = new HashMap<>();
+    private final Map<String, BufferedImage> images = new HashMap<>();
 
     // ------------------------------------------------------------------
     // Sky (gradient only; sun, clouds and rocks are sprites that move with the camera heading)
@@ -135,13 +136,13 @@ final class AssetCache {
     // ------------------------------------------------------------------
 
     /** Half-size copy of the pawn sprite, used when the pawn is small on screen (avoids jagged edges). */
-    BufferedImage pawnHalf(Color color) {
-        Integer key = color.getRGB() ^ 0x1000000;
+    BufferedImage pawnHalf(WorldTheme theme, Color color, int corner) {
+        Integer key = (theme.id().hashCode() * 31 + color.getRGB()) ^ 0x1000000;
         BufferedImage cached = pawns.get(key);
         if (cached != null) {
             return cached;
         }
-        BufferedImage big = pawn(color);
+        BufferedImage big = pawn(theme, color, corner);
         BufferedImage img = new BufferedImage(PAWN_W / 2, PAWN_H / 2, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = img.createGraphics();
         g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
@@ -151,8 +152,9 @@ final class AssetCache {
         return img;
     }
 
-    BufferedImage pawn(Color color) {
-        Integer key = color.getRGB();
+    /** The piece of the given world and colour (painted once by the world's strategy, then reused). */
+    BufferedImage pawn(WorldTheme theme, Color color, int corner) {
+        Integer key = theme.id().hashCode() * 31 + color.getRGB();
         BufferedImage cached = pawns.get(key);
         if (cached != null) {
             return cached;
@@ -160,6 +162,14 @@ final class AssetCache {
         BufferedImage img = new BufferedImage(PAWN_W, PAWN_H, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = img.createGraphics();
         quality(g);
+        theme.paintPawn(g, color, corner);
+        g.dispose();
+        pawns.put(key, img);
+        return img;
+    }
+
+    /** The standard glossy pawn; worlds call this and add their own details around it. */
+    static void paintGlossyPawn(Graphics2D g, Color color) {
         double x = PAWN_W / 2.0, ground = PAWN_GROUND, ph = PAWN_BODY;
         double bw = ph * 0.60, neck = ph * 0.20, neckY = ground - ph * 0.60;
         double hr = ph * 0.21, hy = ground - ph * 0.80;
@@ -234,8 +244,30 @@ final class AssetCache {
         g.setColor(new Color(255, 255, 255, 90));
         g.setStroke(new BasicStroke((float) Math.max(1.2, ph * 0.014)));
         g.draw(new java.awt.geom.Arc2D.Double(x - hr * 0.94, hy - hr * 0.94, hr * 1.88, hr * 1.88, -60, 70, java.awt.geom.Arc2D.OPEN));
+    }
+
+    // ------------------------------------------------------------------
+    // Generic cached pictures (backdrops, panoramas, signs)
+    // ------------------------------------------------------------------
+
+    /** Paints into a picture of the given size. */
+    interface ImagePainter {
+        void paint(Graphics2D g, int width, int height);
+    }
+
+    /** A picture that is painted once for every key and size, then reused. */
+    BufferedImage image(String key, int width, int height, ImagePainter painter) {
+        String full = key + "@" + width + "x" + height;
+        BufferedImage cached = images.get(full);
+        if (cached != null) {
+            return cached;
+        }
+        BufferedImage img = new BufferedImage(Math.max(1, width), Math.max(1, height), BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = img.createGraphics();
+        quality(g);
+        painter.paint(g, img.getWidth(), img.getHeight());
         g.dispose();
-        pawns.put(key, img);
+        images.put(full, img);
         return img;
     }
 

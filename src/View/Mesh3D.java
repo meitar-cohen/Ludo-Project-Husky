@@ -19,6 +19,7 @@ final class Mesh3D {
         /** Windows as {u0, u1, v0, v1} in face coordinates (only for quads: bl, br, tr, tl). */
         List<double[]> windows;
         Color windowColor = new Color(34, 26, 36);
+        Color doorColor = new Color(112, 72, 42);
         /** Number of mortar rows (0 = none). For triangles: number of roof tile rows. */
         int brickRows;
         /** Width of the face in world units (used for the brick pattern). */
@@ -29,6 +30,11 @@ final class Mesh3D {
         Color bannerColor;
         /** Tiny decoration (battlement block): not drawn when far away. */
         boolean small;
+        /** Glowing surface (lava, neon, lights): drawn without shading. */
+        boolean emissive;
+        /** Text painted on the face (signs), only for quads. */
+        String label;
+        Color labelColor = Color.WHITE;
 
         final double cx, cy, cz;
 
@@ -196,6 +202,174 @@ final class Mesh3D {
                 double c = (i + 1.0) / (windows + 1.0);
                 face.windows.add(new double[]{c - 0.07, c + 0.07, 0.42, 0.78});
             }
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // More shapes for the themed houses
+    // ------------------------------------------------------------------
+
+    /** Remembers the current end of the mesh, to change the polygons added after it. */
+    int mark() {
+        return polys.size();
+    }
+
+    /** Marks everything added since {@code mark} as tiny: it is not drawn when far away. */
+    void smallSince(int mark) {
+        for (int i = mark; i < polys.size(); i++) {
+            polys.get(i).small = true;
+        }
+    }
+
+    /** Makes everything added since {@code mark} glow (no shading). */
+    void emissiveSince(int mark) {
+        for (int i = mark; i < polys.size(); i++) {
+            polys.get(i).emissive = true;
+        }
+    }
+
+    /** Sets the colour of the window decals of the box that was added last. */
+    void windowColorOfLastBox(Color color) {
+        for (int i = polys.size() - 5; i < polys.size() - 1; i++) {
+            polys.get(i).windowColor = color;
+        }
+    }
+
+    /** Sets the colour of the doors of the box that was added last. */
+    void doorColorOfLastBox(Color color) {
+        for (int i = polys.size() - 5; i < polys.size() - 1; i++) {
+            polys.get(i).doorColor = color;
+        }
+    }
+
+    /** Paints a text label on the four side faces of the box that was added last. */
+    void addLabelToLastBox(String text, Color color) {
+        for (int i = polys.size() - 5; i < polys.size() - 1; i++) {
+            polys.get(i).label = text;
+            polys.get(i).labelColor = color;
+        }
+    }
+
+    /** Convex polygon; the normal is computed and turned away from the given inside point. */
+    Poly addConvex(double[] x, double[] y, double[] z, Color color, double ix, double iy, double iz) {
+        int n = x.length;
+        double nx = 0, ny = 0, nz = 0, cx = 0, cy = 0, cz = 0;
+        for (int i = 0; i < n; i++) {
+            int j = (i + 1) % n;
+            nx += (y[i] - y[j]) * (z[i] + z[j]);
+            ny += (z[i] - z[j]) * (x[i] + x[j]);
+            nz += (x[i] - x[j]) * (y[i] + y[j]);
+            cx += x[i] / n;
+            cy += y[i] / n;
+            cz += z[i] / n;
+        }
+        double len = Math.sqrt(nx * nx + ny * ny + nz * nz);
+        if (len < 1e-9) {
+            len = 1;
+        }
+        nx /= len;
+        ny /= len;
+        nz /= len;
+        if (nx * (cx - ix) + ny * (cy - iy) + nz * (cz - iz) < 0) {
+            nx = -nx;
+            ny = -ny;
+            nz = -nz;
+        }
+        Poly p = new Poly(x, y, z, nx, ny, nz, color, false);
+        polys.add(p);
+        return p;
+    }
+
+    /** Box whose top rectangle differs from the bottom one (hoods, cabins, awnings). Axis-aligned rectangles. */
+    void addFrustum(double bx0, double bx1, double bz0, double bz1, double by,
+                    double tx0, double tx1, double tz0, double tz1, double ty, Color color) {
+        double[][] b = {{bx0, bz0}, {bx1, bz0}, {bx1, bz1}, {bx0, bz1}};
+        double[][] t = {{tx0, tz0}, {tx1, tz0}, {tx1, tz1}, {tx0, tz1}};
+        double ix = (bx0 + bx1 + tx0 + tx1) / 4, iz = (bz0 + bz1 + tz0 + tz1) / 4, iy = (by + ty) / 2;
+        for (int i = 0; i < 4; i++) {
+            int j = (i + 1) % 4;
+            addConvex(new double[]{b[i][0], b[j][0], t[j][0], t[i][0]}, new double[]{by, by, ty, ty},
+                    new double[]{b[i][1], b[j][1], t[j][1], t[i][1]}, color, ix, iy, iz);
+        }
+        addConvex(new double[]{t[0][0], t[1][0], t[2][0], t[3][0]}, new double[]{ty, ty, ty, ty},
+                new double[]{t[0][1], t[1][1], t[2][1], t[3][1]}, color, ix, iy, iz);
+    }
+
+    /** Upright cone with a flat top (volcano, tower with sloping sides). */
+    void addRoundFrustum(double cx, double cz, double r0, double r1, double y0, double y1, int sides, Color color) {
+        double h = y1 - y0;
+        double len = Math.sqrt(h * h + (r0 - r1) * (r0 - r1));
+        for (int i = 0; i < sides; i++) {
+            double a0 = 2 * Math.PI * i / sides, a1 = 2 * Math.PI * (i + 1) / sides;
+            double mid = (a0 + a1) / 2;
+            polys.add(new Poly(
+                    new double[]{cx + r0 * Math.cos(a0), cx + r0 * Math.cos(a1), cx + r1 * Math.cos(a1), cx + r1 * Math.cos(a0)},
+                    new double[]{y0, y0, y1, y1},
+                    new double[]{cz + r0 * Math.sin(a0), cz + r0 * Math.sin(a1), cz + r1 * Math.sin(a1), cz + r1 * Math.sin(a0)},
+                    Math.cos(mid) * h / len, (r0 - r1) / len, Math.sin(mid) * h / len, color, false));
+        }
+        if (r1 > 0.01) {
+            double[] tx = new double[sides], tz = new double[sides], ty = new double[sides];
+            for (int i = 0; i < sides; i++) {
+                double a = 2 * Math.PI * i / sides;
+                tx[i] = cx + r1 * Math.cos(a);
+                tz[i] = cz + r1 * Math.sin(a);
+                ty[i] = y1;
+            }
+            polys.add(new Poly(tx, ty, tz, 0, 1, 0, color, false));
+        }
+    }
+
+    /** Cylinder lying along the x or the z axis (wheels, pipes, rails). */
+    void addAxisCylinder(boolean alongX, double cx, double cy, double cz, double radius, double length,
+                         int sides, Color color) {
+        double h = length / 2;
+        for (int i = 0; i < sides; i++) {
+            double a0 = 2 * Math.PI * i / sides, a1 = 2 * Math.PI * (i + 1) / sides, mid = (a0 + a1) / 2;
+            double c0 = Math.cos(a0), s0 = Math.sin(a0), c1 = Math.cos(a1), s1 = Math.sin(a1);
+            if (alongX) {
+                polys.add(new Poly(new double[]{cx - h, cx + h, cx + h, cx - h},
+                        new double[]{cy + radius * c0, cy + radius * c0, cy + radius * c1, cy + radius * c1},
+                        new double[]{cz + radius * s0, cz + radius * s0, cz + radius * s1, cz + radius * s1},
+                        0, Math.cos(mid), Math.sin(mid), color, false));
+            } else {
+                polys.add(new Poly(new double[]{cx + radius * s0, cx + radius * s0, cx + radius * s1, cx + radius * s1},
+                        new double[]{cy + radius * c0, cy + radius * c0, cy + radius * c1, cy + radius * c1},
+                        new double[]{cz - h, cz + h, cz + h, cz - h},
+                        Math.sin(mid), Math.cos(mid), 0, color, false));
+            }
+        }
+        for (int side = -1; side <= 1; side += 2) {
+            double[] px = new double[sides], py = new double[sides], pz = new double[sides];
+            for (int i = 0; i < sides; i++) {
+                double a = 2 * Math.PI * i / sides;
+                if (alongX) {
+                    px[i] = cx + side * h;
+                    py[i] = cy + radius * Math.cos(a);
+                    pz[i] = cz + radius * Math.sin(a);
+                } else {
+                    px[i] = cx + radius * Math.sin(a);
+                    py[i] = cy + radius * Math.cos(a);
+                    pz[i] = cz + side * h;
+                }
+            }
+            polys.add(new Poly(px, py, pz, alongX ? side : 0, 0, alongX ? 0 : side, color, false));
+        }
+    }
+
+    /** Cone roof whose facets alternate between two colours (beach umbrella, awning). */
+    void addPyramidStriped(double cx, double cz, double radius, double y0, double height, int sides,
+                           Color c1, Color c2) {
+        double len = Math.sqrt(height * height + radius * radius);
+        for (int i = 0; i < sides; i++) {
+            double a0 = 2 * Math.PI * i / sides, a1 = 2 * Math.PI * (i + 1) / sides;
+            double mid = (a0 + a1) / 2;
+            polys.add(new Poly(
+                    new double[]{cx + radius * Math.cos(a0), cx + radius * Math.cos(a1), cx},
+                    new double[]{y0, y0, y0 + height},
+                    new double[]{cz + radius * Math.sin(a0), cz + radius * Math.sin(a1), cz},
+                    height * Math.cos(mid) / len, radius / len, height * Math.sin(mid) / len,
+                    (i & 1) == 0 ? c1 : c2, false));
         }
     }
 
