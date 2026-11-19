@@ -158,6 +158,37 @@ public class MovementController {
         return true;
     }
 
+    // סיום כלי בעקבות הפתעה
+    public boolean finishPieceFromSurprise(int pieceIndex) {
+        if (game.getStage() != Stage.BUSY
+                || !game.selectPiece(pieceIndex)) {
+            return false;
+        }
+        return finishSelectedPiece();
+    }
+
+    // החזרת כלי לטירה בעקבות הפתעה
+    public boolean returnPieceToCastleFromSurprise(int pieceIndex) {
+        if (game.getStage() != Stage.BUSY
+                || !game.selectPiece(pieceIndex)) {
+            return false;
+        }
+
+        Piece piece = game.getSelectedPiece();
+
+        if (!piece.isOnBoard() || piece.isFinished()) {
+            return false;
+        }
+
+        piece.setOnBoard(false);
+        piece.setSteps(0);
+        piece.setInInnerPath(false);
+        piece.setInMiddlePath(false);
+
+        game.setPiecesInCastle(game.getPiecesInCastle() + 1);
+        return true;
+    }
+
     public boolean tryFinishPiece(int pieceIndex, int routeSize) {
         if (game.getStage() != Stage.MOVE
                 || !game.selectPiece(pieceIndex)
