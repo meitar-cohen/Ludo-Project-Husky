@@ -20,6 +20,11 @@ public class GameScreen extends JPanel {
 
     private final String difficulty;
 
+    // 3D prototype: the whole game is shown on a 2.5D board (Board3DPanel) instead of the flat one.
+    private final boolean threeD;
+    private Board3DPanel board3D;
+    private JLabel boardTitle;
+
     private final BoardPanel board;
     private final JLabel timerLabel;
     private final GameSidebarPanel sidebar;
@@ -35,6 +40,12 @@ public class GameScreen extends JPanel {
     private final TurnController turnController;
 
     public GameScreen(GameController turns, String difficulty) {
+        this(turns, difficulty, false);
+    }
+
+    /** @param threeD true = play on the 3D board (3D prototype) */
+    public GameScreen(GameController turns, String difficulty, boolean threeD) {
+        this.threeD = threeD;
         this.turns = turns;
         this.difficulty = difficulty == null ? "Easy" : difficulty;
         this.history = new HistoryController();
@@ -67,6 +78,16 @@ public class GameScreen extends JPanel {
         level.setForeground(Color.WHITE);
         level.setFont(new Font("Segoe UI", Font.BOLD, 12));
         level.setBorder(new EmptyBorder(3, 10, 3, 10));
+        if (threeD) {
+            JLabel mode3d = new JLabel("  3D PROTOTYPE  ");
+            mode3d.setOpaque(true);
+            mode3d.setBackground(new Color(255, 190, 75));
+            mode3d.setForeground(INK);
+            mode3d.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            mode3d.setBorder(new EmptyBorder(3, 10, 3, 10));
+            mode3d.setToolTipText("Piece moves are shown in the 2.5D action view");
+            headerBadges.add(mode3d);
+        }
         headerBadges.add(level);
         timerLabel = new JLabel("00:00:00");
         timerLabel.setFont(new Font("Segoe UI", Font.BOLD, 17));
@@ -83,7 +104,7 @@ public class GameScreen extends JPanel {
         boardCard.setBorder(new EmptyBorder(12, 13, 13, 13));
         JPanel boardCaption = new JPanel(new BorderLayout());
         boardCaption.setOpaque(false);
-        JLabel boardTitle = new JLabel("THE BOARD");
+        boardTitle = new JLabel(threeD ? "THE 3D BOARD" : "THE BOARD");
         boardTitle.setForeground(INK);
         boardTitle.setFont(new Font("Segoe UI", Font.BOLD, 13));
         boardCaption.add(boardTitle, BorderLayout.WEST);
@@ -103,7 +124,15 @@ public class GameScreen extends JPanel {
         board.setOpaque(false);
         board.setCastlePieceClickListener(this::onCastlePieceClicked);
         board.setBoardPieceClickListener(this::onBoardPieceClicked);
-        boardCard.add(board, BorderLayout.CENTER);
+        if (threeD) {
+            // the flat board is not shown: it only keeps the piece positions, the 3D board draws them
+            board.setSize(700, 700);
+            board.setStepDelay(190);
+            board3D = new Board3DPanel(board);
+            boardCard.add(board3D, BorderLayout.CENTER);
+        } else {
+            boardCard.add(board, BorderLayout.CENTER);
+        }
         arena.add(boardCard, BorderLayout.CENTER);
         sidebar = new GameSidebarPanel(
                 turns.getPlayerNames(),
@@ -119,8 +148,13 @@ public class GameScreen extends JPanel {
         side.setPreferredSize(new Dimension(330, 0));
         side.add(sidebar, BorderLayout.CENTER);
         arena.add(side, BorderLayout.EAST);
+        if (board3D != null) {
+            // the green "Go!" button of the 3D view rolls the dice when no piece can be moved
+            board3D.setRollAction(this::onRoll, sidebar::isRollEnabled);
+        }
         refreshPlayers();
-        setStatus(turns.getPlayerNames()[0] + "'s turn. Click Roll Dice to start.");
+        setStatus(turns.getPlayerNames()[0] + "'s turn. Click Roll Dice to start."
+                + (threeD ? " (3D board)" : ""));
         startTimer();
     }
 
@@ -280,6 +314,12 @@ public class GameScreen extends JPanel {
         setStatus(
                 "Piece on start! You earned another turn. Click Roll Dice.");
         sidebar.setRollButton(true, "Roll Dice");
+    }
+
+    private void stopBoard3D() {
+        if (board3D != null) {
+            board3D.stop();
+        }
     }
 
     /**
@@ -557,6 +597,7 @@ public class GameScreen extends JPanel {
 
     private void showEndScreen() {
         gameTimer.stop();
+        stopBoard3D();
         JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(this);
         if (frame != null) {
             // SRS 3.2.8.3.1 - the end screen shows the players by final place
@@ -575,7 +616,8 @@ public class GameScreen extends JPanel {
 	        return;
 	    }
 	    gameTimer.stop();
-	    Window w = SwingUtilities.getWindowAncestor(this);
+	    stopBoard3D();
+	    Window w =SwingUtilities.getWindowAncestor(this);
 	    new MainMenuScreen().setVisible(true);
 	    if (w != null) {
 	        w.dispose();

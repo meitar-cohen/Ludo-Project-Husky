@@ -234,19 +234,24 @@ public class PlayerSetupPanel extends JPanel {
             }
             return;
         }
-        errorLabel.setForeground(new Color(25, 150, 112));
-        errorLabel.setText("Success! Loading game...");
         Window window = SwingUtilities.getWindowAncestor(this);
         if (!(window instanceof JFrame)) {
             errorLabel.setForeground(new Color(211, 65, 90));
             errorLabel.setText("Unable to open the game window.");
             return;
         }
+        // Last step before the game: 2D (classic) or the 3D version?
+        Boolean threeD = ViewVersionDialog.choose(window);
+        if (threeD == null) {
+            return;     // "Back": stay on the player details
+        }
+        errorLabel.setForeground(new Color(25, 150, 112));
+        errorLabel.setText("Success! Loading game...");
         JFrame frame = (JFrame) window;
         frame.setTitle("Ludo - Game");
         GameController gameController =
                 GameController.createNewGame(names, colors, difficulty);
-        frame.setContentPane(new GameScreen(gameController, difficulty));
+        frame.setContentPane(new GameScreen(gameController, difficulty, threeD));
         frame.setSize(1150, 800);
         frame.setLocationRelativeTo(null);
         frame.revalidate();
