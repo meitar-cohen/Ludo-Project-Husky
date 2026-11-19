@@ -317,6 +317,49 @@ public class BoardPanel extends JPanel {
         return true;
     }
 
+ // החזרת כלי פעיל לטירה בתצוגת הלוח
+    public boolean showActivePieceReturnedToCastle(int pieceIndex) {
+        if (pieceIndex < 0 || pieceIndex >= 4
+                || !piecesOnBoard[activeCorner][pieceIndex]
+                || castlePieces[activeCorner][pieceIndex]) {
+            return false;
+        }
+
+        piecesOnBoard[activeCorner][pieceIndex] = false;
+        castlePieces[activeCorner][pieceIndex] = true;
+        piecesInCastle[activeCorner]++;
+        pieceSteps[activeCorner][pieceIndex] = 0;
+        piecesInHomePath[activeCorner][pieceIndex] = false;
+        piecesInInnerPath[activeCorner][pieceIndex] = false;
+        piecesInMiddlePath[activeCorner][pieceIndex] = false;
+
+        selectedPieceIndex = pieceIndex;
+        clearHighlight();
+        repaint();
+        return true;
+    }
+
+    // עדכון מיקום כלי יריב ללא שינוי התור הפעיל
+    public boolean showOtherPlayerPieceStep(
+            int playerIndex, int pieceIndex, int step) {
+
+        if (playerIndex < 0 || playerIndex >= turns.getPlayerCount()
+                || pieceIndex < 0 || pieceIndex >= 4 || step < 0) {
+            return false;
+        }
+
+        int corner = cornerOf(turns.getPlayerColors()[playerIndex]);
+
+        if (!piecesOnBoard[corner][pieceIndex]
+                || step >= routeForPlayerPiece(corner, pieceIndex).size()) {
+            return false;
+        }
+
+        pieceSteps[corner][pieceIndex] = step;
+        repaint();
+        return true;
+    }
+
     public int getActivePieceStep() {
         return pieceSteps[activeCorner][selectedPieceIndex];
     }
@@ -625,6 +668,49 @@ public class BoardPanel extends JPanel {
      * SRS 3.2.4.3.1 -
      *
      */
+ // אנימציית תנועה של כלי יריב ללא שינוי השחקן הפעיל
+    public void animateOtherPlayerPiece(
+            int playerIndex, int pieceIndex,
+            int startStep, int targetStep, Runnable onDone) {
+
+        if (playerIndex < 0 || playerIndex >= turns.getPlayerCount()
+                || pieceIndex < 0 || pieceIndex >= 4) {
+            throw new IllegalArgumentException("Invalid opponent piece");
+        }
+
+        int corner = cornerOf(turns.getPlayerColors()[playerIndex]);
+
+        if (!piecesOnBoard[corner][pieceIndex]) {
+            throw new IllegalStateException(
+                    "Opponent piece is not on board");
+        }
+
+        if (animation != null && animation.isRunning()) {
+            animation.stop();
+        }
+
+        pieceSteps[corner][pieceIndex] = startStep;
+        final int[] position = {startStep};
+
+        animation = new Timer(220, null);
+
+        animation.addActionListener(e -> {
+            if (position[0] == targetStep) {
+                animation.stop();
+                if (onDone != null) {
+                    onDone.run();
+                }
+                return;
+            }
+
+            position[0] += Integer.signum(targetStep - position[0]);
+            pieceSteps[corner][pieceIndex] = position[0];
+            repaint();
+        });
+
+        animation.start();
+    }
+
     public void animatePiece(
             int pieceIndex,
             int startStep,
