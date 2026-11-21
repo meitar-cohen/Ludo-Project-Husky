@@ -10,6 +10,7 @@ import Controller.MovementController;
 import Controller.GameController;
 import Controller.TurnController;
 import Enums.RollAction;
+import Enums.SquareType;
 
 public class GameScreen extends JPanel {
 
@@ -35,6 +36,8 @@ public class GameScreen extends JPanel {
     // SRS 3.2.8 - the finished game is saved once; the message is shown on the end screen
     private boolean gameOverHandled;
     private String historyNote = "";
+    // the last capture message stays on the status line until the next roll
+    private String captureNote = "";
     private final HistoryController history;
     private final MovementController pieces;
     private final GameController turns;
@@ -187,6 +190,7 @@ public class GameScreen extends JPanel {
             return;
         }
         // SRS 3.2.1.3.3 - the game clock starts with the first roll.
+        captureNote = "";
         turns.startGameClock();
         board.setActivePlayerColor(turns.getCurrentPlayerColor());
 
@@ -425,6 +429,7 @@ public class GameScreen extends JPanel {
         }
         String pathName = middle ? "the middle path (64)" : "the inner path (52)";
         if (remaining <= 0) {
+            announceCapture(pieceIndex);
             setStatus("Matching arrow! Piece entered " + pathName + ".");
             endTurnOrExtraTurn();
             return;
@@ -454,10 +459,13 @@ public class GameScreen extends JPanel {
             crossArrow(pieceIndex, 0);
             return;
         }
+        announceCapture(pieceIndex);
         endTurnOrExtraTurn();
     }
 
     private void finishPieceMovement(int pieceIndex) {
+        // SRS 3.2.3.3.1 - capture is checked before a question or surprise square is activated
+        announceCapture(pieceIndex);
         String event = board.getSquareEventAtStep(
                 pieceIndex, pieces.getPieceStep(pieceIndex));
         if ("QUESTION".equals(event)) {
@@ -544,7 +552,8 @@ public class GameScreen extends JPanel {
 	            SwingUtilities.getWindowAncestor(this),
 	            this::endTurnOrExtraTurn,
 	            this::passTurn,
-	            this::setStatus
+	            this::setStatus,
+	            message -> captureNote = message
 	    ).run();
 	}
 
@@ -640,7 +649,15 @@ public class GameScreen extends JPanel {
     }
 
     private void setStatus(String text) {
-        sidebar.setStatus(text);
+        sidebar.setStatus(captureNote + text);
+    }
+
+    /** SRS 3.2.5.3.1 - applies a capture made by the piece that just stopped. */
+    private void announceCapture(int pieceIndex) {
+        String message = board.resolveCapture(turns.getCurrentPlayerIndex(), pieceIndex);
+        if (message != null) {
+            captureNote = message;
+        }
     }
 
     /**
@@ -649,35 +666,154 @@ public class GameScreen extends JPanel {
      * and symbols displayed to the user.
      */
     private JPanel createLegend() {
-        JPanel legend = new JPanel(new GridLayout(0, 1, 0, 2));
+        JPanel legend = new JPanel();
+        legend.setLayout(new BoxLayout(legend, BoxLayout.Y_AXIS));
         legend.setOpaque(false);
-        legend.add(sectionLabel("BOARD LEGEND"));
-        legend.add(legendRow("#", new Color(225, 230, 239), "Start square"));
-        legend.add(legendRow("\u2605", new Color(255, 230, 150), "Protection square"));
-        legend.add(legendRow("\u2192", new Color(225, 230, 239), "Arrow to inner path"));
-        legend.add(legendRow("", new Color(215, 230, 255), "Home path"));
+        legend.setBorder(new EmptyBorder(4, 6, 4, 6));
+        JLabel title = new JLabel("Board legend");
+        title.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        title.setForeground(INK);
+        legend.add(leftAligned(title));
+        legend.add(Box.createVerticalStrut(10));
+        legend.add(legendSection("PROTECTED - a piece here cannot be captured"));
+        legend.add(legendRow(SquareType.STAR, null,
+                "Protection square", "Star - pieces of different players can share it"));
+        legend.add(legendRow(SquareType.START, BoardPanel.BLUE,
+                "Start square", "Marked #, in the colour of its player"));
         if (!"Easy".equals(difficulty)) {
-            legend.add(legendRow("?", BoardPanel.Q_EASY, "Question square"));
-            legend.add(legendRow("!", BoardPanel.SURPRISE, "Surprise square"));
+            legend.add(legendRow(SquareType.SURPRISE, BoardPanel.SURPRISE,
+                    "Surprise square", "Marked !, triggers a random event"));
+        }
+        legend.add(Box.createVerticalStrut(8));
+        legend.add(legendSection("PATHS"));
+        legend.add(legendRow(SquareType.ARROW, BoardPanel.GREEN,
+                "Arrow", "A piece of the same colour moves to the next path"));
+        legend.add(legendRow(null, BoardPanel.GREEN,
+                "Home path", "Private path to the goal - cannot be captured"));
+        if (!"Easy".equals(difficulty)) {
+            legend.add(Box.createVerticalStrut(8));
+            legend.add(legendSection("QUESTION SQUARES"));
+            legend.add(legendRow(SquareType.QUESTION, BoardPanel.Q_EASY,
+                    "Easy question", "Right: 1 forward - wrong: 1 back"));
+            legend.add(legendRow(SquareType.QUESTION, BoardPanel.Q_MEDIUM,
+                    "Medium question", "Right: 2 forward - wrong: 2 back"));
+            legend.add(legendRow(SquareType.QUESTION, BoardPanel.Q_HARD,
+                    "Hard question", "Right: 3 forward - wrong: 3 back"));
         }
         return legend;
     }
 
-    private JPanel legendRow(String symbol, Color bg, String text) {
-        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 1));
+    private JComponent legendSection(String text) {
+        JLabel label = sectionLabel(text);
+        label.setBorder(new EmptyBorder(0, 0, 4, 0));
+        return leftAligned(label);
+    }
+
+    private JComponent legendRow(SquareType type, Color color, String name, String description) {
+        JPanel row = new JPanel(new BorderLayout(10, 0));
         row.setOpaque(false);
-        JLabel s = new JLabel(symbol, SwingConstants.CENTER);
-        s.setOpaque(true);
-        s.setBackground(bg);
-        s.setForeground(INK);
-        s.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        s.setPreferredSize(new Dimension(19, 19));
-        JLabel label = new JLabel(text);
-        label.setForeground(MUTED);
-        label.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        row.add(s);
-        row.add(label);
-        return row;
+        row.setBorder(new EmptyBorder(3, 0, 3, 0));
+        row.add(new JLabel(new ImageIcon(legendSwatch(type, color))), BorderLayout.WEST);
+        JLabel label = new JLabel("<html><b>" + name + "</b><br>"
+                + "<span style='color:#6e7a96'>" + description + "</span></html>");
+        label.setForeground(INK);
+        label.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        row.add(label, BorderLayout.CENTER);
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, row.getPreferredSize().height));
+        return leftAligned(row);
+    }
+
+    /** Draws a square like the board does (null type = a home-path cell). */
+    private static Image legendSwatch(SquareType type, Color color) {
+        int cell = 36;
+        int pad = 3;
+        int tile = cell - pad * 2;
+        int arc = 10;
+        java.awt.image.BufferedImage image =
+                new java.awt.image.BufferedImage(cell, cell, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = image.createGraphics();
+        quality(g);
+        Color base = Color.WHITE;
+        if (type == SquareType.STAR) {
+            base = new Color(255, 241, 196);
+        } else if (type == SquareType.SURPRISE) {
+            base = new Color(234, 223, 255);
+        } else if (color != null) {
+            base = lighten(color);
+            if (type == SquareType.START || type == SquareType.ARROW
+                    || type == SquareType.QUESTION) {
+                base = lighten(base);
+            }
+        }
+        g.setColor(base);
+        g.fillRect(0, 0, cell, cell);
+        g.setColor(new Color(201, 209, 228));
+        g.setStroke(new BasicStroke(1.2f));
+        g.drawRect(0, 0, cell - 1, cell - 1);
+        if (type == SquareType.STAR) {
+            g.setColor(new Color(255, 255, 255, 170));
+            g.fillOval(pad, pad, tile, tile);
+            java.awt.geom.Path2D star = new java.awt.geom.Path2D.Double();
+            for (int i = 0; i < 10; i++) {
+                double radius = (i % 2 == 0 ? 1.0 : 0.46) * cell * 0.39;
+                double angle = -Math.PI / 2 + i * Math.PI / 5;
+                double px = cell / 2.0 + Math.cos(angle) * radius;
+                double py = cell / 2.0 + Math.sin(angle) * radius;
+                if (i == 0) {
+                    star.moveTo(px, py);
+                } else {
+                    star.lineTo(px, py);
+                }
+            }
+            star.closePath();
+            g.setColor(new Color(251, 181, 37));
+            g.fill(star);
+            g.setColor(new Color(158, 107, 19));
+            g.setStroke(new BasicStroke(1.5f));
+            g.draw(star);
+        } else if (type == SquareType.ARROW) {
+            g.setColor(new Color(255, 255, 255, 150));
+            g.fillRoundRect(pad, pad, tile, tile, arc, arc);
+            double length = cell * 0.37;
+            java.awt.geom.Path2D arrow = new java.awt.geom.Path2D.Double();
+            arrow.moveTo(-length, -length * 0.27);
+            arrow.lineTo(0, -length * 0.27);
+            arrow.lineTo(0, -length * 0.69);
+            arrow.lineTo(length, 0);
+            arrow.lineTo(0, length * 0.69);
+            arrow.lineTo(0, length * 0.27);
+            arrow.lineTo(-length, length * 0.27);
+            arrow.closePath();
+            g.translate(cell / 2.0, cell / 2.0);
+            g.setColor(color.darker());
+            g.fill(arrow);
+        } else if (type != null) {
+            Color fill = color;
+            String mark = "#";
+            if (type == SquareType.QUESTION) {
+                mark = "?";
+                fill = BoardPanel.Q_EASY.equals(color) ? new Color(48, 167, 111)
+                        : BoardPanel.Q_MEDIUM.equals(color) ? new Color(220, 157, 32)
+                        : new Color(221, 69, 90);
+            } else if (type == SquareType.SURPRISE) {
+                mark = "!";
+                fill = new Color(134, 76, 211);
+            }
+            g.setColor(fill);
+            g.fillRoundRect(pad, pad, tile, tile, arc, arc);
+            g.setFont(new Font("Segoe UI", Font.BOLD, 22));
+            FontMetrics metrics = g.getFontMetrics();
+            g.setColor(Color.WHITE);
+            g.drawString(mark, (cell - metrics.stringWidth(mark)) / 2,
+                    (cell + metrics.getAscent() - metrics.getDescent()) / 2);
+        }
+        g.dispose();
+        return image;
+    }
+
+    private static Color lighten(Color color) {
+        return new Color((color.getRed() + 255) / 2,
+                (color.getGreen() + 255) / 2, (color.getBlue() + 255) / 2);
     }
 
     static JLabel sectionLabel(String text) {

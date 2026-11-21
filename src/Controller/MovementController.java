@@ -189,6 +189,29 @@ public class MovementController {
         return true;
     }
 
+    /**
+     * SRS 3.2.5.3.1 - a captured piece of any player goes back to its owner's castle.
+     * Pieces on the private home path or at the finish cannot be captured.
+     */
+    public boolean sendPieceToCastle(int playerIndex, int pieceIndex) {
+        if (playerIndex < 0 || playerIndex >= game.getPlayerCount()
+                || pieceIndex < 0 || pieceIndex >= Game.PIECES_PER_PLAYER) {
+            return false;
+        }
+
+        Piece piece = game.getPlayer(playerIndex).getPiece(pieceIndex);
+        if (!piece.isOnBoard() || piece.isFinished() || piece.isInHomePath()) {
+            return false;
+        }
+
+        piece.setOnBoard(false);
+        piece.setSteps(0);
+        piece.setInInnerPath(false);
+        piece.setInMiddlePath(false);
+        game.setPiecesInCastle(playerIndex, game.getPiecesInCastle(playerIndex) + 1);
+        return true;
+    }
+
     public boolean tryFinishPiece(int pieceIndex, int routeSize) {
         if (game.getStage() != Stage.MOVE
                 || !game.selectPiece(pieceIndex)

@@ -12,6 +12,7 @@ import java.util.Set;
 import Enums.Stage;
 import Enums.SquareType;
 import Model.Game;
+import Model.Piece;
 import Model.Player;
 import Model.QuestionEvent;
 import Model.QuestionEventCreator;
@@ -23,6 +24,10 @@ import Model.QuestionRepository;
 /** Coordinates game setup, board state, questions, and game results. */
 public class GameController {
     public static final int PIECES_PER_PLAYER = Game.PIECES_PER_PLAYER;
+    // board corner of each colour; the same order is used by the board view
+    private static final String[] CORNER_COLOR_NAMES = {"Green", "Yellow", "Blue", "Red"};
+    // on the outer and middle rings the colour's arrow is 7 squares before its corner
+    private static final int ARROW_DISTANCE_FROM_CORNER = 7;
 
     private final Game game;
     private final MovementController pieces;
@@ -179,6 +184,88 @@ public class GameController {
 
     public List<List<Point>> getBoardSharedRoutes() {
         return game.getBoard().getSharedRoutes();
+    }
+
+    private static int cornerOf(String colorName) {
+        for (int i = 0; i < CORNER_COLOR_NAMES.length; i++) {
+            if (CORNER_COLOR_NAMES[i].equalsIgnoreCase(colorName)) {
+                return i;
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * The board square a piece stands on in the shared paths, or null when the piece is
+     * in the castle, on its private home path, or finished.
+     */
+    public Point getPieceBoardPosition(int playerIndex, int pieceIndex) {
+        Piece piece = game.getPlayer(playerIndex).getPiece(pieceIndex);
+        if (!piece.isOnBoard() || piece.isFinished() || piece.isInHomePath()) {
+            return null;
+        }
+
+        int corner = cornerOf(game.getPlayer(playerIndex).getColor());
+        List<Point> route;
+        int first;
+        if (piece.isInInnerPath()) {
+            route = getInnerBoardPath();
+            first = corner * 13 - 1;
+        } else if (piece.isInMiddlePath()) {
+            route = getBoardRingPath(1);
+            first = corner * (route.size() / 4) + route.size() - ARROW_DISTANCE_FROM_CORNER + 1;
+        } else if (getBoardRings() == 0) {
+            route = getInnerBoardPath();
+            first = corner * 13;
+        } else {
+            route = getBoardRingPath(0);
+            first = corner * (route.size() / 4);
+        }
+        int step = Math.max(0, Math.min(piece.getSteps(), route.size() - 1));
+        return route.get(Math.floorMod(first + step, route.size()));
+    }
+
+    /**
+     * SRS 3.2.5.3.2 - star, start and surprise squares are protected. The home path is
+     * private to its owner, so an opponent can never stop on it.
+     */
+    public boolean isProtectedSquare(Point position) {
+        SquareType type = getSpecialSquareType(position);
+        return type == SquareType.STAR
+                || type == SquareType.START
+                || type == SquareType.SURPRISE;
+    }
+
+    /**
+     * SRS 3.2.5.3.1 - the given piece has stopped on its square. A single piece of another
+     * player on that square returns to its castle, unless the square is protected.
+     *
+     * @return {playerIndex, pieceIndex} of the captured piece, or null when nothing was captured
+     */
+    public int[] captureOpponentAt(int movingPlayer, int movingPiece) {
+        Point position = getPieceBoardPosition(movingPlayer, movingPiece);
+        if (position == null || isProtectedSquare(position)) {
+            return null;
+        }
+
+        for (int player = 0; player < game.getPlayerCount(); player++) {
+            if (player == movingPlayer) {
+                continue;
+            }
+            int found = -1;
+            int count = 0;
+            for (int piece = 0; piece < PIECES_PER_PLAYER; piece++) {
+                if (position.equals(getPieceBoardPosition(player, piece))) {
+                    found = piece;
+                    count++;
+                }
+            }
+            // two pieces of one player on a square are a block, not a single piece
+            if (count == 1 && pieces.sendPieceToCastle(player, found)) {
+                return new int[]{player, found};
+            }
+        }
+        return null;
     }
 
     private void initializeBoard() {

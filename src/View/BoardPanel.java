@@ -340,6 +340,30 @@ public class BoardPanel extends JPanel {
         return true;
     }
 
+    /**
+     * SRS 3.2.5.3.1 - the controller checks whether the piece that just stopped captures
+     * an opponent; the captured piece is shown back in its castle.
+     *
+     * @return a message for the players, or null when nothing was captured
+     */
+    public String resolveCapture(int movingPlayer, int movingPiece) {
+        int[] captured = turns.captureOpponentAt(movingPlayer, movingPiece);
+        if (captured == null) {
+            return null;
+        }
+        int corner = cornerOf(turns.getPlayerColors()[captured[0]]);
+        piecesOnBoard[corner][captured[1]] = false;
+        castlePieces[corner][captured[1]] = true;
+        piecesInCastle[corner]++;
+        pieceSteps[corner][captured[1]] = 0;
+        piecesInHomePath[corner][captured[1]] = false;
+        piecesInInnerPath[corner][captured[1]] = false;
+        piecesInMiddlePath[corner][captured[1]] = false;
+        repaint();
+        return turns.getPlayerNames()[movingPlayer] + " captured a piece of "
+                + turns.getPlayerNames()[captured[0]] + " - it returns to its castle. ";
+    }
+
     // עדכון מיקום כלי יריב ללא שינוי התור הפעיל
     public boolean showOtherPlayerPieceStep(
             int playerIndex, int pieceIndex, int step) {
