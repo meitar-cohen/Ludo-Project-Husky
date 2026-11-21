@@ -21,10 +21,12 @@ final class SurpriseFlow {
     private final Runnable endTurn;
     private final Runnable passTurn;
     private final Consumer<String> status;
+    private final Consumer<String> captureNote;
 
     SurpriseFlow(GameController game, TurnController turns, BoardPanel board,
             int pieceIndex, Window owner, Runnable endTurn,
-            Runnable passTurn, Consumer<String> status) {
+            Runnable passTurn, Consumer<String> status,
+            Consumer<String> captureNote) {
         this.game = game;
         this.turns = turns;
         this.board = board;
@@ -33,6 +35,16 @@ final class SurpriseFlow {
         this.endTurn = endTurn;
         this.passTurn = passTurn;
         this.status = status;
+        this.captureNote = captureNote;
+    }
+
+    // SRS 3.2.3.3.7 - תזוזה שנגרמה מהפתעה מפעילה גם את חוק האכילה
+    private Runnable endTurnAfterCapture(int player, int piece) {
+        return () -> {
+            String message = board.resolveCapture(player, piece);
+            if (message != null) captureNote.accept(message);
+            endTurn.run();
+        };
     }
 
     void run() {
@@ -76,13 +88,16 @@ final class SurpriseFlow {
                 break;
             case MOVE_BACK_THREE:
                 board.animatePiece(pieceIndex, outcome.getBeforeStep(),
-                        outcome.getAfterStep(), endTurn);
+                        outcome.getAfterStep(),
+                        endTurnAfterCapture(game.getCurrentPlayerIndex(), pieceIndex));
                 break;
             case MOVE_OPPONENT:
                 if (outcome.hasAnimatedMovement()) {
                     board.animateOtherPlayerPiece(outcome.getAffectedPlayer(),
                             outcome.getAffectedPiece(), outcome.getBeforeStep(),
-                            outcome.getAfterStep(), endTurn);
+                            outcome.getAfterStep(),
+                            endTurnAfterCapture(outcome.getAffectedPlayer(),
+                                    outcome.getAffectedPiece()));
                 } else {
                     endTurn.run();
                 }

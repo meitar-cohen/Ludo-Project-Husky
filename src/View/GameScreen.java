@@ -35,6 +35,8 @@ public class GameScreen extends JPanel {
     // SRS 3.2.8 - the finished game is saved once; the message is shown on the end screen
     private boolean gameOverHandled;
     private String historyNote = "";
+    // the last capture message stays on the status line until the next roll
+    private String captureNote = "";
     private final HistoryController history;
     private final MovementController pieces;
     private final GameController turns;
@@ -187,6 +189,7 @@ public class GameScreen extends JPanel {
             return;
         }
         // SRS 3.2.1.3.3 - the game clock starts with the first roll.
+        captureNote = "";
         turns.startGameClock();
         board.setActivePlayerColor(turns.getCurrentPlayerColor());
 
@@ -425,6 +428,7 @@ public class GameScreen extends JPanel {
         }
         String pathName = middle ? "the middle path (64)" : "the inner path (52)";
         if (remaining <= 0) {
+            announceCapture(pieceIndex);
             setStatus("Matching arrow! Piece entered " + pathName + ".");
             endTurnOrExtraTurn();
             return;
@@ -454,10 +458,13 @@ public class GameScreen extends JPanel {
             crossArrow(pieceIndex, 0);
             return;
         }
+        announceCapture(pieceIndex);
         endTurnOrExtraTurn();
     }
 
     private void finishPieceMovement(int pieceIndex) {
+        // SRS 3.2.3.3.1 - capture is checked before a question or surprise square is activated
+        announceCapture(pieceIndex);
         String event = board.getSquareEventAtStep(
                 pieceIndex, pieces.getPieceStep(pieceIndex));
         if ("QUESTION".equals(event)) {
@@ -544,7 +551,8 @@ public class GameScreen extends JPanel {
 	            SwingUtilities.getWindowAncestor(this),
 	            this::endTurnOrExtraTurn,
 	            this::passTurn,
-	            this::setStatus
+	            this::setStatus,
+	            message -> captureNote = message
 	    ).run();
 	}
 
@@ -640,7 +648,15 @@ public class GameScreen extends JPanel {
     }
 
     private void setStatus(String text) {
-        sidebar.setStatus(text);
+        sidebar.setStatus(captureNote + text);
+    }
+
+    /** SRS 3.2.5.3.1 - applies a capture made by the piece that just stopped. */
+    private void announceCapture(int pieceIndex) {
+        String message = board.resolveCapture(turns.getCurrentPlayerIndex(), pieceIndex);
+        if (message != null) {
+            captureNote = message;
+        }
     }
 
     /**

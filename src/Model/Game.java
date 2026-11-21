@@ -192,11 +192,19 @@ public class Game {
     }
 
     public void setPiecesInCastle(int piecesInCastle) {
+        setPiecesInCastle(currentPlayer, piecesInCastle);
+    }
+
+    // SRS 3.2.5.3.1 - אכילה מחזירה כלי של משתתף שאינו בהכרח השחקן הנוכחי
+    public void setPiecesInCastle(int playerIndex, int piecesInCastle) {
+        if (playerIndex < 0 || playerIndex >= players.length) {
+            throw new IllegalArgumentException("Invalid player index");
+        }
         if (piecesInCastle < 0 || piecesInCastle > PIECES_PER_PLAYER) {
             throw new IllegalArgumentException("Invalid castle piece count");
         }
 
-        piecesInCastleByPlayer[currentPlayer] = piecesInCastle;
+        piecesInCastleByPlayer[playerIndex] = piecesInCastle;
     }
 
     public boolean selectPiece(int pieceIndex) {
