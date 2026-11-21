@@ -58,7 +58,7 @@ public class GameScreen extends JPanel {
         this.theme = theme;
         this.turns = turns;
         this.difficulty = difficulty == null ? "Easy" : difficulty;
-        this.history = new HistoryController();
+        this.history = HistoryController.getInstance();
         this.pieces = turns.getMovementController();
         this.turnController = turns.getTurnController();
         setOpaque(false);
@@ -218,11 +218,22 @@ public class GameScreen extends JPanel {
         RollAction action = turnController.finishRoll(stepDie, boostDie);
         if (action == RollAction.TAKE_OUT
                 && pieces.canChooseBoardMoveInsteadOfTakeOut()
-                && pieces.hasAnyLegalMove(getCurrentRouteSizes(), getCurrentArrowSteps())) {
+                && hasLegalMove()) {
         	int choice = GameDialogs.chooseMove(this);
             if (choice == 1
                     && pieces.chooseBoardMoveInsteadOfTakeOut()) {
                 action = RollAction.MOVE;
+            }
+        }
+        if (action == RollAction.TAKE_OUT && isTakeOutBlockedForAll()) {
+            // SRS 3.2.5.3.2 - a Double Block on the start square keeps the pieces in the castle
+            if (pieces.canChooseBoardMoveInsteadOfTakeOut() && hasLegalMove()
+                    && pieces.chooseBoardMoveInsteadOfTakeOut()) {
+                action = RollAction.MOVE;
+            } else {
+                captureNote += "A Double Block of another player stands on your start square. ";
+                passWhenNoLegalMove();
+                return;
             }
         }
         if (action == RollAction.TAKE_OUT) {
@@ -234,7 +245,7 @@ public class GameScreen extends JPanel {
             );
             sidebar.setRollButton(false, "Select Your Piece");
         } else if (action == RollAction.MOVE) {
-            if (!pieces.hasAnyLegalMove(getCurrentRouteSizes(), getCurrentArrowSteps())) {
+            if (!hasLegalMove()) {
                 passWhenNoLegalMove();
                 return;
             }
@@ -269,6 +280,22 @@ public class GameScreen extends JPanel {
         } else {
             passWhenNoLegalMove();
         }
+    }
+
+    /** A legal move exists, counting that a Double Block can stop a piece (SRS 3.2.5.3.4). */
+    private boolean hasLegalMove() {
+        return pieces.hasAnyLegalMove(getCurrentRouteSizes(), getCurrentArrowSteps(),
+                turns.getPiecesStuckBehindBlock());
+    }
+
+    /** True when every piece in the castle is kept in by a Double Block on the start square. */
+    private boolean isTakeOutBlockedForAll() {
+        for (int slot = 0; slot < GameController.PIECES_PER_PLAYER; slot++) {
+            if (pieces.canTakeOutActivePiece(slot) && !turns.isTakeOutBlocked(slot)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private int[] getCurrentRouteSizes() {
@@ -315,10 +342,15 @@ public class GameScreen extends JPanel {
         if (!pieces.canTakeOutActivePiece(slot)) {
             return;
         }
+        if (turns.isTakeOutBlocked(slot)) {
+            setStatus("A Double Block of another player stands on your start square. "
+                    + "You cannot take a piece out now.");
+            return;
+        }
         if (!board.placeActivePieceOnStart(slot)) {
             return;
         }
-        if (!pieces.takeOutActivePiece(slot)) {
+        if (!turns.takeOutPiece(slot)) {
             throw new IllegalStateException(
                     "Castle state is out of sync");
         }
@@ -338,7 +370,10 @@ public class GameScreen extends JPanel {
      */
     private void onBoardPieceClicked(int pieceIndex) {
         int routeSize = board.getActiveRouteSize(pieceIndex);
-        if (pieces.tryFinishPiece(pieceIndex, routeSize)) {
+        if (handleBlockedMove(pieceIndex, routeSize)) {
+            return;
+        }
+        if (turns.finishPiece(pieceIndex, routeSize)) {
             if (!board.showActivePieceFinished(pieceIndex)) {
                 throw new IllegalStateException(
                         "Finish state is out of sync");
@@ -359,7 +394,7 @@ public class GameScreen extends JPanel {
             }
             return;
         }
-        if (pieces.tryEnterHomePath(pieceIndex, routeSize)) {
+        if (turns.enterHomePath(pieceIndex, routeSize)) {
             int homeStep = pieces.getPieceStep(pieceIndex);
             if (!board.showActivePieceInHomePath(pieceIndex, homeStep)) {
                 throw new IllegalStateException(
@@ -384,7 +419,7 @@ public class GameScreen extends JPanel {
             return;
         }
         int startStep = pieces.getPieceStep(pieceIndex);
-        if (!pieces.movePiece(pieceIndex, targetStep, routeSize)) {
+        if (!turns.movePiece(pieceIndex, targetStep, routeSize)) {
             setStatus("The selected move is not legal.");
             return;
         }
@@ -397,6 +432,51 @@ public class GameScreen extends JPanel {
     }
 
     /**
+     * SRS 3.2.5.3.3 - 3.2.5.3.4 - handles the click when an opponent's Double Block is in the way
+     * of the move. The move is cut short (the piece stops on the square before the block), and it
+     * is allowed only when the player has no other piece that can make the whole move.
+     *
+     * @return true when a block interferes and the click was handled here
+     */
+    private boolean handleBlockedMove(int pieceIndex, int routeSize) {
+        if (!pieces.isPieceSelectionLegal(pieceIndex)) {
+            return false;
+        }
+        int firstStep = pieces.getPieceStep(pieceIndex);
+        int arrowStep = pieces.findArrowOnMove(
+                pieceIndex, board.getOwnArrowStep(pieceIndex));
+        int wantedStep = arrowStep >= 0
+                ? arrowStep : firstStep + pieces.getMoveStepsForSelectedPiece();
+        int player = turns.getCurrentPlayerIndex();
+        int reach = turns.getStepsBeforeBlock(player, pieceIndex, firstStep, wantedStep);
+        if (reach == wantedStep) {
+            return false;
+        }
+        String owner = turns.getPlayerNames()[
+                turns.getBlockingPlayer(player, pieceIndex, firstStep, wantedStep)];
+        if (reach == firstStep) {
+            setStatus("A Double Block of " + owner
+                    + " is right in front of this piece. Choose another piece.");
+            return true;
+        }
+        if (turns.hasOtherPieceWithFreeMove(
+                pieceIndex, getCurrentRouteSizes(), getCurrentArrowSteps())) {
+            setStatus("A Double Block of " + owner
+                    + " is in the way. Choose a piece that can make the whole move.");
+            return true;
+        }
+        captureNote += "Double Block of " + owner
+                + " in the way - the piece stops before it. ";
+        if (!turns.movePiece(pieceIndex, reach, routeSize)) {
+            setStatus("The selected move is not legal.");
+            return true;
+        }
+        board.animatePiece(pieceIndex, firstStep, reach,
+                () -> finishPieceMovement(pieceIndex));
+        return true;
+    }
+
+    /**
      * SRS 3.2.4.3.2 - moves the piece to its arrow, and from there to the next path
      * with the steps that are left.
      */
@@ -404,7 +484,7 @@ public class GameScreen extends JPanel {
         int startStep = pieces.getPieceStep(pieceIndex);
         int remaining = pieces.getMoveStepsForSelectedPiece()
                 - (arrowStep - startStep);
-        if (!pieces.movePiece(pieceIndex, arrowStep, routeSize)) {
+        if (!turns.movePiece(pieceIndex, arrowStep, routeSize)) {
             setStatus("The selected move is not legal.");
             return;
         }
@@ -437,16 +517,19 @@ public class GameScreen extends JPanel {
         int routeSize = board.getActiveRouteSize(pieceIndex);
         int nextArrow = pieces.findArrowOnRemainingSteps(
                 pieceIndex, remaining, board.getOwnArrowStep(pieceIndex));
-        int target = nextArrow >= 0 ? nextArrow : remaining;
+        int wanted = nextArrow >= 0 ? nextArrow : remaining;
+        // SRS 3.2.5.3.4 - an opponent's Double Block on the new path stops the piece before it
+        int target = stopBeforeBlock(pieceIndex, 0, wanted);
+        boolean blocked = target != wanted;
         if (!pieces.continueMoveAfterArrow(pieceIndex, target, routeSize)) {
             throw new IllegalStateException("Arrow move is not legal");
         }
         setStatus("Matching arrow! Piece moved to " + pathName + ".");
-        if (nextArrow >= 0) {
+        if (nextArrow >= 0 && !blocked) {
             board.animatePiece(pieceIndex, 0, nextArrow,
                     () -> crossArrow(pieceIndex, remaining - nextArrow));
         } else {
-            board.animatePiece(pieceIndex, 0, remaining,
+            board.animatePiece(pieceIndex, 0, target,
                     () -> finishPieceMovement(pieceIndex));
         }
     }
@@ -518,6 +601,10 @@ public class GameScreen extends JPanel {
                 correct,
                 questionSteps,
                 board.getActiveRouteSize(pieceIndex));
+
+        // SRS 3.2.5.3.4 - forward or backward, an opponent's Double Block stops the piece
+        // on the square before it
+        targetStep = stopBeforeBlock(pieceIndex, startStep, targetStep);
 
         // עדכון ההודעה בהתאם לתוצאת התנועה
         if (targetStep == startStep) {
@@ -656,8 +743,23 @@ public class GameScreen extends JPanel {
     private void announceCapture(int pieceIndex) {
         String message = board.resolveCapture(turns.getCurrentPlayerIndex(), pieceIndex);
         if (message != null) {
-            captureNote = message;
+            captureNote += message;
         }
+    }
+
+    /**
+     * SRS 3.2.5.3.3 - 3.2.5.3.4 - the step a piece really reaches: an opponent's Double Block
+     * can neither be passed nor stood on, so the piece stops on the square before it.
+     */
+    private int stopBeforeBlock(int pieceIndex, int startStep, int targetStep) {
+        int player = turns.getCurrentPlayerIndex();
+        int reach = turns.getStepsBeforeBlock(player, pieceIndex, startStep, targetStep);
+        if (reach != targetStep) {
+            int owner = turns.getBlockingPlayer(player, pieceIndex, startStep, targetStep);
+            captureNote += "Double Block of " + turns.getPlayerNames()[owner]
+                    + " in the way - the piece stops before it. ";
+        }
+        return reach;
     }
 
     /**

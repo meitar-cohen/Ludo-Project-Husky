@@ -1095,7 +1095,24 @@ public class BoardPanel extends JPanel {
                 );
             }
         }
+        drawDoubleBlocks(g2, cs, ox, oy);
         g2.dispose();
+    }
+
+    /** SRS 3.2.5.3.3 - a golden double ring marks every square that holds a Double Block. */
+    private void drawDoubleBlocks(Graphics2D g2, int cs, int ox, int oy) {
+        for (Point block : turns.getDoubleBlockPositions()) {
+            double cx = ox + (block.x + 0.5) * cs;
+            double cy = oy + (block.y + 0.5) * cs;
+            g2.setColor(new Color(255, 196, 40, 235));
+            g2.setStroke(new BasicStroke(Math.max(2f, cs * 0.09f)));
+            double outer = cs * 0.50;
+            g2.draw(new java.awt.geom.Ellipse2D.Double(cx - outer, cy - outer, 2 * outer, 2 * outer));
+            g2.setColor(new Color(255, 255, 255, 230));
+            g2.setStroke(new BasicStroke(Math.max(1f, cs * 0.04f)));
+            double inner = cs * 0.43;
+            g2.draw(new java.awt.geom.Ellipse2D.Double(cx - inner, cy - inner, 2 * inner, 2 * inner));
+        }
     }
 
     private int[] finishedPieceCounts() {
