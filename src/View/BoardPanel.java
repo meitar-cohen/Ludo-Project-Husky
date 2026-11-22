@@ -68,6 +68,7 @@ public class BoardPanel extends JPanel {
     private IntConsumer castlePieceClickListener;
     private IntConsumer boardPieceClickListener;
     private Timer animation;
+    private int stepDelay = 220;
     private Timer highlightPulse;
     private boolean pulsePhase;
     private final PiecePanel piecePanel = new PiecePanel();
@@ -317,6 +318,73 @@ public class BoardPanel extends JPanel {
         return true;
     }
 
+ // החזרת כלי פעיל לטירה בתצוגת הלוח
+    public boolean showActivePieceReturnedToCastle(int pieceIndex) {
+        if (pieceIndex < 0 || pieceIndex >= 4
+                || !piecesOnBoard[activeCorner][pieceIndex]
+                || castlePieces[activeCorner][pieceIndex]) {
+            return false;
+        }
+
+        piecesOnBoard[activeCorner][pieceIndex] = false;
+        castlePieces[activeCorner][pieceIndex] = true;
+        piecesInCastle[activeCorner]++;
+        pieceSteps[activeCorner][pieceIndex] = 0;
+        piecesInHomePath[activeCorner][pieceIndex] = false;
+        piecesInInnerPath[activeCorner][pieceIndex] = false;
+        piecesInMiddlePath[activeCorner][pieceIndex] = false;
+
+        selectedPieceIndex = pieceIndex;
+        clearHighlight();
+        repaint();
+        return true;
+    }
+
+    /**
+     * SRS 3.2.5.3.1 - the controller checks whether the piece that just stopped captures
+     * an opponent; the captured piece is shown back in its castle.
+     *
+     * @return a message for the players, or null when nothing was captured
+     */
+    public String resolveCapture(int movingPlayer, int movingPiece) {
+        int[] captured = turns.captureOpponentAt(movingPlayer, movingPiece);
+        if (captured == null) {
+            return null;
+        }
+        int corner = cornerOf(turns.getPlayerColors()[captured[0]]);
+        piecesOnBoard[corner][captured[1]] = false;
+        castlePieces[corner][captured[1]] = true;
+        piecesInCastle[corner]++;
+        pieceSteps[corner][captured[1]] = 0;
+        piecesInHomePath[corner][captured[1]] = false;
+        piecesInInnerPath[corner][captured[1]] = false;
+        piecesInMiddlePath[corner][captured[1]] = false;
+        repaint();
+        return turns.getPlayerNames()[movingPlayer] + " captured a piece of "
+                + turns.getPlayerNames()[captured[0]] + " - it returns to its castle. ";
+    }
+
+    // עדכון מיקום כלי יריב ללא שינוי התור הפעיל
+    public boolean showOtherPlayerPieceStep(
+            int playerIndex, int pieceIndex, int step) {
+
+        if (playerIndex < 0 || playerIndex >= turns.getPlayerCount()
+                || pieceIndex < 0 || pieceIndex >= 4 || step < 0) {
+            return false;
+        }
+
+        int corner = cornerOf(turns.getPlayerColors()[playerIndex]);
+
+        if (!piecesOnBoard[corner][pieceIndex]
+                || step >= routeForPlayerPiece(corner, pieceIndex).size()) {
+            return false;
+        }
+
+        pieceSteps[corner][pieceIndex] = step;
+        repaint();
+        return true;
+    }
+
     public int getActivePieceStep() {
         return pieceSteps[activeCorner][selectedPieceIndex];
     }
@@ -490,6 +558,34 @@ public class BoardPanel extends JPanel {
         }
         return "NONE";
     }
+    
+
+    /**
+     * מחזירה את רמת הקושי של משבצת השאלה
+     * לפי מיקום הכלי במסלול הפעיל.
+     */
+    public String getQuestionDifficultyAtStep(
+            int pieceIndex, int step) {
+
+        // בדיקת תקינות הכלי ומצבו בלוח
+        if (pieceIndex < 0 || pieceIndex >= 4
+                || !piecesOnBoard[activeCorner][pieceIndex]
+                || piecesInHomePath[activeCorner][pieceIndex]) {
+            return null;
+        }
+
+        // איתור המשבצת במסלול הפעיל של הכלי
+        List<Point> route = currentPieceRoute(pieceIndex);
+
+        if (step < 0 || step >= route.size()) {
+            return null;
+        }
+
+        // קבלת רמת הקושי מה-Controller ומה-Model
+        return turns.getSpecialSquareQuestionDifficulty(
+                route.get(step));
+    }
+
 
     /**
      */
@@ -597,6 +693,49 @@ public class BoardPanel extends JPanel {
      * SRS 3.2.4.3.1 -
      *
      */
+ // אנימציית תנועה של כלי יריב ללא שינוי השחקן הפעיל
+    public void animateOtherPlayerPiece(
+            int playerIndex, int pieceIndex,
+            int startStep, int targetStep, Runnable onDone) {
+
+        if (playerIndex < 0 || playerIndex >= turns.getPlayerCount()
+                || pieceIndex < 0 || pieceIndex >= 4) {
+            throw new IllegalArgumentException("Invalid opponent piece");
+        }
+
+        int corner = cornerOf(turns.getPlayerColors()[playerIndex]);
+
+        if (!piecesOnBoard[corner][pieceIndex]) {
+            throw new IllegalStateException(
+                    "Opponent piece is not on board");
+        }
+
+        if (animation != null && animation.isRunning()) {
+            animation.stop();
+        }
+
+        pieceSteps[corner][pieceIndex] = startStep;
+        final int[] position = {startStep};
+
+        animation = new Timer(220, null);
+
+        animation.addActionListener(e -> {
+            if (position[0] == targetStep) {
+                animation.stop();
+                if (onDone != null) {
+                    onDone.run();
+                }
+                return;
+            }
+
+            position[0] += Integer.signum(targetStep - position[0]);
+            pieceSteps[corner][pieceIndex] = position[0];
+            repaint();
+        });
+
+        animation.start();
+    }
+
     public void animatePiece(
             int pieceIndex,
             int startStep,
@@ -615,7 +754,7 @@ public class BoardPanel extends JPanel {
         final int[] remaining = {
             Math.abs(targetStep - startStep)
         };
-        animation = new Timer(220, null);
+        animation = new Timer(stepDelay, null);
         animation.addActionListener(e -> {
             if (remaining[0] == 0) {
                 animation.stop();
@@ -633,6 +772,127 @@ public class BoardPanel extends JPanel {
             repaint();
         });
         animation.start();
+    }
+
+    // ------------------------------------------------------------------
+    // Read-only access for the 3D board (Board3DPanel) and the minimap
+    // ------------------------------------------------------------------
+
+    static Color cornerColor(int corner) {
+        return CORNER_COLORS[Math.floorMod(corner, 4)];
+    }
+
+    /** Corner (0-3) of the player whose turn it is. */
+    int turnCorner() {
+        try {
+            return cornerOf(turns.getCurrentPlayerColor());
+        } catch (RuntimeException e) {
+            return activeCorner;
+        }
+    }
+
+    String turnName() {
+        try {
+            return turns.getCurrentPlayerName();
+        } catch (RuntimeException e) {
+            return "";
+        }
+    }
+
+    boolean pieceInCastle(int corner, int slot) {
+        return castlePieces[corner][slot];
+    }
+
+    boolean pieceFinished(int corner, int pieceIndex) {
+        return finishedPieces[corner][pieceIndex];
+    }
+
+    /** Board cell the piece stands on, or null when it is in the castle or already home. */
+    Point pieceCell(int corner, int pieceIndex) {
+        if (!activeCorners[corner] || !piecesOnBoard[corner][pieceIndex]) {
+            return null;
+        }
+        List<Point> route = routeForPlayerPiece(corner, pieceIndex);
+        if (route.isEmpty()) {
+            return null;
+        }
+        int step = Math.max(0, Math.min(pieceSteps[corner][pieceIndex], route.size() - 1));
+        return route.get(step);
+    }
+
+    /**
+     * The square {@code ahead} steps further along the route of this piece (negative = behind),
+     * clamped to the route. Used to point the 3D camera along the path.
+     */
+    Point routeCell(int corner, int pieceIndex, int ahead) {
+        if (!activeCorners[corner]) {
+            return null;
+        }
+        List<Point> route = routeForPlayerPiece(corner, pieceIndex);
+        if (route.isEmpty()) {
+            return null;
+        }
+        int step = Math.max(0, Math.min(pieceSteps[corner][pieceIndex], route.size() - 1));
+        return route.get(Math.max(0, Math.min(route.size() - 1, step + ahead)));
+    }
+
+    int[] finishedCounts() {
+        return finishedPieceCounts();
+    }
+
+    boolean castleHighlighted() {
+        return highlightCastle;
+    }
+
+    boolean boardHighlighted() {
+        return highlightBoard;
+    }
+
+    /** Changes whenever a piece moves, leaves a castle or finishes (lets the minimap redraw only when needed). */
+    int stateSignature() {
+        int h = 17;
+        for (int corner = 0; corner < 4; corner++) {
+            for (int idx = 0; idx < 4; idx++) {
+                Point c = pieceCell(corner, idx);
+                h = h * 31 + (c == null ? -1 : c.x * 100 + c.y);
+                h = h * 31 + (castlePieces[corner][idx] ? 1 : 0);
+                h = h * 31 + (finishedPieces[corner][idx] ? 1 : 0);
+            }
+        }
+        return h;
+    }
+
+    /** Same effect as clicking a castle piece on the flat board. */
+    void fireCastleClick(int slot) {
+        if (castlePieceClickListener != null) {
+            castlePieceClickListener.accept(slot);
+        }
+    }
+
+    /** Same effect as clicking a piece on the flat board. */
+    void fireBoardClick(int pieceIndex) {
+        selectedPieceIndex = pieceIndex;
+        if (boardPieceClickListener != null) {
+            boardPieceClickListener.accept(pieceIndex);
+        }
+    }
+
+    /** Milliseconds between two steps of a moving piece (default 220). */
+    void setStepDelay(int milliseconds) {
+        stepDelay = Math.max(60, milliseconds);
+    }
+
+    /** Paints the whole board, scaled to fit a square of the given size (for the minimap). */
+    void paintScaled(Graphics2D g2, int targetSize) {
+        int w = Math.max(1, getWidth());
+        int h = Math.max(1, getHeight());
+        double scale = targetSize / (double) Math.min(w, h);
+        Graphics2D g = (Graphics2D) g2.create();
+        g.translate((targetSize - w * scale) / 2.0, (targetSize - h * scale) / 2.0);
+        g.scale(scale, scale);
+        g.clipRect(0, 0, w, h);
+        paintComponent(g);
+        g.dispose();
     }
 
     // ------------------------------------------------------------------
@@ -835,7 +1095,24 @@ public class BoardPanel extends JPanel {
                 );
             }
         }
+        drawDoubleBlocks(g2, cs, ox, oy);
         g2.dispose();
+    }
+
+    /** SRS 3.2.5.3.3 - a golden double ring marks every square that holds a Double Block. */
+    private void drawDoubleBlocks(Graphics2D g2, int cs, int ox, int oy) {
+        for (Point block : turns.getDoubleBlockPositions()) {
+            double cx = ox + (block.x + 0.5) * cs;
+            double cy = oy + (block.y + 0.5) * cs;
+            g2.setColor(new Color(255, 196, 40, 235));
+            g2.setStroke(new BasicStroke(Math.max(2f, cs * 0.09f)));
+            double outer = cs * 0.50;
+            g2.draw(new java.awt.geom.Ellipse2D.Double(cx - outer, cy - outer, 2 * outer, 2 * outer));
+            g2.setColor(new Color(255, 255, 255, 230));
+            g2.setStroke(new BasicStroke(Math.max(1f, cs * 0.04f)));
+            double inner = cs * 0.43;
+            g2.draw(new java.awt.geom.Ellipse2D.Double(cx - inner, cy - inner, 2 * inner, 2 * inner));
+        }
     }
 
     private int[] finishedPieceCounts() {

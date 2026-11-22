@@ -35,7 +35,7 @@ public class GameHistoryCheck {
 
         // 1. הקובץ נוצר עם שורת הכותרת של התבנית אם אינו קיים
         File missing = new File(new File(dir, "data"), HistoryController.HISTORY_FILE_NAME);
-        HistoryController historyController = new HistoryController(missing);
+        HistoryController historyController = HistoryController.forFile(missing);
         check("missing file means no games", historyController.readGames().isEmpty());
         historyController.appendRecord(new GameRecord(1, "easy", "01/11/2026;10:00:00",
                 new String[] {"Dana", "Avi", "", ""}, "00:12:30"));
@@ -50,7 +50,7 @@ public class GameHistoryCheck {
         Files.write(template.toPath(), (HistoryController.HISTORY_HEADER
                 + "\r\n1,hard,19/10/2026;12:01:00 ,Mor,Noy,Safa,Muhammed,01:05:04")
                 .getBytes(StandardCharsets.UTF_8));
-        HistoryController templateController = new HistoryController(template);
+        HistoryController templateController = HistoryController.forFile(template);
         GameRecord added = new GameRecord(2, "medium", "02/11/2026;18:30:05",
                 new String[] {"Noa", "Tal", "Maor", ""}, "00:40:00");
         templateController.appendRecord(added);
@@ -92,7 +92,7 @@ public class GameHistoryCheck {
 
         // 6. שמירת משחק שהסתיים דרך הבקר, פעם אחת בלבד
         File gameFile = new File(dir, "games.csv");
-        HistoryController gameHistory = new HistoryController(gameFile);
+        HistoryController gameHistory = HistoryController.forFile(gameFile);
         turns.startGameClock();
         turns.getTurnController().passTurn();
         check("game is over", game.getStage() == Stage.DONE);
@@ -100,7 +100,7 @@ public class GameHistoryCheck {
         check("save succeeds", gameHistory.saveFinishedGame(game, turns) == null
                 && game.isSavedToHistory());
         gameHistory.saveFinishedGame(game, turns);
-        List<GameRecord> saved = new HistoryController(gameFile).readGames();
+        List<GameRecord> saved = HistoryController.forFile(gameFile).readGames();
         check("game saved exactly once", saved.size() == 1);
         GameRecord row = saved.get(0);
         check("saved row: medium, places by ranking, empty 4th place",
@@ -116,7 +116,7 @@ public class GameHistoryCheck {
         File unplayedFile = new File(dir, "unplayed.csv");
         GameController unplayedTurns = new GameController(
                 unplayed, new MovementController(unplayed));
-        new HistoryController(unplayedFile).saveFinishedGame(
+        HistoryController.forFile(unplayedFile).saveFinishedGame(
                 unplayed, unplayedTurns);
         check("a game without any roll is not saved", !unplayedFile.exists());
 
@@ -128,12 +128,12 @@ public class GameHistoryCheck {
         GameController failingTurns = new GameController(
                 failing, new MovementController(failing));
         failingTurns.startGameClock();
-        String error = new HistoryController(blocked).saveFinishedGame(
+        String error = HistoryController.forFile(blocked).saveFinishedGame(
                 failing, failingTurns);
         check("write failure returns an error message", error != null && !failing.isSavedToHistory());
 
         // 9. טעינת ההיסטוריה למסך: המשחק החדש ראשון
-        HistoryController loadedHistory = new HistoryController(template);
+        HistoryController loadedHistory = HistoryController.forFile(template);
         List<GameRecord> result = loadedHistory.loadHistory();
         check("history is loaded newest first",
                 result.get(0).getGameId() == 3
