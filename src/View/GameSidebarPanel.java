@@ -109,16 +109,8 @@ class GameSidebarPanel extends JPanel {
         add(stack, BorderLayout.CENTER);
     }
 
-    void setBoostMode(boolean ultra, int ordinaryFaces) {
-        dice.setBoostMode(ultra, ordinaryFaces);
-    }
-
     void animateDice(int stepDie, int boostDie, Runnable onDone) {
         dice.animate(stepDie, boostDie, onDone);
-    }
-
-    boolean isRollEnabled() {
-        return rollButton.isEnabled();
     }
 
     String getRollButtonText() {

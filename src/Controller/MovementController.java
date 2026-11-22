@@ -75,36 +75,12 @@ public class MovementController {
         return game.getSelectedPiece().getSteps();
     }
 
-
-	 // שמירת התאימות למתודה הישנה של תנועה בצעד אחד
-	 public int getAnswerMoveTarget(boolean correct, int routeSize) {
-	     return getAnswerMoveTarget(correct, 1, routeSize);
-	 }
-	
-	 // חישוב יעד התנועה לפי מספר צעדי השאלה
-	 public int getAnswerMoveTarget(
-	         boolean correct, int questionSteps, int routeSize) {
-	
-	     // אימות טווח הצעדים החוקי של שאלות
-	     if (questionSteps < 1 || questionSteps > 3) {
-	         throw new IllegalArgumentException(
-	                 "Question movement must be 1-3 steps");
-	     }
-	
-	     // מיקום הכלי הנוכחי
-	     int current = game.getSelectedPiece().getSteps();
-	
-	     // תשובה נכונה מקדמת ותשובה שגויה מחזירה אחורה
-	     int change = correct ? questionSteps : -questionSteps;
-	
-	     // חישוב מיקום היעד
-	     int target = getClockwiseTarget(current, change);
-	
-	     // שמירת ההתנהגות הקיימת בגבולות המסלול
-	     return target >= 0 && target < routeSize
-	             ? target : current;
-	 }
-
+    public int getAnswerMoveTarget(boolean correct, int routeSize) {
+        int change = correct ? 1 : -1;
+        int target = getClockwiseTarget(game.getSelectedPiece().getSteps(), change);
+        return target >= 0 && target < routeSize
+                ? target : game.getSelectedPiece().getSteps();
+    }
 
     public int getSurpriseMoveTarget(int routeSize) {
         int target = game.getSelectedPiece().getSteps() - 3;
@@ -155,60 +131,6 @@ public class MovementController {
             return false;
         }
         game.getSelectedPiece().setSteps(targetStep);
-        return true;
-    }
-
-    // סיום כלי בעקבות הפתעה
-    public boolean finishPieceFromSurprise(int pieceIndex) {
-        if (game.getStage() != Stage.BUSY
-                || !game.selectPiece(pieceIndex)) {
-            return false;
-        }
-        return finishSelectedPiece();
-    }
-
-    // החזרת כלי לטירה בעקבות הפתעה
-    public boolean returnPieceToCastleFromSurprise(int pieceIndex) {
-        if (game.getStage() != Stage.BUSY
-                || !game.selectPiece(pieceIndex)) {
-            return false;
-        }
-
-        Piece piece = game.getSelectedPiece();
-
-        if (!piece.isOnBoard() || piece.isFinished()) {
-            return false;
-        }
-
-        piece.setOnBoard(false);
-        piece.setSteps(0);
-        piece.setInInnerPath(false);
-        piece.setInMiddlePath(false);
-
-        game.setPiecesInCastle(game.getPiecesInCastle() + 1);
-        return true;
-    }
-
-    /**
-     * SRS 3.2.5.3.1 - a captured piece of any player goes back to its owner's castle.
-     * Pieces on the private home path or at the finish cannot be captured.
-     */
-    public boolean sendPieceToCastle(int playerIndex, int pieceIndex) {
-        if (playerIndex < 0 || playerIndex >= game.getPlayerCount()
-                || pieceIndex < 0 || pieceIndex >= Game.PIECES_PER_PLAYER) {
-            return false;
-        }
-
-        Piece piece = game.getPlayer(playerIndex).getPiece(pieceIndex);
-        if (!piece.isOnBoard() || piece.isFinished() || piece.isInHomePath()) {
-            return false;
-        }
-
-        piece.setOnBoard(false);
-        piece.setSteps(0);
-        piece.setInInnerPath(false);
-        piece.setInMiddlePath(false);
-        game.setPiecesInCastle(playerIndex, game.getPiecesInCastle(playerIndex) + 1);
         return true;
     }
 
@@ -380,17 +302,6 @@ public class MovementController {
      *                      or -1 when there is none (may be null)
      */
     public boolean hasAnyLegalMove(int[] routeSizes, int[] ownArrowSteps) {
-        return hasAnyLegalMove(routeSizes, ownArrowSteps, null);
-    }
-
-    /**
-     * Same as {@link #hasAnyLegalMove(int[], int[])}, but a piece that stands right behind an
-     * opponent's Double Block cannot move at all (SRS 3.2.5.3.4).
-     *
-     * @param stuckBehindBlock for every piece, true when a block stops it on the spot (may be null)
-     */
-    public boolean hasAnyLegalMove(int[] routeSizes, int[] ownArrowSteps,
-                                   boolean[] stuckBehindBlock) {
         if ((game.getStage() != Stage.MOVE
                 && game.getStage() != Stage.TAKE_OUT)
                 || routeSizes == null
@@ -398,55 +309,39 @@ public class MovementController {
             return false;
         }
 
+        int player = game.getCurrentPlayer();
         for (int piece = 0; piece < Game.PIECES_PER_PLAYER; piece++) {
-            if (stuckBehindBlock != null && stuckBehindBlock.length == Game.PIECES_PER_PLAYER
-                    && stuckBehindBlock[piece]) {
+            Piece currentPiece = game.getPlayer(player).getPiece(piece);
+            if (!currentPiece.isOnBoard() || currentPiece.isFinished()) {
                 continue;
             }
-            int arrowStep = ownArrowSteps != null
-                    && ownArrowSteps.length == Game.PIECES_PER_PLAYER
-                    ? ownArrowSteps[piece] : -1;
-            if (isPieceMoveLegal(piece, routeSizes[piece], arrowStep)) {
+            boolean inHome = currentPiece.isInHomePath();
+            int steps = inHome ? game.getLastStepDie() : game.getPendingSteps();
+            int current = currentPiece.getSteps();
+            int routeSize = routeSizes[piece];
+            if (steps <= 0 || current < 0 || routeSize <= 0
+                    || current >= routeSize) {
+                continue;
+            }
+            int destination = current + steps;
+            if (inHome && destination <= 6) {
+                return true;
+            }
+            if (!inHome && destination < routeSize) {
+                return true;
+            }
+            if (!inHome && routeSize == 52
+                    && (isEasyGame() || currentPiece.isInInnerPath())
+                    && destination <= routeSize + 6) {
+                return true;
+            }
+            if (!inHome && !isEasyGame() && !currentPiece.isInInnerPath()
+                    && ownArrowSteps != null && ownArrowSteps.length == Game.PIECES_PER_PLAYER
+                    && arrowWithinReach(current, steps, ownArrowSteps[piece]) >= 0) {
                 return true;
             }
         }
         return false;
-    }
-
-    /**
-     * True when the given piece of the current player can make the rolled move
-     * (the rule of one piece, extracted from {@link #hasAnyLegalMove(int[], int[])}).
-     *
-     * @param ownArrowStep step of the piece's own arrow on its current path, or -1
-     */
-    public boolean isPieceMoveLegal(int piece, int routeSize, int ownArrowStep) {
-        if (piece < 0 || piece >= Game.PIECES_PER_PLAYER) {
-            return false;
-        }
-        Piece currentPiece = game.getPlayer(game.getCurrentPlayer()).getPiece(piece);
-        if (!currentPiece.isOnBoard() || currentPiece.isFinished()) {
-            return false;
-        }
-        boolean inHome = currentPiece.isInHomePath();
-        int steps = inHome ? game.getLastStepDie() : game.getPendingSteps();
-        int current = currentPiece.getSteps();
-        if (steps <= 0 || current < 0 || routeSize <= 0 || current >= routeSize) {
-            return false;
-        }
-        int destination = current + steps;
-        if (inHome && destination <= 6) {
-            return true;
-        }
-        if (!inHome && destination < routeSize) {
-            return true;
-        }
-        if (!inHome && routeSize == 52
-                && (isEasyGame() || currentPiece.isInInnerPath())
-                && destination <= routeSize + 6) {
-            return true;
-        }
-        return !inHome && !isEasyGame() && !currentPiece.isInInnerPath()
-                && arrowWithinReach(current, steps, ownArrowStep) >= 0;
     }
 
     public boolean tryEnterHomePath(int pieceIndex, int sharedRouteSize) {

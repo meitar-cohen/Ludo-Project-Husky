@@ -6,12 +6,12 @@ import java.util.Random;
 
     class DicePanel extends JPanel {
         private final boolean showBoost;
-        private String boostName;
+        private final String boostName;
         private int stepValue = 0;
         private int boostValue = 0;
         private Timer rollTimer;
         private int rollFrames;
-        private int boostFaces;
+        private final int boostFaces;
 
         DicePanel(boolean showBoost, String boostName, int boostFaces) {
             this.showBoost = showBoost;
@@ -20,12 +20,6 @@ import java.util.Random;
             setOpaque(false);
             setPreferredSize(new Dimension(285, 77));
             setMaximumSize(new Dimension(Integer.MAX_VALUE, 77));
-        }
-
-        void setBoostMode(boolean ultra, int ordinaryFaces) {
-            boostFaces = ultra ? 6 : Math.max(1, ordinaryFaces);
-            boostName = ultra ? "ULTRA BOOST" : ordinaryFaces == 6 ? "ULTRA BOOST" : "BOOST";
-            repaint();
         }
 
         void show(int step, int boost) {

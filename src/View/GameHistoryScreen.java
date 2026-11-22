@@ -30,7 +30,7 @@ public class GameHistoryScreen extends JFrame {
     private JTable table;
 
     public GameHistoryScreen() {
-        this(HistoryController.getInstance());
+        this(new HistoryController());
     }
 
     public GameHistoryScreen(HistoryController controller) {
