@@ -51,6 +51,10 @@ public class MainMenuScreen extends JFrame {
             new GameHistoryScreen().setVisible(true);
             dispose();
         });
+        questionManagementButton.addActionListener(e -> {
+            new AdminLoginView().setVisible(true);
+            dispose();
+        });
         exitButton.addActionListener(e -> dispose());
     }
 
@@ -100,7 +104,7 @@ public class MainMenuScreen extends JFrame {
         gameHistoryButton = createButton("Game History", 1, 1);
         // SRS 3.2.8.3.4 - the game history screen reads the saved games from the history file.
         questionManagementButton = createButton("Question Management", 1, 2);
-        questionManagementButton.setVisible(false); // Hidden from the main menu for iteration 1.
+        // ניהול שאלות מוצג בתפריט, אך נפתח רק לאחר אימות מנהל.
         exitButton = createButton("Exit", 2, 3);
         card.add(eyebrow);
         card.add(Box.createVerticalStrut(11));

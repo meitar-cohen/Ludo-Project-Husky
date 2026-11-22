@@ -1,6 +1,7 @@
 package Controller;
 
 import java.awt.Color;
+
 import java.awt.Point;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -11,37 +12,63 @@ import java.util.Set;
 import Enums.Stage;
 import Enums.SquareType;
 import Model.Game;
+import Model.Piece;
 import Model.Player;
-import Model.Question;
+import Model.QuestionEvent;
+import Model.QuestionEventCreator;
 import Model.Square;
+import java.io.IOException;
+import Model.QuestionBank;
+import Model.QuestionRepository;
 
 /** Coordinates game setup, board state, questions, and game results. */
 public class GameController {
     public static final int PIECES_PER_PLAYER = Game.PIECES_PER_PLAYER;
+    // board corner of each colour; the same order is used by the board view
+    private static final String[] CORNER_COLOR_NAMES = {"Green", "Yellow", "Blue", "Red"};
+    // on the outer and middle rings the colour's arrow is 7 squares before its corner
+    private static final int ARROW_DISTANCE_FROM_CORNER = 7;
 
     private final Game game;
     private final MovementController pieces;
+    private final SurpriseController surpriseController;
     private final TurnController turnController;
-    private final Question question = new Question(
-            "Which document defines the software requirements according to IEEE Std 830?",
-            new String[]{
-                "SRS - Software Requirements Specification",
-                "SDP - Software Development Plan",
-                "STD - Software Test Document",
-                "SDD - Software Design Description"
-            },
-            0,
-            "Easy"
-    );
+    // Command pattern: every move of a piece goes through the invoker, which logs it
+    private final CommandInvoker commands = new CommandInvoker();
+    // מאגר השאלות שנטען מקובץ ה-CSV
+    private final QuestionBank questionBank;
+
+    // אירוע השאלה הנוכחי שנוצר באמצעות Factory Method
+    private QuestionEvent currentQuestionEvent;
     private long startTimeMillis = -1;
     private long endTimeMillis = -1;
 
-    public GameController(Game game, MovementController pieces) {
-        this.game = game;
-        this.pieces = pieces;
-        this.turnController = new TurnController(game, pieces);
-        initializeBoard();
-    }
+
+	public GameController(Game game, MovementController pieces) {
+	    this.game = game;
+	    this.pieces = pieces;
+	    this.turnController = new TurnController(game, pieces);
+	    this.surpriseController =
+	            new SurpriseController(game, pieces, this.turnController);
+	
+	    // טעינת השאלות מתוך קובץ ה-CSV הקיים
+	    try {
+	        this.questionBank = new QuestionBank(
+	                QuestionRepository.loadProjectQuestions()
+	        );
+	    } catch (IOException exception) {
+	        throw new IllegalStateException(
+	                "Unable to load questions from CSV",
+	                exception
+	        );
+	    }
+	
+	    // אתחול אירוע שאלה קלה באמצעות Factory Method
+	    selectQuestion("easy");
+	
+	    initializeBoard();
+	}
+
 
     public static GameController createNewGame(
             String[] names, String[] colors, String difficulty) {
@@ -53,24 +80,71 @@ public class GameController {
         return new GameController(game, new MovementController(game));
     }
 
+	
+
+    // בחירת שאלה באמצעות Factory Method לפי רמת הקושי
+    public void selectQuestion(String difficulty) {
+
+        if (difficulty == null || difficulty.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Question difficulty is required");
+        }
+
+        // בחירת היוצר המתאים לרמת הקושי
+        QuestionEventCreator creator = switch (
+                difficulty.trim().toLowerCase(java.util.Locale.ROOT)) {
+
+            case "easy" ->
+                    new QuestionEventCreator.Easy(questionBank);
+
+            case "medium" ->
+                    new QuestionEventCreator.Medium(questionBank);
+
+            case "hard" ->
+                    new QuestionEventCreator.Hard(questionBank);
+
+            default -> throw new IllegalArgumentException(
+                    "Unsupported question difficulty: " + difficulty);
+        };
+
+        // יצירת האירוע באמצעות Factory Method
+        currentQuestionEvent = creator.create();
+    }
+
+    // בדיקת נכונות התשובה באמצעות האירוע הנוכחי
     public boolean isCorrectQuestionAnswer(int selectedIndex) {
-        return selectedIndex == question.getCorrectIndex();
+        return currentQuestionEvent.isCorrectAnswer(selectedIndex);
     }
 
+    // החזרת נוסח השאלה מתוך האירוע הנוכחי
     public String getQuestionText() {
-        return question.getText();
+        return currentQuestionEvent.getQuestion().getText();
     }
 
+    // החזרת אפשרויות התשובה
     public String[] getQuestionOptions() {
-        return question.getOptions();
+        return currentQuestionEvent.getQuestion().getOptions();
     }
 
+    // החזרת רמת הקושי של השאלה
     public String getQuestionDifficulty() {
-        return question.getDifficulty();
+        return currentQuestionEvent.getQuestion().getDifficulty();
     }
 
+    // מספר הצעדים נקבע לפי סוג האירוע שנוצר
+    public int getCurrentQuestionMoveSteps() {
+        return currentQuestionEvent.getMoveSteps();
+    }
+
+    // החזרת האינדקס של התשובה הנכונה
     public int getCorrectQuestionAnswerIndex() {
-        return question.getCorrectIndex();
+        return currentQuestionEvent.getQuestion().getCorrectIndex();
+    }
+
+
+
+    public SurpriseController getSurpriseController() {
+        return surpriseController;
     }
 
     public MovementController getMovementController() {
@@ -79,6 +153,38 @@ public class GameController {
 
     public TurnController getTurnController() {
         return turnController;
+    }
+
+    // ------------------------------------------------------------------ Command pattern (Client)
+
+    /** The invoker that runs and logs the game actions. */
+    public CommandInvoker getCommandInvoker() {
+        return commands;
+    }
+
+    /** Text lines of all the actions done in this game, oldest first. */
+    public List<String> getActionLog() {
+        return commands.getLog();
+    }
+
+    /** Takes the given piece of the current player out of the castle (as a command). */
+    public boolean takeOutPiece(int slot) {
+        return commands.execute(new TakeOutPieceCommand(game, pieces, slot));
+    }
+
+    /** Moves a piece of the current player along its path (as a command). */
+    public boolean movePiece(int pieceIndex, int targetStep, int routeSize) {
+        return commands.execute(new MovePieceCommand(game, pieces, pieceIndex, targetStep, routeSize));
+    }
+
+    /** Finishes a piece that reaches the goal (as a command). */
+    public boolean finishPiece(int pieceIndex, int routeSize) {
+        return commands.execute(new FinishPieceCommand(game, pieces, pieceIndex, routeSize));
+    }
+
+    /** Moves a piece into the private home path (as a command). */
+    public boolean enterHomePath(int pieceIndex, int sharedRouteSize) {
+        return commands.execute(new EnterHomePathCommand(game, pieces, pieceIndex, sharedRouteSize));
     }
 
     public int getBoardRings() {
@@ -112,6 +218,277 @@ public class GameController {
 
     public List<List<Point>> getBoardSharedRoutes() {
         return game.getBoard().getSharedRoutes();
+    }
+
+    private static int cornerOf(String colorName) {
+        for (int i = 0; i < CORNER_COLOR_NAMES.length; i++) {
+            if (CORNER_COLOR_NAMES[i].equalsIgnoreCase(colorName)) {
+                return i;
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * The board square a piece stands on in the shared paths, or null when the piece is
+     * in the castle, on its private home path, or finished.
+     */
+    public Point getPieceBoardPosition(int playerIndex, int pieceIndex) {
+        Piece piece = game.getPlayer(playerIndex).getPiece(pieceIndex);
+        if (!piece.isOnBoard() || piece.isFinished() || piece.isInHomePath()) {
+            return null;
+        }
+        List<Point> route = routeOf(playerIndex, piece);
+        int step = Math.max(0, Math.min(piece.getSteps(), route.size() - 1));
+        return route.get(Math.floorMod(firstIndexOf(playerIndex, piece) + step, route.size()));
+    }
+
+    /** The shared route the piece is walking on (outer, middle or inner path). */
+    private List<Point> routeOf(int playerIndex, Piece piece) {
+        if (piece.isInInnerPath()) {
+            return getInnerBoardPath();
+        }
+        if (piece.isInMiddlePath()) {
+            return getBoardRingPath(1);
+        }
+        return getBoardRings() == 0 ? getInnerBoardPath() : getBoardRingPath(0);
+    }
+
+    /** Index in {@link #routeOf} of the piece's step 0. */
+    private int firstIndexOf(int playerIndex, Piece piece) {
+        int corner = cornerOf(game.getPlayer(playerIndex).getColor());
+        if (piece.isInInnerPath()) {
+            return corner * 13 - 1;
+        }
+        List<Point> route = routeOf(playerIndex, piece);
+        if (piece.isInMiddlePath()) {
+            return corner * (route.size() / 4) + route.size() - ARROW_DISTANCE_FROM_CORNER + 1;
+        }
+        return getBoardRings() == 0 ? corner * 13 : corner * (route.size() / 4);
+    }
+
+    /**
+     * The shared square the piece would stand on after {@code step} steps of its current
+     * path, or null when that step is outside the shared route (home path, finish).
+     */
+    private Point squareAtStep(int playerIndex, Piece piece, int step) {
+        List<Point> route = routeOf(playerIndex, piece);
+        if (step < 0 || step >= route.size()) {
+            return null;
+        }
+        return route.get(Math.floorMod(firstIndexOf(playerIndex, piece) + step, route.size()));
+    }
+
+    // ------------------------------------------------------------------ Double Block
+
+    /**
+     * SRS 3.2.5.3.3 - a Double Block is two (or more) pieces of one player on the same square
+     * of the shared route. The block is not stored anywhere: it exists exactly as long as the
+     * pieces stand there, so it is cancelled when one of them moves (SRS 3.2.5.3.4).
+     *
+     * @return the index of the player who owns the block on this square, or -1 when there is none
+     */
+    public int getDoubleBlockOwnerAt(Point position) {
+        return blockOwner(allBoardPositions(), position);
+    }
+
+    /** The shared square of every piece ({@code [player][piece]}, null when not on a shared path). */
+    private Point[][] allBoardPositions() {
+        Point[][] positions = new Point[game.getPlayerCount()][PIECES_PER_PLAYER];
+        for (int player = 0; player < positions.length; player++) {
+            for (int piece = 0; piece < PIECES_PER_PLAYER; piece++) {
+                positions[player][piece] = getPieceBoardPosition(player, piece);
+            }
+        }
+        return positions;
+    }
+
+    private static int blockOwner(Point[][] positions, Point square) {
+        if (square == null) {
+            return -1;
+        }
+        for (int player = 0; player < positions.length; player++) {
+            int count = 0;
+            for (Point position : positions[player]) {
+                if (square.equals(position)) {
+                    count++;
+                }
+            }
+            if (count >= 2) {
+                return player;
+            }
+        }
+        return -1;
+    }
+
+    public boolean isDoubleBlock(Point position) {
+        return getDoubleBlockOwnerAt(position) >= 0;
+    }
+
+    /** All the squares that hold a Double Block now (used by the view to mark them). */
+    public List<Point> getDoubleBlockPositions() {
+        Point[][] positions = allBoardPositions();
+        List<Point> blocks = new ArrayList<>();
+        for (Point[] player : positions) {
+            for (Point position : player) {
+                if (position != null && !blocks.contains(position)
+                        && blockOwner(positions, position) >= 0) {
+                    blocks.add(position);
+                }
+            }
+        }
+        return blocks;
+    }
+
+    /**
+     * SRS 3.2.5.3.3 - 3.2.5.3.4 - how far a piece really gets. An opponent's Double Block can
+     * neither be passed nor be stood on, in both directions, so the piece stops on the square
+     * before it. The pieces of the block's owner are not stopped by their own block.
+     *
+     * @param fromStep the current step of the piece on its path
+     * @param toStep   the step it wants to reach (bigger = forward, smaller = backward)
+     * @return {@code toStep} when the way is free, otherwise the last free step
+     *         (equal to {@code fromStep} when the very next square is blocked)
+     */
+    public int getStepsBeforeBlock(int playerIndex, int pieceIndex, int fromStep, int toStep) {
+        Piece piece = game.getPlayer(playerIndex).getPiece(pieceIndex);
+        if (!piece.isOnBoard() || piece.isFinished() || piece.isInHomePath()
+                || fromStep == toStep) {
+            return toStep;
+        }
+        int direction = toStep > fromStep ? 1 : -1;
+        Point[][] positions = allBoardPositions();
+        for (int step = fromStep + direction; step != toStep + direction; step += direction) {
+            Point square = squareAtStep(playerIndex, piece, step);
+            if (square == null) {
+                break; // the private home path cannot hold a block
+            }
+            int owner = blockOwner(positions, square);
+            if (owner >= 0 && owner != playerIndex) {
+                return step - direction;
+            }
+        }
+        return toStep;
+    }
+
+    /** The owner of the block that stops the move, or -1 (used for the message to the player). */
+    public int getBlockingPlayer(int playerIndex, int pieceIndex, int fromStep, int toStep) {
+        int reach = getStepsBeforeBlock(playerIndex, pieceIndex, fromStep, toStep);
+        if (reach == toStep) {
+            return -1;
+        }
+        Piece piece = game.getPlayer(playerIndex).getPiece(pieceIndex);
+        Point square = squareAtStep(playerIndex, piece, reach + (toStep > fromStep ? 1 : -1));
+        return getDoubleBlockOwnerAt(square);
+    }
+
+    /**
+     * SRS 3.2.5.3.4 - for every piece of the current player: true when a Double Block stands
+     * on the very next square of the rolled move, so the piece cannot move at all.
+     */
+    public boolean[] getPiecesStuckBehindBlock() {
+        int player = game.getCurrentPlayer();
+        boolean[] stuck = new boolean[PIECES_PER_PLAYER];
+        int steps = game.getPendingSteps();
+        for (int piece = 0; piece < PIECES_PER_PLAYER; piece++) {
+            Piece model = game.getPlayer(player).getPiece(piece);
+            if (steps > 0 && model.isOnBoard() && !model.isFinished()
+                    && !model.isInHomePath()) {
+                int from = model.getSteps();
+                stuck[piece] = getStepsBeforeBlock(player, piece, from, from + steps) == from;
+            }
+        }
+        return stuck;
+    }
+
+    /**
+     * SRS 3.2.5.3.4 - moving forward up to a block is allowed only when the player has no other
+     * piece that can make the whole move. True when another piece has a free, complete move.
+     *
+     * @param routeSizes    size of the path of every piece of the current player
+     * @param ownArrowSteps step of the own arrow of every piece (-1 when none), may be null
+     */
+    public boolean hasOtherPieceWithFreeMove(int exceptPiece, int[] routeSizes, int[] ownArrowSteps) {
+        int player = game.getCurrentPlayer();
+        int steps = game.getPendingSteps();
+        for (int piece = 0; piece < PIECES_PER_PLAYER; piece++) {
+            if (piece == exceptPiece) {
+                continue;
+            }
+            int arrow = ownArrowSteps != null && ownArrowSteps.length == PIECES_PER_PLAYER
+                    ? ownArrowSteps[piece] : -1;
+            if (!pieces.isPieceMoveLegal(piece, routeSizes[piece], arrow)) {
+                continue;
+            }
+            Piece model = game.getPlayer(player).getPiece(piece);
+            int from = model.getSteps();
+            if (model.isInHomePath()
+                    || getStepsBeforeBlock(player, piece, from, from + steps) == from + steps) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * SRS 3.2.5.3.2 - a start square is protected, but a Double Block still keeps the other
+     * players off it: a piece cannot be taken out onto a start square that holds a block of
+     * another player.
+     */
+    public boolean isTakeOutBlocked(int slot) {
+        int player = game.getCurrentPlayer();
+        Piece piece = game.getPlayer(player).getPiece(slot);
+        int owner = getDoubleBlockOwnerAt(startSquareOf(player));
+        return piece != null && !piece.isOnBoard() && owner >= 0 && owner != player;
+    }
+
+    private Point startSquareOf(int playerIndex) {
+        Piece fresh = new Piece();
+        fresh.setOnBoard(true);
+        return squareAtStep(playerIndex, fresh, 0);
+    }
+
+    /**
+     * SRS 3.2.5.3.2 - star, start and surprise squares are protected. The home path is
+     * private to its owner, so an opponent can never stop on it.
+     */
+    public boolean isProtectedSquare(Point position) {
+        SquareType type = getSpecialSquareType(position);
+        return type == SquareType.STAR
+                || type == SquareType.START
+                || type == SquareType.SURPRISE;
+    }
+
+    /**
+     * SRS 3.2.5.3.1 - the given piece has stopped on its square. A single piece of another
+     * player on that square returns to its castle, unless the square is protected.
+     *
+     * @return {playerIndex, pieceIndex} of the captured piece, or null when nothing was captured
+     */
+    public int[] captureOpponentAt(int movingPlayer, int movingPiece) {
+        Point position = getPieceBoardPosition(movingPlayer, movingPiece);
+        if (position == null || isProtectedSquare(position)) {
+            return null;
+        }
+
+        for (int player = 0; player < game.getPlayerCount(); player++) {
+            if (player == movingPlayer) {
+                continue;
+            }
+            int found = -1;
+            int count = 0;
+            for (int piece = 0; piece < PIECES_PER_PLAYER; piece++) {
+                if (position.equals(getPieceBoardPosition(player, piece))) {
+                    found = piece;
+                    count++;
+                }
+            }
+            // two pieces of one player on a square are a block, not a single piece
+            if (count == 1 && commands.execute(new CaptureCommand(game, pieces, player, found))) {
+                return new int[]{player, found};
+            }
+        }
+        return null;
     }
 
     private void initializeBoard() {
@@ -155,6 +532,21 @@ public class GameController {
         game.getBoard().putSpecialSquare(
                 new Point(position), new Square(type, color, direction));
     }
+    
+
+	/**
+	 * הוספת משבצת מיוחדת עם רמת קושי לשאלה.
+	 * רמת הקושי נשמרת במודל ואינה תלויה בצבע המשבצת.
+	 */
+	public void addSpecialSquare(Point position, SquareType type,
+	        Color color, int direction, String questionDifficulty) {
+	
+	    game.getBoard().putSpecialSquare(
+	            new Point(position),
+	            new Square(type, color, direction, questionDifficulty)
+	    );
+	}
+
 
     public void randomizeSpecialSquares(List<List<Point>> routes, int rings, Set<Point> excludedCells, Color[] questionColors, Color surprise) {
         removeSpecialSquares(
@@ -200,21 +592,34 @@ public class GameController {
             addSpecialSquare(
                     available.get(index++), SquareType.STAR, null, 0);
         }
-        for (int i = 0; i < easyQuestions; i++) {
-            addSpecialSquare(
-                    available.get(index++), SquareType.QUESTION,
-                    questionColors[0], 0);
-        }
-        for (int i = 0; i < mediumQuestions; i++) {
-            addSpecialSquare(
-                    available.get(index++), SquareType.QUESTION,
-                    questionColors[1], 0);
-        }
-        for (int i = 0; i < hardQuestions; i++) {
-            addSpecialSquare(
-                    available.get(index++), SquareType.QUESTION,
-                    questionColors[2], 0);
-        }
+
+		for (int i = 0; i < easyQuestions; i++) {
+		    addSpecialSquare(
+		            available.get(index++),
+		            SquareType.QUESTION,
+		            questionColors[0],
+		            0,
+		            "easy");
+		}
+		
+		for (int i = 0; i < mediumQuestions; i++) {
+		    addSpecialSquare(
+		            available.get(index++),
+		            SquareType.QUESTION,
+		            questionColors[1],
+		            0,
+		            "medium");
+		}
+		
+		for (int i = 0; i < hardQuestions; i++) {
+		    addSpecialSquare(
+		            available.get(index++),
+		            SquareType.QUESTION,
+		            questionColors[2],
+		            0,
+		            "hard");
+		}
+
         for (int i = 0; i < surprises; i++) {
             addSpecialSquare(
                     available.get(index++), SquareType.SURPRISE,
@@ -240,6 +645,12 @@ public class GameController {
     public SquareType getSpecialSquareType(Point position) {
         Square square = game.getBoard().getSpecialSquare(position);
         return square == null ? null : square.getType();
+    }
+    
+    // שליפת רמת הקושי של משבצת שאלה מתוך המודל
+    public String getSpecialSquareQuestionDifficulty(Point position) {
+        Square square = game.getBoard().getSpecialSquare(position);
+        return square == null ? null : square.getQuestionDifficulty();
     }
 
     public Color getSpecialSquareColor(Point position) {
