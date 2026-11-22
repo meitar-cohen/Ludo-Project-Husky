@@ -7,6 +7,10 @@ import java.awt.*;
 class SurpriseDialog extends JDialog {
 
     SurpriseDialog(Window owner) {
+        this(owner, "A LITTLE DETOUR!", "-3 SQUARES", "Move your piece three squares back");
+    }
+
+    SurpriseDialog(Window owner, String titleText, String effect, String explanation) {
         super(owner, "Ludo - Surprise", ModalityType.APPLICATION_MODAL);
         setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
         setUndecorated(true);
@@ -47,7 +51,7 @@ class SurpriseDialog extends JDialog {
                 new Color(108, 78, 198)
         );
         JLabel title = centeredLabel(
-                "A LITTLE DETOUR!", 28, Font.BOLD,
+                titleText, 23, Font.BOLD,
                 new Color(30, 37, 79)
         );
         JLabel subtitle = centeredLabel(
@@ -74,14 +78,21 @@ class SurpriseDialog extends JDialog {
         eventText.setOpaque(false);
         eventText.setLayout(new BoxLayout(eventText, BoxLayout.Y_AXIS));
         eventText.add(centeredLabel(
-                "-3 SQUARES", 27, Font.BOLD,
+                effect, 22, Font.BOLD,
                 new Color(105, 70, 199)
         ));
         eventText.add(Box.createVerticalStrut(4));
-        eventText.add(centeredLabel(
-                "Move your piece three squares back", 13, Font.PLAIN,
-                new Color(91, 95, 119)
-        ));
+        JTextArea explanationText = new JTextArea(explanation);
+        explanationText.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        explanationText.setForeground(new Color(91, 95, 119));
+        explanationText.setEditable(false);
+        explanationText.setFocusable(false);
+        explanationText.setOpaque(false);
+        explanationText.setLineWrap(true);
+        explanationText.setWrapStyleWord(true);
+        explanationText.setSize(new Dimension(310, 60));
+        explanationText.setPreferredSize(new Dimension(310, 47));
+        eventText.add(explanationText);
         eventCard.add(eventText);
 
         JButton continueButton = new JButton("CONTINUE GAME") {

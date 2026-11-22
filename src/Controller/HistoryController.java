@@ -38,15 +38,30 @@ public class HistoryController {
     private String lastError;
     private List<GameRecord> loadedHistory = Collections.emptyList();
 
-    public HistoryController() {
-        this(defaultHistoryFile());
-    }
+    /** Singleton design pattern: the one history manager of the application. */
+    private static final HistoryController INSTANCE = new HistoryController(defaultHistoryFile());
 
-    public HistoryController(File historyFile) {
+    private HistoryController(File historyFile) {
         if (historyFile == null) {
             throw new IllegalArgumentException("History file cannot be null");
         }
         this.historyFile = historyFile;
+    }
+
+    /**
+     * Singleton design pattern - the game screen, the history screen and the end screen all use
+     * this one object, so the application has a single owner of the history file.
+     */
+    public static HistoryController getInstance() {
+        return INSTANCE;
+    }
+
+    /**
+     * Test seam: a separate manager over another file (a temporary file in the tests), so the
+     * tests never touch the real history. The application itself only uses {@link #getInstance()}.
+     */
+    public static HistoryController forFile(File historyFile) {
+        return new HistoryController(historyFile);
     }
 
     /**

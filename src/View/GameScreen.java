@@ -10,6 +10,7 @@ import Controller.MovementController;
 import Controller.GameController;
 import Controller.TurnController;
 import Enums.RollAction;
+import Enums.SquareType;
 
 public class GameScreen extends JPanel {
 
@@ -20,6 +21,12 @@ public class GameScreen extends JPanel {
 
     private final String difficulty;
 
+    // 3D prototype: the whole game is shown on a 2.5D board (Board3DPanel) instead of the flat one.
+    private final boolean threeD;
+    private Board3DPanel board3D;
+    private final WorldTheme theme;
+    private JLabel boardTitle;
+
     private final BoardPanel board;
     private final JLabel timerLabel;
     private final GameSidebarPanel sidebar;
@@ -29,15 +36,29 @@ public class GameScreen extends JPanel {
     // SRS 3.2.8 - the finished game is saved once; the message is shown on the end screen
     private boolean gameOverHandled;
     private String historyNote = "";
+    // the last capture message stays on the status line until the next roll
+    private String captureNote = "";
     private final HistoryController history;
     private final MovementController pieces;
     private final GameController turns;
     private final TurnController turnController;
 
     public GameScreen(GameController turns, String difficulty) {
+        this(turns, difficulty, false);
+    }
+
+    /** @param threeD true = play on the 3D board (3D prototype) */
+    public GameScreen(GameController turns, String difficulty, boolean threeD) {
+        this(turns, difficulty, threeD, Themes.defaultTheme());
+    }
+
+    /** @param theme the world of the 3D version (Strategy pattern, see {@link WorldTheme}); ignored in 2D */
+    GameScreen(GameController turns, String difficulty, boolean threeD, WorldTheme theme) {
+        this.threeD = threeD;
+        this.theme = theme;
         this.turns = turns;
         this.difficulty = difficulty == null ? "Easy" : difficulty;
-        this.history = new HistoryController();
+        this.history = HistoryController.getInstance();
         this.pieces = turns.getMovementController();
         this.turnController = turns.getTurnController();
         setOpaque(false);
@@ -67,6 +88,16 @@ public class GameScreen extends JPanel {
         level.setForeground(Color.WHITE);
         level.setFont(new Font("Segoe UI", Font.BOLD, 12));
         level.setBorder(new EmptyBorder(3, 10, 3, 10));
+        if (threeD) {
+            JLabel mode3d = new JLabel("  3D  ·  " + theme.title().toUpperCase() + "  ");
+            mode3d.setOpaque(true);
+            mode3d.setBackground(new Color(255, 190, 75));
+            mode3d.setForeground(INK);
+            mode3d.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            mode3d.setBorder(new EmptyBorder(3, 10, 3, 10));
+            mode3d.setToolTipText("3D world: " + theme.title());
+            headerBadges.add(mode3d);
+        }
         headerBadges.add(level);
         timerLabel = new JLabel("00:00:00");
         timerLabel.setFont(new Font("Segoe UI", Font.BOLD, 17));
@@ -83,7 +114,7 @@ public class GameScreen extends JPanel {
         boardCard.setBorder(new EmptyBorder(12, 13, 13, 13));
         JPanel boardCaption = new JPanel(new BorderLayout());
         boardCaption.setOpaque(false);
-        JLabel boardTitle = new JLabel("THE BOARD");
+        boardTitle = new JLabel(threeD ? "THE 3D BOARD" : "THE BOARD");
         boardTitle.setForeground(INK);
         boardTitle.setFont(new Font("Segoe UI", Font.BOLD, 13));
         boardCaption.add(boardTitle, BorderLayout.WEST);
@@ -103,7 +134,15 @@ public class GameScreen extends JPanel {
         board.setOpaque(false);
         board.setCastlePieceClickListener(this::onCastlePieceClicked);
         board.setBoardPieceClickListener(this::onBoardPieceClicked);
-        boardCard.add(board, BorderLayout.CENTER);
+        if (threeD) {
+            // the flat board is not shown: it only keeps the piece positions, the 3D board draws them
+            board.setSize(700, 700);
+            board.setStepDelay(190);
+            board3D = new Board3DPanel(board, theme);
+            boardCard.add(board3D, BorderLayout.CENTER);
+        } else {
+            boardCard.add(board, BorderLayout.CENTER);
+        }
         arena.add(boardCard, BorderLayout.CENTER);
         sidebar = new GameSidebarPanel(
                 turns.getPlayerNames(),
@@ -119,8 +158,13 @@ public class GameScreen extends JPanel {
         side.setPreferredSize(new Dimension(330, 0));
         side.add(sidebar, BorderLayout.CENTER);
         arena.add(side, BorderLayout.EAST);
+        if (board3D != null) {
+            // the green "Go!" button of the 3D view rolls the dice when no piece can be moved
+            board3D.setRollAction(this::onRoll, sidebar::isRollEnabled);
+        }
         refreshPlayers();
-        setStatus(turns.getPlayerNames()[0] + "'s turn. Click Roll Dice to start.");
+        setStatus(turns.getPlayerNames()[0] + "'s turn. Click Roll Dice to start."
+                + (threeD ? " (3D board)" : ""));
         startTimer();
     }
 
@@ -146,8 +190,14 @@ public class GameScreen extends JPanel {
             return;
         }
         // SRS 3.2.1.3.3 - the game clock starts with the first roll.
+        captureNote = "";
         turns.startGameClock();
         board.setActivePlayerColor(turns.getCurrentPlayerColor());
+
+        sidebar.setBoostMode(
+                turnController.isUltraBoostRollPending(),
+                "Hard".equals(difficulty) ? 6 : 3);
+
         int stepDie = turnController.rollStepDie();
         int boostDie = turnController.rollBoostDie();
         sidebar.setFormula(" ");
@@ -168,11 +218,22 @@ public class GameScreen extends JPanel {
         RollAction action = turnController.finishRoll(stepDie, boostDie);
         if (action == RollAction.TAKE_OUT
                 && pieces.canChooseBoardMoveInsteadOfTakeOut()
-                && pieces.hasAnyLegalMove(getCurrentRouteSizes(), getCurrentArrowSteps())) {
+                && hasLegalMove()) {
         	int choice = GameDialogs.chooseMove(this);
             if (choice == 1
                     && pieces.chooseBoardMoveInsteadOfTakeOut()) {
                 action = RollAction.MOVE;
+            }
+        }
+        if (action == RollAction.TAKE_OUT && isTakeOutBlockedForAll()) {
+            // SRS 3.2.5.3.2 - a Double Block on the start square keeps the pieces in the castle
+            if (pieces.canChooseBoardMoveInsteadOfTakeOut() && hasLegalMove()
+                    && pieces.chooseBoardMoveInsteadOfTakeOut()) {
+                action = RollAction.MOVE;
+            } else {
+                captureNote += "A Double Block of another player stands on your start square. ";
+                passWhenNoLegalMove();
+                return;
             }
         }
         if (action == RollAction.TAKE_OUT) {
@@ -184,7 +245,7 @@ public class GameScreen extends JPanel {
             );
             sidebar.setRollButton(false, "Select Your Piece");
         } else if (action == RollAction.MOVE) {
-            if (!pieces.hasAnyLegalMove(getCurrentRouteSizes(), getCurrentArrowSteps())) {
+            if (!hasLegalMove()) {
                 passWhenNoLegalMove();
                 return;
             }
@@ -219,6 +280,22 @@ public class GameScreen extends JPanel {
         } else {
             passWhenNoLegalMove();
         }
+    }
+
+    /** A legal move exists, counting that a Double Block can stop a piece (SRS 3.2.5.3.4). */
+    private boolean hasLegalMove() {
+        return pieces.hasAnyLegalMove(getCurrentRouteSizes(), getCurrentArrowSteps(),
+                turns.getPiecesStuckBehindBlock());
+    }
+
+    /** True when every piece in the castle is kept in by a Double Block on the start square. */
+    private boolean isTakeOutBlockedForAll() {
+        for (int slot = 0; slot < GameController.PIECES_PER_PLAYER; slot++) {
+            if (pieces.canTakeOutActivePiece(slot) && !turns.isTakeOutBlocked(slot)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private int[] getCurrentRouteSizes() {
@@ -265,10 +342,15 @@ public class GameScreen extends JPanel {
         if (!pieces.canTakeOutActivePiece(slot)) {
             return;
         }
+        if (turns.isTakeOutBlocked(slot)) {
+            setStatus("A Double Block of another player stands on your start square. "
+                    + "You cannot take a piece out now.");
+            return;
+        }
         if (!board.placeActivePieceOnStart(slot)) {
             return;
         }
-        if (!pieces.takeOutActivePiece(slot)) {
+        if (!turns.takeOutPiece(slot)) {
             throw new IllegalStateException(
                     "Castle state is out of sync");
         }
@@ -277,12 +359,21 @@ public class GameScreen extends JPanel {
         sidebar.setRollButton(true, "Roll Dice");
     }
 
+    private void stopBoard3D() {
+        if (board3D != null) {
+            board3D.stop();
+        }
+    }
+
     /**
      * SRS 3.2.4.3.1 -
      */
     private void onBoardPieceClicked(int pieceIndex) {
         int routeSize = board.getActiveRouteSize(pieceIndex);
-        if (pieces.tryFinishPiece(pieceIndex, routeSize)) {
+        if (handleBlockedMove(pieceIndex, routeSize)) {
+            return;
+        }
+        if (turns.finishPiece(pieceIndex, routeSize)) {
             if (!board.showActivePieceFinished(pieceIndex)) {
                 throw new IllegalStateException(
                         "Finish state is out of sync");
@@ -303,7 +394,7 @@ public class GameScreen extends JPanel {
             }
             return;
         }
-        if (pieces.tryEnterHomePath(pieceIndex, routeSize)) {
+        if (turns.enterHomePath(pieceIndex, routeSize)) {
             int homeStep = pieces.getPieceStep(pieceIndex);
             if (!board.showActivePieceInHomePath(pieceIndex, homeStep)) {
                 throw new IllegalStateException(
@@ -328,7 +419,7 @@ public class GameScreen extends JPanel {
             return;
         }
         int startStep = pieces.getPieceStep(pieceIndex);
-        if (!pieces.movePiece(pieceIndex, targetStep, routeSize)) {
+        if (!turns.movePiece(pieceIndex, targetStep, routeSize)) {
             setStatus("The selected move is not legal.");
             return;
         }
@@ -341,6 +432,51 @@ public class GameScreen extends JPanel {
     }
 
     /**
+     * SRS 3.2.5.3.3 - 3.2.5.3.4 - handles the click when an opponent's Double Block is in the way
+     * of the move. The move is cut short (the piece stops on the square before the block), and it
+     * is allowed only when the player has no other piece that can make the whole move.
+     *
+     * @return true when a block interferes and the click was handled here
+     */
+    private boolean handleBlockedMove(int pieceIndex, int routeSize) {
+        if (!pieces.isPieceSelectionLegal(pieceIndex)) {
+            return false;
+        }
+        int firstStep = pieces.getPieceStep(pieceIndex);
+        int arrowStep = pieces.findArrowOnMove(
+                pieceIndex, board.getOwnArrowStep(pieceIndex));
+        int wantedStep = arrowStep >= 0
+                ? arrowStep : firstStep + pieces.getMoveStepsForSelectedPiece();
+        int player = turns.getCurrentPlayerIndex();
+        int reach = turns.getStepsBeforeBlock(player, pieceIndex, firstStep, wantedStep);
+        if (reach == wantedStep) {
+            return false;
+        }
+        String owner = turns.getPlayerNames()[
+                turns.getBlockingPlayer(player, pieceIndex, firstStep, wantedStep)];
+        if (reach == firstStep) {
+            setStatus("A Double Block of " + owner
+                    + " is right in front of this piece. Choose another piece.");
+            return true;
+        }
+        if (turns.hasOtherPieceWithFreeMove(
+                pieceIndex, getCurrentRouteSizes(), getCurrentArrowSteps())) {
+            setStatus("A Double Block of " + owner
+                    + " is in the way. Choose a piece that can make the whole move.");
+            return true;
+        }
+        captureNote += "Double Block of " + owner
+                + " in the way - the piece stops before it. ";
+        if (!turns.movePiece(pieceIndex, reach, routeSize)) {
+            setStatus("The selected move is not legal.");
+            return true;
+        }
+        board.animatePiece(pieceIndex, firstStep, reach,
+                () -> finishPieceMovement(pieceIndex));
+        return true;
+    }
+
+    /**
      * SRS 3.2.4.3.2 - moves the piece to its arrow, and from there to the next path
      * with the steps that are left.
      */
@@ -348,7 +484,7 @@ public class GameScreen extends JPanel {
         int startStep = pieces.getPieceStep(pieceIndex);
         int remaining = pieces.getMoveStepsForSelectedPiece()
                 - (arrowStep - startStep);
-        if (!pieces.movePiece(pieceIndex, arrowStep, routeSize)) {
+        if (!turns.movePiece(pieceIndex, arrowStep, routeSize)) {
             setStatus("The selected move is not legal.");
             return;
         }
@@ -373,6 +509,7 @@ public class GameScreen extends JPanel {
         }
         String pathName = middle ? "the middle path (64)" : "the inner path (52)";
         if (remaining <= 0) {
+            announceCapture(pieceIndex);
             setStatus("Matching arrow! Piece entered " + pathName + ".");
             endTurnOrExtraTurn();
             return;
@@ -380,16 +517,19 @@ public class GameScreen extends JPanel {
         int routeSize = board.getActiveRouteSize(pieceIndex);
         int nextArrow = pieces.findArrowOnRemainingSteps(
                 pieceIndex, remaining, board.getOwnArrowStep(pieceIndex));
-        int target = nextArrow >= 0 ? nextArrow : remaining;
+        int wanted = nextArrow >= 0 ? nextArrow : remaining;
+        // SRS 3.2.5.3.4 - an opponent's Double Block on the new path stops the piece before it
+        int target = stopBeforeBlock(pieceIndex, 0, wanted);
+        boolean blocked = target != wanted;
         if (!pieces.continueMoveAfterArrow(pieceIndex, target, routeSize)) {
             throw new IllegalStateException("Arrow move is not legal");
         }
         setStatus("Matching arrow! Piece moved to " + pathName + ".");
-        if (nextArrow >= 0) {
+        if (nextArrow >= 0 && !blocked) {
             board.animatePiece(pieceIndex, 0, nextArrow,
                     () -> crossArrow(pieceIndex, remaining - nextArrow));
         } else {
-            board.animatePiece(pieceIndex, 0, remaining,
+            board.animatePiece(pieceIndex, 0, target,
                     () -> finishPieceMovement(pieceIndex));
         }
     }
@@ -402,10 +542,13 @@ public class GameScreen extends JPanel {
             crossArrow(pieceIndex, 0);
             return;
         }
+        announceCapture(pieceIndex);
         endTurnOrExtraTurn();
     }
 
     private void finishPieceMovement(int pieceIndex) {
+        // SRS 3.2.3.3.1 - capture is checked before a question or surprise square is activated
+        announceCapture(pieceIndex);
         String event = board.getSquareEventAtStep(
                 pieceIndex, pieces.getPieceStep(pieceIndex));
         if ("QUESTION".equals(event)) {
@@ -422,20 +565,56 @@ public class GameScreen extends JPanel {
         endTurnOrExtraTurn();
     }
 
-    private void askQuestion(int pieceIndex) {
-        Window owner = SwingUtilities.getWindowAncestor(this);
-        QuestionDialog dialog = new QuestionDialog(owner, turns);
-        dialog.setVisible(true);
-        boolean correct = dialog.isCorrect();
+
+	private void askQuestion(int pieceIndex) {
+	
+	    // קבלת רמת השאלה מהמשבצת שעליה הכלי נחת
+	    String questionDifficulty =
+	            board.getQuestionDifficultyAtStep(
+	                    pieceIndex,
+	                    pieces.getPieceStep(pieceIndex));
+	
+	    // מניעת הפעלת שאלה ללא רמת קושי מוגדרת
+	    if (questionDifficulty == null) {
+	        throw new IllegalStateException(
+	                "Question square has no difficulty");
+	    }
+	
+	    // בחירת שאלה אקראית מהמאגר ברמה המתאימה
+	    turns.selectQuestion(questionDifficulty);
+	
+	    // פתיחת חלון השאלה הקיים
+	    Window owner = SwingUtilities.getWindowAncestor(this);
+	    QuestionDialog dialog = new QuestionDialog(owner, turns);
+	    dialog.setVisible(true);
+	    boolean correct = dialog.isCorrect();
+
+
+        // מיקום הכלי לפני התנועה בעקבות השאלה
         int startStep = pieces.getPieceStep(pieceIndex);
+
+        // מספר הצעדים נקבע לפי רמת השאלה שנבחרה
+        int questionSteps = turns.getCurrentQuestionMoveSteps();
+
+        // חישוב מיקום היעד לפי נכונות התשובה
         int targetStep = pieces.getAnswerMoveTarget(
-            correct,
-            board.getActiveRouteSize(pieceIndex)
-        );
-        setStatus(correct
-            ? "Correct! Move 1 square forward."
-            : "Wrong answer. Move 1 square back."
-        );
+                correct,
+                questionSteps,
+                board.getActiveRouteSize(pieceIndex));
+
+        // SRS 3.2.5.3.4 - forward or backward, an opponent's Double Block stops the piece
+        // on the square before it
+        targetStep = stopBeforeBlock(pieceIndex, startStep, targetStep);
+
+        // עדכון ההודעה בהתאם לתוצאת התנועה
+        if (targetStep == startStep) {
+            setStatus("Question answered. Piece stays in place at route boundary.");
+        } else {
+            setStatus(correct
+                    ? "Correct! Move " + questionSteps + " square(s) forward."
+                    : "Wrong answer. Move " + questionSteps + " square(s) back.");
+        }
+
         if (!pieces.applyEventMovement(
                 pieceIndex,
                 targetStep,
@@ -451,35 +630,30 @@ public class GameScreen extends JPanel {
         );
     }
 
-    private void showSurprise(int pieceIndex) {
-        Window owner = SwingUtilities.getWindowAncestor(this);
-        SurpriseDialog dialog = new SurpriseDialog(owner);
-        dialog.setVisible(true);
-        int startStep = pieces.getPieceStep(pieceIndex);
-        int targetStep = pieces.getSurpriseMoveTarget(
-                board.getActiveRouteSize(pieceIndex));
-        if (!pieces.applyEventMovement(
-                pieceIndex,
-                targetStep,
-                board.getActiveRouteSize(pieceIndex))) {
-            throw new IllegalStateException(
-                    "Surprise movement is not legal");
-        }
-        setStatus("Surprise! Move back 3 squares.");
-        board.animatePiece(
-                pieceIndex,
-                startStep,
-                targetStep,
-                this::endTurnOrExtraTurn
-        );
-    }
+	private void showSurprise(int pieceIndex) {
+	    new SurpriseFlow(
+	            turns,
+	            turnController,
+	            board,
+	            pieceIndex,
+	            SwingUtilities.getWindowAncestor(this),
+	            this::endTurnOrExtraTurn,
+	            this::passTurn,
+	            this::setStatus,
+	            message -> captureNote = message
+	    ).run();
+	}
 
     private void endTurnOrExtraTurn() {
         if (turnController.hasExtraTurn()) {
             turnController.grantExtraTurn();
             board.clearHighlight();
             sidebar.setRollButton(true, "Roll Again");
-            setStatus(turns.getCurrentPlayerName() + " rolled a 6 - roll again!");
+
+            setStatus(turnController.isUltraBoostRollPending()
+                    ? "Surprise! Roll again with UltraBoost."
+                    : turns.getCurrentPlayerName()
+                            + " rolled a 6 - roll again!");
         } else {
             passTurn();
         }
@@ -526,6 +700,7 @@ public class GameScreen extends JPanel {
 
     private void showEndScreen() {
         gameTimer.stop();
+        stopBoard3D();
         JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(this);
         if (frame != null) {
             // SRS 3.2.8.3.1 - the end screen shows the players by final place
@@ -544,7 +719,8 @@ public class GameScreen extends JPanel {
 	        return;
 	    }
 	    gameTimer.stop();
-	    Window w = SwingUtilities.getWindowAncestor(this);
+	    stopBoard3D();
+	    Window w =SwingUtilities.getWindowAncestor(this);
 	    new MainMenuScreen().setVisible(true);
 	    if (w != null) {
 	        w.dispose();
@@ -560,7 +736,30 @@ public class GameScreen extends JPanel {
     }
 
     private void setStatus(String text) {
-        sidebar.setStatus(text);
+        sidebar.setStatus(captureNote + text);
+    }
+
+    /** SRS 3.2.5.3.1 - applies a capture made by the piece that just stopped. */
+    private void announceCapture(int pieceIndex) {
+        String message = board.resolveCapture(turns.getCurrentPlayerIndex(), pieceIndex);
+        if (message != null) {
+            captureNote += message;
+        }
+    }
+
+    /**
+     * SRS 3.2.5.3.3 - 3.2.5.3.4 - the step a piece really reaches: an opponent's Double Block
+     * can neither be passed nor stood on, so the piece stops on the square before it.
+     */
+    private int stopBeforeBlock(int pieceIndex, int startStep, int targetStep) {
+        int player = turns.getCurrentPlayerIndex();
+        int reach = turns.getStepsBeforeBlock(player, pieceIndex, startStep, targetStep);
+        if (reach != targetStep) {
+            int owner = turns.getBlockingPlayer(player, pieceIndex, startStep, targetStep);
+            captureNote += "Double Block of " + turns.getPlayerNames()[owner]
+                    + " in the way - the piece stops before it. ";
+        }
+        return reach;
     }
 
     /**
@@ -569,35 +768,154 @@ public class GameScreen extends JPanel {
      * and symbols displayed to the user.
      */
     private JPanel createLegend() {
-        JPanel legend = new JPanel(new GridLayout(0, 1, 0, 2));
+        JPanel legend = new JPanel();
+        legend.setLayout(new BoxLayout(legend, BoxLayout.Y_AXIS));
         legend.setOpaque(false);
-        legend.add(sectionLabel("BOARD LEGEND"));
-        legend.add(legendRow("#", new Color(225, 230, 239), "Start square"));
-        legend.add(legendRow("\u2605", new Color(255, 230, 150), "Protection square"));
-        legend.add(legendRow("\u2192", new Color(225, 230, 239), "Arrow to inner path"));
-        legend.add(legendRow("", new Color(215, 230, 255), "Home path"));
+        legend.setBorder(new EmptyBorder(4, 6, 4, 6));
+        JLabel title = new JLabel("Board legend");
+        title.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        title.setForeground(INK);
+        legend.add(leftAligned(title));
+        legend.add(Box.createVerticalStrut(10));
+        legend.add(legendSection("PROTECTED - a piece here cannot be captured"));
+        legend.add(legendRow(SquareType.STAR, null,
+                "Protection square", "Star - pieces of different players can share it"));
+        legend.add(legendRow(SquareType.START, BoardPanel.BLUE,
+                "Start square", "Marked #, in the colour of its player"));
         if (!"Easy".equals(difficulty)) {
-            legend.add(legendRow("?", BoardPanel.Q_EASY, "Question square"));
-            legend.add(legendRow("!", BoardPanel.SURPRISE, "Surprise square"));
+            legend.add(legendRow(SquareType.SURPRISE, BoardPanel.SURPRISE,
+                    "Surprise square", "Marked !, triggers a random event"));
+        }
+        legend.add(Box.createVerticalStrut(8));
+        legend.add(legendSection("PATHS"));
+        legend.add(legendRow(SquareType.ARROW, BoardPanel.GREEN,
+                "Arrow", "A piece of the same colour moves to the next path"));
+        legend.add(legendRow(null, BoardPanel.GREEN,
+                "Home path", "Private path to the goal - cannot be captured"));
+        if (!"Easy".equals(difficulty)) {
+            legend.add(Box.createVerticalStrut(8));
+            legend.add(legendSection("QUESTION SQUARES"));
+            legend.add(legendRow(SquareType.QUESTION, BoardPanel.Q_EASY,
+                    "Easy question", "Right: 1 forward - wrong: 1 back"));
+            legend.add(legendRow(SquareType.QUESTION, BoardPanel.Q_MEDIUM,
+                    "Medium question", "Right: 2 forward - wrong: 2 back"));
+            legend.add(legendRow(SquareType.QUESTION, BoardPanel.Q_HARD,
+                    "Hard question", "Right: 3 forward - wrong: 3 back"));
         }
         return legend;
     }
 
-    private JPanel legendRow(String symbol, Color bg, String text) {
-        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 1));
+    private JComponent legendSection(String text) {
+        JLabel label = sectionLabel(text);
+        label.setBorder(new EmptyBorder(0, 0, 4, 0));
+        return leftAligned(label);
+    }
+
+    private JComponent legendRow(SquareType type, Color color, String name, String description) {
+        JPanel row = new JPanel(new BorderLayout(10, 0));
         row.setOpaque(false);
-        JLabel s = new JLabel(symbol, SwingConstants.CENTER);
-        s.setOpaque(true);
-        s.setBackground(bg);
-        s.setForeground(INK);
-        s.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        s.setPreferredSize(new Dimension(19, 19));
-        JLabel label = new JLabel(text);
-        label.setForeground(MUTED);
-        label.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        row.add(s);
-        row.add(label);
-        return row;
+        row.setBorder(new EmptyBorder(3, 0, 3, 0));
+        row.add(new JLabel(new ImageIcon(legendSwatch(type, color))), BorderLayout.WEST);
+        JLabel label = new JLabel("<html><b>" + name + "</b><br>"
+                + "<span style='color:#6e7a96'>" + description + "</span></html>");
+        label.setForeground(INK);
+        label.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        row.add(label, BorderLayout.CENTER);
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, row.getPreferredSize().height));
+        return leftAligned(row);
+    }
+
+    /** Draws a square like the board does (null type = a home-path cell). */
+    private static Image legendSwatch(SquareType type, Color color) {
+        int cell = 36;
+        int pad = 3;
+        int tile = cell - pad * 2;
+        int arc = 10;
+        java.awt.image.BufferedImage image =
+                new java.awt.image.BufferedImage(cell, cell, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = image.createGraphics();
+        quality(g);
+        Color base = Color.WHITE;
+        if (type == SquareType.STAR) {
+            base = new Color(255, 241, 196);
+        } else if (type == SquareType.SURPRISE) {
+            base = new Color(234, 223, 255);
+        } else if (color != null) {
+            base = lighten(color);
+            if (type == SquareType.START || type == SquareType.ARROW
+                    || type == SquareType.QUESTION) {
+                base = lighten(base);
+            }
+        }
+        g.setColor(base);
+        g.fillRect(0, 0, cell, cell);
+        g.setColor(new Color(201, 209, 228));
+        g.setStroke(new BasicStroke(1.2f));
+        g.drawRect(0, 0, cell - 1, cell - 1);
+        if (type == SquareType.STAR) {
+            g.setColor(new Color(255, 255, 255, 170));
+            g.fillOval(pad, pad, tile, tile);
+            java.awt.geom.Path2D star = new java.awt.geom.Path2D.Double();
+            for (int i = 0; i < 10; i++) {
+                double radius = (i % 2 == 0 ? 1.0 : 0.46) * cell * 0.39;
+                double angle = -Math.PI / 2 + i * Math.PI / 5;
+                double px = cell / 2.0 + Math.cos(angle) * radius;
+                double py = cell / 2.0 + Math.sin(angle) * radius;
+                if (i == 0) {
+                    star.moveTo(px, py);
+                } else {
+                    star.lineTo(px, py);
+                }
+            }
+            star.closePath();
+            g.setColor(new Color(251, 181, 37));
+            g.fill(star);
+            g.setColor(new Color(158, 107, 19));
+            g.setStroke(new BasicStroke(1.5f));
+            g.draw(star);
+        } else if (type == SquareType.ARROW) {
+            g.setColor(new Color(255, 255, 255, 150));
+            g.fillRoundRect(pad, pad, tile, tile, arc, arc);
+            double length = cell * 0.37;
+            java.awt.geom.Path2D arrow = new java.awt.geom.Path2D.Double();
+            arrow.moveTo(-length, -length * 0.27);
+            arrow.lineTo(0, -length * 0.27);
+            arrow.lineTo(0, -length * 0.69);
+            arrow.lineTo(length, 0);
+            arrow.lineTo(0, length * 0.69);
+            arrow.lineTo(0, length * 0.27);
+            arrow.lineTo(-length, length * 0.27);
+            arrow.closePath();
+            g.translate(cell / 2.0, cell / 2.0);
+            g.setColor(color.darker());
+            g.fill(arrow);
+        } else if (type != null) {
+            Color fill = color;
+            String mark = "#";
+            if (type == SquareType.QUESTION) {
+                mark = "?";
+                fill = BoardPanel.Q_EASY.equals(color) ? new Color(48, 167, 111)
+                        : BoardPanel.Q_MEDIUM.equals(color) ? new Color(220, 157, 32)
+                        : new Color(221, 69, 90);
+            } else if (type == SquareType.SURPRISE) {
+                mark = "!";
+                fill = new Color(134, 76, 211);
+            }
+            g.setColor(fill);
+            g.fillRoundRect(pad, pad, tile, tile, arc, arc);
+            g.setFont(new Font("Segoe UI", Font.BOLD, 22));
+            FontMetrics metrics = g.getFontMetrics();
+            g.setColor(Color.WHITE);
+            g.drawString(mark, (cell - metrics.stringWidth(mark)) / 2,
+                    (cell + metrics.getAscent() - metrics.getDescent()) / 2);
+        }
+        g.dispose();
+        return image;
+    }
+
+    private static Color lighten(Color color) {
+        return new Color((color.getRed() + 255) / 2,
+                (color.getGreen() + 255) / 2, (color.getBlue() + 255) / 2);
     }
 
     static JLabel sectionLabel(String text) {
