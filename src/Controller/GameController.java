@@ -33,6 +33,8 @@ public class GameController {
     private final MovementController pieces;
     private final SurpriseController surpriseController;
     private final TurnController turnController;
+    // Command pattern: every move of a piece goes through the invoker, which logs it
+    private final CommandInvoker commands = new CommandInvoker();
     // מאגר השאלות שנטען מקובץ ה-CSV
     private final QuestionBank questionBank;
 
@@ -153,6 +155,38 @@ public class GameController {
         return turnController;
     }
 
+    // ------------------------------------------------------------------ Command pattern (Client)
+
+    /** The invoker that runs and logs the game actions. */
+    public CommandInvoker getCommandInvoker() {
+        return commands;
+    }
+
+    /** Text lines of all the actions done in this game, oldest first. */
+    public List<String> getActionLog() {
+        return commands.getLog();
+    }
+
+    /** Takes the given piece of the current player out of the castle (as a command). */
+    public boolean takeOutPiece(int slot) {
+        return commands.execute(new TakeOutPieceCommand(game, pieces, slot));
+    }
+
+    /** Moves a piece of the current player along its path (as a command). */
+    public boolean movePiece(int pieceIndex, int targetStep, int routeSize) {
+        return commands.execute(new MovePieceCommand(game, pieces, pieceIndex, targetStep, routeSize));
+    }
+
+    /** Finishes a piece that reaches the goal (as a command). */
+    public boolean finishPiece(int pieceIndex, int routeSize) {
+        return commands.execute(new FinishPieceCommand(game, pieces, pieceIndex, routeSize));
+    }
+
+    /** Moves a piece into the private home path (as a command). */
+    public boolean enterHomePath(int pieceIndex, int sharedRouteSize) {
+        return commands.execute(new EnterHomePathCommand(game, pieces, pieceIndex, sharedRouteSize));
+    }
+
     public int getBoardRings() {
         return game.getBoard().getRings();
     }
@@ -204,25 +238,214 @@ public class GameController {
         if (!piece.isOnBoard() || piece.isFinished() || piece.isInHomePath()) {
             return null;
         }
-
-        int corner = cornerOf(game.getPlayer(playerIndex).getColor());
-        List<Point> route;
-        int first;
-        if (piece.isInInnerPath()) {
-            route = getInnerBoardPath();
-            first = corner * 13 - 1;
-        } else if (piece.isInMiddlePath()) {
-            route = getBoardRingPath(1);
-            first = corner * (route.size() / 4) + route.size() - ARROW_DISTANCE_FROM_CORNER + 1;
-        } else if (getBoardRings() == 0) {
-            route = getInnerBoardPath();
-            first = corner * 13;
-        } else {
-            route = getBoardRingPath(0);
-            first = corner * (route.size() / 4);
-        }
+        List<Point> route = routeOf(playerIndex, piece);
         int step = Math.max(0, Math.min(piece.getSteps(), route.size() - 1));
-        return route.get(Math.floorMod(first + step, route.size()));
+        return route.get(Math.floorMod(firstIndexOf(playerIndex, piece) + step, route.size()));
+    }
+
+    /** The shared route the piece is walking on (outer, middle or inner path). */
+    private List<Point> routeOf(int playerIndex, Piece piece) {
+        if (piece.isInInnerPath()) {
+            return getInnerBoardPath();
+        }
+        if (piece.isInMiddlePath()) {
+            return getBoardRingPath(1);
+        }
+        return getBoardRings() == 0 ? getInnerBoardPath() : getBoardRingPath(0);
+    }
+
+    /** Index in {@link #routeOf} of the piece's step 0. */
+    private int firstIndexOf(int playerIndex, Piece piece) {
+        int corner = cornerOf(game.getPlayer(playerIndex).getColor());
+        if (piece.isInInnerPath()) {
+            return corner * 13 - 1;
+        }
+        List<Point> route = routeOf(playerIndex, piece);
+        if (piece.isInMiddlePath()) {
+            return corner * (route.size() / 4) + route.size() - ARROW_DISTANCE_FROM_CORNER + 1;
+        }
+        return getBoardRings() == 0 ? corner * 13 : corner * (route.size() / 4);
+    }
+
+    /**
+     * The shared square the piece would stand on after {@code step} steps of its current
+     * path, or null when that step is outside the shared route (home path, finish).
+     */
+    private Point squareAtStep(int playerIndex, Piece piece, int step) {
+        List<Point> route = routeOf(playerIndex, piece);
+        if (step < 0 || step >= route.size()) {
+            return null;
+        }
+        return route.get(Math.floorMod(firstIndexOf(playerIndex, piece) + step, route.size()));
+    }
+
+    // ------------------------------------------------------------------ Double Block
+
+    /**
+     * SRS 3.2.5.3.3 - a Double Block is two (or more) pieces of one player on the same square
+     * of the shared route. The block is not stored anywhere: it exists exactly as long as the
+     * pieces stand there, so it is cancelled when one of them moves (SRS 3.2.5.3.4).
+     *
+     * @return the index of the player who owns the block on this square, or -1 when there is none
+     */
+    public int getDoubleBlockOwnerAt(Point position) {
+        return blockOwner(allBoardPositions(), position);
+    }
+
+    /** The shared square of every piece ({@code [player][piece]}, null when not on a shared path). */
+    private Point[][] allBoardPositions() {
+        Point[][] positions = new Point[game.getPlayerCount()][PIECES_PER_PLAYER];
+        for (int player = 0; player < positions.length; player++) {
+            for (int piece = 0; piece < PIECES_PER_PLAYER; piece++) {
+                positions[player][piece] = getPieceBoardPosition(player, piece);
+            }
+        }
+        return positions;
+    }
+
+    private static int blockOwner(Point[][] positions, Point square) {
+        if (square == null) {
+            return -1;
+        }
+        for (int player = 0; player < positions.length; player++) {
+            int count = 0;
+            for (Point position : positions[player]) {
+                if (square.equals(position)) {
+                    count++;
+                }
+            }
+            if (count >= 2) {
+                return player;
+            }
+        }
+        return -1;
+    }
+
+    public boolean isDoubleBlock(Point position) {
+        return getDoubleBlockOwnerAt(position) >= 0;
+    }
+
+    /** All the squares that hold a Double Block now (used by the view to mark them). */
+    public List<Point> getDoubleBlockPositions() {
+        Point[][] positions = allBoardPositions();
+        List<Point> blocks = new ArrayList<>();
+        for (Point[] player : positions) {
+            for (Point position : player) {
+                if (position != null && !blocks.contains(position)
+                        && blockOwner(positions, position) >= 0) {
+                    blocks.add(position);
+                }
+            }
+        }
+        return blocks;
+    }
+
+    /**
+     * SRS 3.2.5.3.3 - 3.2.5.3.4 - how far a piece really gets. An opponent's Double Block can
+     * neither be passed nor be stood on, in both directions, so the piece stops on the square
+     * before it. The pieces of the block's owner are not stopped by their own block.
+     *
+     * @param fromStep the current step of the piece on its path
+     * @param toStep   the step it wants to reach (bigger = forward, smaller = backward)
+     * @return {@code toStep} when the way is free, otherwise the last free step
+     *         (equal to {@code fromStep} when the very next square is blocked)
+     */
+    public int getStepsBeforeBlock(int playerIndex, int pieceIndex, int fromStep, int toStep) {
+        Piece piece = game.getPlayer(playerIndex).getPiece(pieceIndex);
+        if (!piece.isOnBoard() || piece.isFinished() || piece.isInHomePath()
+                || fromStep == toStep) {
+            return toStep;
+        }
+        int direction = toStep > fromStep ? 1 : -1;
+        Point[][] positions = allBoardPositions();
+        for (int step = fromStep + direction; step != toStep + direction; step += direction) {
+            Point square = squareAtStep(playerIndex, piece, step);
+            if (square == null) {
+                break; // the private home path cannot hold a block
+            }
+            int owner = blockOwner(positions, square);
+            if (owner >= 0 && owner != playerIndex) {
+                return step - direction;
+            }
+        }
+        return toStep;
+    }
+
+    /** The owner of the block that stops the move, or -1 (used for the message to the player). */
+    public int getBlockingPlayer(int playerIndex, int pieceIndex, int fromStep, int toStep) {
+        int reach = getStepsBeforeBlock(playerIndex, pieceIndex, fromStep, toStep);
+        if (reach == toStep) {
+            return -1;
+        }
+        Piece piece = game.getPlayer(playerIndex).getPiece(pieceIndex);
+        Point square = squareAtStep(playerIndex, piece, reach + (toStep > fromStep ? 1 : -1));
+        return getDoubleBlockOwnerAt(square);
+    }
+
+    /**
+     * SRS 3.2.5.3.4 - for every piece of the current player: true when a Double Block stands
+     * on the very next square of the rolled move, so the piece cannot move at all.
+     */
+    public boolean[] getPiecesStuckBehindBlock() {
+        int player = game.getCurrentPlayer();
+        boolean[] stuck = new boolean[PIECES_PER_PLAYER];
+        int steps = game.getPendingSteps();
+        for (int piece = 0; piece < PIECES_PER_PLAYER; piece++) {
+            Piece model = game.getPlayer(player).getPiece(piece);
+            if (steps > 0 && model.isOnBoard() && !model.isFinished()
+                    && !model.isInHomePath()) {
+                int from = model.getSteps();
+                stuck[piece] = getStepsBeforeBlock(player, piece, from, from + steps) == from;
+            }
+        }
+        return stuck;
+    }
+
+    /**
+     * SRS 3.2.5.3.4 - moving forward up to a block is allowed only when the player has no other
+     * piece that can make the whole move. True when another piece has a free, complete move.
+     *
+     * @param routeSizes    size of the path of every piece of the current player
+     * @param ownArrowSteps step of the own arrow of every piece (-1 when none), may be null
+     */
+    public boolean hasOtherPieceWithFreeMove(int exceptPiece, int[] routeSizes, int[] ownArrowSteps) {
+        int player = game.getCurrentPlayer();
+        int steps = game.getPendingSteps();
+        for (int piece = 0; piece < PIECES_PER_PLAYER; piece++) {
+            if (piece == exceptPiece) {
+                continue;
+            }
+            int arrow = ownArrowSteps != null && ownArrowSteps.length == PIECES_PER_PLAYER
+                    ? ownArrowSteps[piece] : -1;
+            if (!pieces.isPieceMoveLegal(piece, routeSizes[piece], arrow)) {
+                continue;
+            }
+            Piece model = game.getPlayer(player).getPiece(piece);
+            int from = model.getSteps();
+            if (model.isInHomePath()
+                    || getStepsBeforeBlock(player, piece, from, from + steps) == from + steps) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * SRS 3.2.5.3.2 - a start square is protected, but a Double Block still keeps the other
+     * players off it: a piece cannot be taken out onto a start square that holds a block of
+     * another player.
+     */
+    public boolean isTakeOutBlocked(int slot) {
+        int player = game.getCurrentPlayer();
+        Piece piece = game.getPlayer(player).getPiece(slot);
+        int owner = getDoubleBlockOwnerAt(startSquareOf(player));
+        return piece != null && !piece.isOnBoard() && owner >= 0 && owner != player;
+    }
+
+    private Point startSquareOf(int playerIndex) {
+        Piece fresh = new Piece();
+        fresh.setOnBoard(true);
+        return squareAtStep(playerIndex, fresh, 0);
     }
 
     /**
@@ -261,7 +484,7 @@ public class GameController {
                 }
             }
             // two pieces of one player on a square are a block, not a single piece
-            if (count == 1 && pieces.sendPieceToCastle(player, found)) {
+            if (count == 1 && commands.execute(new CaptureCommand(game, pieces, player, found))) {
                 return new int[]{player, found};
             }
         }
