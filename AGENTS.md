@@ -4,7 +4,7 @@ Read before every task. These rules are mandatory unless the user overrides them
 
 ## Workflow
 1. Inspect the relevant existing code first.
-2. Course lectures, tutorials and the class diagram are not in the repo; the user provides them or they exist on the user's computer. Ask for them **only when the task depends on them** (adding or changing classes, relationships or design patterns, or a design decision that must follow the course). For small or local changes (bug fix, tweak inside a method, test, UI detail) do not ask. If needed and not provided, ask for the file or its location before planning. Never guess.
+2. Course lectures, tutorials, the SRS, the SDP and the class diagram are not in the repo; the user provides them or they exist on the user's computer. Ask for them **only when the task depends on them** (adding or changing classes, relationships, design patterns, requirements or scope, or a design decision that must follow the course or the project documents). For small or local changes (bug fix, tweak inside a method, test, UI detail) do not ask. If needed and not provided, ask for the file or its location before planning. Never guess.
 3. **Propose a short plan and wait for approval before changing any file.** The plan lists: goal, files to change or create (by Model / View / Controller / Tests), any new class, tests to add, and risks to game logic.
 4. Implement small, surgical changes that match the approved plan.
 5. Compile and run the new tests plus the related existing tests. Report honestly what was and was not run.
@@ -18,9 +18,12 @@ If a request is ambiguous or has several reasonable designs, ask instead of choo
 - **View = presentation and input only.** It forwards user actions to the Controller and makes no game decisions.
 
 ## Code rules
-- **No inner, nested, local or anonymous classes.** Every new type goes in its own top-level file. Do not add or modify nested classes inside `GameController`.
+- **No inner, nested, local or anonymous classes.** Every new type goes in its own top-level file. This applies to every class in the project, especially all `Controller` and `Model` classes: do not add or modify nested classes in them.
 - **Create only classes that appear in the class diagram.** Any other class (helper, utility, interface, enum) needs the user's explicit approval first.
+- **Screens and panels (View).** Follow the existing `...Screen` naming convention for a significant screen. A screen made of several significant panels keeps each panel in its own file. A small panel (under ~100 lines) does not need its own file, and often does not need to be a separate panel at all: build it as a method inside the screen or its parent panel. Never solve this with a nested class. Any new panel class still follows the class-diagram rule above.
 - Follow the existing naming and style. Do not refactor unrelated code or add dependencies without asking.
+- **Enums.** Place every enum in the `Enums` package, as its own top-level file, never inside a Model, View or Controller class. A new enum still follows the class-diagram rule above.
+- **No unrequested code.** Do not add methods, fields, parameters or features that are unused (never called) or go beyond what was asked. Every added method must be called from the code or by a test.
 
 ## Tests
 - Every new feature or behavior change comes with tests, written in the same change.
