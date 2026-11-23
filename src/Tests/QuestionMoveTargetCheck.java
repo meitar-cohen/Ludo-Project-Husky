@@ -72,11 +72,18 @@ public class QuestionMoveTargetCheck {
         System.out.println(
                 "PASS - Easy/Medium/Hard movement: 1/2/3 steps");
 
-        // בדיקת חריגה מתחילת המסלול
-        game.getSelectedPiece().setSteps(1);
+        // תנועה שגויה נעצרת בתחילת המסלול ולא מחזירה את הכלי לטירה
+        game.getSelectedPiece().setSteps(0);
+        check(movement.getAnswerMoveTarget(false, 3, 52) == 0,
+                "Backward movement from the start must stay at the start");
 
-        check(movement.getAnswerMoveTarget(false, 3, 52) == 1,
-                "Movement below route start must keep current step");
+        game.getSelectedPiece().setSteps(1);
+        check(movement.getAnswerMoveTarget(false, 3, 52) == 0,
+                "Backward movement must stop at the route start");
+
+        game.getSelectedPiece().setSteps(2);
+        check(movement.getAnswerMoveTarget(false, 3, 52) == 0,
+                "Backward movement must stop at the route start");
 
         // בדיקת חריגה מסוף המסלול
         game.getSelectedPiece().setSteps(50);

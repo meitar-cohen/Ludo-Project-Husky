@@ -93,6 +93,49 @@ public final class SurpriseControllerIntegrationCheck {
         assertThat(enemy.game.getCurrentPlayer() == 0, "Opponent changed active player");
         System.out.println("PASS - opponent moves ceil(die/2) backward");
 
+        // SRS 3.2.4.3.5 - תנועה אחורה של יריב נעצרת בצעד 0 ולא מחזירה לטירה
+        Setup nearStart = new Setup();
+        Piece nearStartPiece = nearStart.game.getPlayer(1).getPiece(1);
+        nearStartPiece.setOnBoard(true);
+        nearStartPiece.setSteps(2);
+        SurpriseResolution nearStartResult = nearStart.surprises.apply(
+                nearStart.plan(SurpriseType.MOVE_OPPONENT), 0, 52, 1, 6);
+        assertThat(nearStartPiece.getSteps() == 0 && nearStartPiece.isOnBoard()
+                && nearStartResult.getAfterStep() == 0,
+                "Opponent must stop at the start square, not return to the castle");
+
+        Setup atStart = new Setup();
+        Piece atStartPiece = atStart.game.getPlayer(1).getPiece(1);
+        atStartPiece.setOnBoard(true);
+        atStartPiece.setSteps(0);
+        atStart.surprises.apply(atStart.plan(SurpriseType.MOVE_OPPONENT), 0, 52, 1, 6);
+        assertThat(atStartPiece.getSteps() == 0 && atStartPiece.isOnBoard(),
+                "Opponent on the start square must stay there");
+
+        Setup homePath = new Setup();
+        Piece homePathPiece = homePath.game.getPlayer(1).getPiece(1);
+        homePathPiece.setInHomePath(true);
+        homePathPiece.setSteps(1);
+        homePath.surprises.apply(homePath.plan(SurpriseType.MOVE_OPPONENT), 0, 52, 1, 6);
+        assertThat(homePathPiece.getSteps() == 0 && homePathPiece.isInHomePath()
+                && !homePathPiece.isFinished(),
+                "Opponent in the home path must move back inside it and stop at step 0");
+        System.out.println("PASS - opponent backward move stops at step 0");
+
+        // הזזת יריב שולחת התראת pieceMoved אחת בדיוק, כדי שהתצוגה תתעדכן
+        Setup notify = new Setup();
+        Piece notifyPiece = notify.game.getPlayer(1).getPiece(1);
+        notifyPiece.setOnBoard(true);
+        notifyPiece.setSteps(10);
+        int[] pieceMovedCount = {0};
+        notify.game.addObserver(event -> {
+            if ("pieceMoved".equals(event.getPropertyName())) pieceMovedCount[0]++;
+        });
+        notify.surprises.apply(notify.plan(SurpriseType.MOVE_OPPONENT), 0, 52, 1, 4);
+        assertThat(pieceMovedCount[0] == 1,
+                "Opponent move must fire exactly one pieceMoved notification");
+        System.out.println("PASS - opponent move notifies observers once");
+
         Setup noEnemy = new Setup();
         SurpriseResolution noTarget = noEnemy.apply(SurpriseType.MOVE_OPPONENT);
         assertThat(noTarget.getTitle().contains("NO TARGET"),

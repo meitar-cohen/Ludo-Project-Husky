@@ -131,9 +131,8 @@ public final class SurpriseController {
                 Piece enemy = game.getPlayer(opponentIndex).getPiece(chosen);
                 int before = enemy.getSteps();
                 int distance = (normalDie + 1) / 2; // עיגול כלפי מעלה לפי ההוראות
-                int after = Math.max(0, before - distance);
-                enemy.setSteps(after);
-                game.notifyObservers("pieceMoved");
+                int after = movement.moveOpponentPieceBack(opponentIndex, chosen, distance);
+                if (after < 0) throw new IllegalStateException("Cannot move opponent backward");
                 return result(plan, opponentIndex, chosen, before, after,
                         "OPPONENT DETOUR!", "Rolled " + normalDie + "; opponent moves back "
                                 + (before - after) + " squares.");
