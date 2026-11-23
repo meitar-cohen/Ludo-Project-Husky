@@ -1,5 +1,3 @@
-# LLM Instructions — Ludo Java Project (MVC)
-
 Read before every task. These rules are mandatory unless the user overrides them in the current conversation.
 
 ## Workflow
