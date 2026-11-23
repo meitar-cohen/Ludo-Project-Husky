@@ -36,6 +36,7 @@ abstract class AbstractTheme implements WorldTheme {
     @Override public void paintAnimated(Animated scene) { }
     @Override public double restLift() { return 0; }
     @Override public double restTilt() { return 0; }
+    @Override public KickStyle kickStyle() { return KickStyle.CLASSIC; }
 
     @Override
     public void paintPawn(Graphics2D g, Color color, int corner) {

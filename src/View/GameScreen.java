@@ -509,9 +509,10 @@ public class GameScreen extends JPanel {
         }
         String pathName = middle ? "the middle path (64)" : "the inner path (52)";
         if (remaining <= 0) {
-            announceCapture(pieceIndex);
-            setStatus("Matching arrow! Piece entered " + pathName + ".");
-            endTurnOrExtraTurn();
+            captureThen(pieceIndex, () -> {
+                setStatus("Matching arrow! Piece entered " + pathName + ".");
+                endTurnOrExtraTurn();
+            });
             return;
         }
         int routeSize = board.getActiveRouteSize(pieceIndex);
@@ -542,13 +543,16 @@ public class GameScreen extends JPanel {
             crossArrow(pieceIndex, 0);
             return;
         }
-        announceCapture(pieceIndex);
-        endTurnOrExtraTurn();
+        captureThen(pieceIndex, this::endTurnOrExtraTurn);
     }
 
     private void finishPieceMovement(int pieceIndex) {
-        // SRS 3.2.3.3.1 - capture is checked before a question or surprise square is activated
-        announceCapture(pieceIndex);
+        // SRS 3.2.3.3.1 - capture is checked before a question or surprise square is activated;
+        // the capture is shown as a kick, and the square is activated after it
+        captureThen(pieceIndex, () -> activateSquare(pieceIndex));
+    }
+
+    private void activateSquare(int pieceIndex) {
         String event = board.getSquareEventAtStep(
                 pieceIndex, pieces.getPieceStep(pieceIndex));
         if ("QUESTION".equals(event)) {
@@ -740,11 +744,14 @@ public class GameScreen extends JPanel {
     }
 
     /** SRS 3.2.5.3.1 - applies a capture made by the piece that just stopped. */
-    private void announceCapture(int pieceIndex) {
-        String message = board.resolveCapture(turns.getCurrentPlayerIndex(), pieceIndex);
-        if (message != null) {
-            captureNote += message;
+    private void captureThen(int pieceIndex, Runnable next) {
+        String message = board.resolveCapture(turns.getCurrentPlayerIndex(), pieceIndex, next);
+        if (message == null) {
+            next.run();                  // nothing was captured, the game just goes on
+            return;
         }
+        captureNote += message;          // `next` runs when the kick animation is over
+        setStatus("");
     }
 
     /**

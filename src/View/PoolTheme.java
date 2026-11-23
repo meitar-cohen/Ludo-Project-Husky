@@ -33,6 +33,7 @@ final class PoolTheme extends AbstractTheme {
     // ------------------------------------------------------------------ light and island
 
     @Override public double ambientLight() { return 0.56; }
+    @Override public KickStyle kickStyle() { return KickStyle.SPLASH; }
     @Override public double directLight() { return 0.56; }
     @Override public Color fogColor() { return new Color(214, 238, 255); }
     @Override public double restLift() { return 0.5; }

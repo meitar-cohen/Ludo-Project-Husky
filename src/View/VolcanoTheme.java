@@ -46,6 +46,7 @@ final class VolcanoTheme extends AbstractTheme {
     // ------------------------------------------------------------------ light and island
 
     @Override public double ambientLight() { return 0.38; }
+    @Override public KickStyle kickStyle() { return KickStyle.FIRE; }
     @Override public double directLight() { return 0.62; }
     @Override public Color fogColor() { return new Color(70, 26, 30); }
 

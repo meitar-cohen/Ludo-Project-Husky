@@ -81,6 +81,9 @@ interface WorldTheme {
     /** How far a waiting piece is tilted (radians), for example when it lies on a sunbed. */
     double restTilt();
 
+    /** How the kick animation of a capture looks in this world (Strategy: the world decides). */
+    KickStyle kickStyle();
+
     // ======================================================================================
     // Small helper types the strategies work with
     // ======================================================================================

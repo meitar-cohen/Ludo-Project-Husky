@@ -380,6 +380,22 @@ class Board3DPanel extends JPanel {
 
     /** Moves the camera behind the focus piece, turning to look along its path. */
     private void updateChase(double dt) {
+        // a kicked piece flies to its castle on the other side of the board: the camera follows it
+        KickEvent ke = board.kickEvent();
+        if (ke != null && chaseInit && board.kickSeconds() >= KickEvent.WINDUP - 0.05) {
+            PieceVisual flying = visuals[ke.victimCorner * 4 + ke.victimSlot];
+            if (flying.init) {
+                double[] pad = padPosition(ke.victimCorner, ke.victimSlot);
+                double fromX = (ke.cell.x + 0.5 - half) * CELL, fromZ = (half - (ke.cell.y + 0.5)) * CELL;
+                double heading = Math.atan2(pad[0] - fromX, pad[1] - fromZ);
+                double turn = Math.atan2(Math.sin(heading - chaseHeading), Math.cos(heading - chaseHeading));
+                chaseHeading += turn * (1 - Math.exp(-3.5 * dt));
+                double follow = 1 - Math.exp(-6.0 * dt);
+                chaseX += (flying.curX - chaseX) * follow;
+                chaseZ += (flying.curZ - chaseZ) * follow;
+                return;
+            }
+        }
         if (focusKey < 0 || !visuals[focusKey].init) {
             return;
         }
@@ -817,6 +833,7 @@ class Board3DPanel extends JPanel {
         boolean init, hopping, visible = true;
         double curX, curZ, curH, srcX, srcZ, tgtX, tgtZ, dur, hopH, scale = 1;
         double t0;
+        double spin, spinTurns;                              // a kicked piece spins in the air
         boolean onBoard, finished;
         final List<double[]> trail = new ArrayList<>();      // x, y, z, time
     }
@@ -891,9 +908,22 @@ class Board3DPanel extends JPanel {
                     v.hopH = step ? 0.85 : Math.min(2.6, 1.0 + 0.1 * dist);
                     v.t0 = time;
                     v.hopping = true;
+                    v.spinTurns = 0;
+                    KickEvent kick = board.kickEvent();
+                    if (kick != null && kick.isVictim(corner, idx) && !finished) {
+                        // kicked: wait for the boot, then fly high over the board and spin
+                        v.dur = KickEvent.FLIGHT;
+                        v.hopH = Math.max(3.0, Math.min(9.0, 0.3 * dist));
+                        v.t0 = time + Math.max(0, KickEvent.WINDUP - board.kickSeconds());
+                        v.spinTurns = 3;
+                    }
                 }
                 if (v.hopping) {
                     double u = (time - v.t0) / v.dur;
+                    boolean waiting = u < 0;
+                    if (waiting) {
+                        u = 0;
+                    }
                     if (u >= 1) {
                         u = 1;
                         v.hopping = false;
@@ -906,9 +936,13 @@ class Board3DPanel extends JPanel {
                     v.curZ = v.srcZ + (v.tgtZ - v.srcZ) * u;
                     v.curH = Math.sin(Math.PI * u) * v.hopH;
                     v.scale = finished ? 1 - 0.7 * u : 1;
-                    v.trail.add(new double[]{v.curX, BOARD_TOP + v.curH + 0.5 * PAWN_HEIGHT * v.scale, v.curZ, time});
+                    v.spin = v.hopping ? v.spinTurns * 2 * Math.PI * u : 0;
+                    if (!waiting) {
+                        v.trail.add(new double[]{v.curX, BOARD_TOP + v.curH + 0.5 * PAWN_HEIGHT * v.scale, v.curZ, time});
+                    }
                 } else {
                     v.curH = 0;
+                    v.spin = 0;
                 }
                 while (!v.trail.isEmpty() && time - v.trail.get(0)[3] > TRAIL_SECONDS) {
                     v.trail.remove(0);
@@ -1618,6 +1652,57 @@ class Board3DPanel extends JPanel {
                 drawPawnItem(g, item.pawnKey / 4, item.pawnKey % 4, turn, visuals[item.pawnKey], item.depth);
             }
         }
+        drawKickEffects(g);
+    }
+
+    // --- kick of a capture -------------------------------------------------------------------
+
+    /** +1 when the kick goes to the right on the screen, -1 when it goes to the left. */
+    private double kickSign(KickEvent ke) {
+        double wx = (ke.cell.x + 0.5 - half) * CELL, wz = (half - (ke.cell.y + 0.5)) * CELL;
+        double[] pad = padPosition(ke.victimCorner, ke.victimSlot);
+        double[] a = new double[3], b = new double[3];
+        if (cam.project(wx, BOARD_TOP, wz, a) && cam.project(pad[0], BOARD_TOP, pad[1], b)) {
+            return b[0] >= a[0] ? 1 : -1;
+        }
+        return 1;
+    }
+
+    /** The attacker leans back and then forward while it kicks (radians, clockwise is positive). */
+    private double attackerLean(int corner, int idx) {
+        KickEvent ke = board.kickEvent();
+        if (ke == null || !ke.isAttacker(corner, idx)) {
+            return 0;
+        }
+        double t = board.kickSeconds(), w = KickEvent.WINDUP;
+        double lean = t < w ? -0.30 * KickEvent.smooth(t / w)
+                : 0.22 * Math.max(0, 1 - (t - w) / 0.30) - 0.30 * Math.max(0, 1 - (t - w) / 0.10);
+        return kickSign(ke) * lean;
+    }
+
+    /** The boot and the comic burst of a capture (the flying piece is drawn with the other pieces). */
+    private void drawKickEffects(Graphics2D g) {
+        KickEvent ke = board.kickEvent();
+        if (ke == null) {
+            return;
+        }
+        double t = board.kickSeconds();
+        double wx = (ke.cell.x + 0.5 - half) * CELL, wz = (half - (ke.cell.y + 0.5)) * CELL;
+        if (!cam.project(wx, BOARD_TOP, wz, tmpA) || !cam.project(wx, BOARD_TOP + PAWN_HEIGHT, wz, tmpB)) {
+            return;
+        }
+        double x0 = tmpA[0], ground = tmpA[1], ph = ground - tmpB[1];
+        if (ph < 6) {
+            return;
+        }
+        double sign = kickSign(ke);
+        KickStyle style = theme.kickStyle();
+        double s = KickPainter.burstProgress(t);
+        if (s >= 0 && s < 1) {
+            KickPainter.drawBurst(g, ph * 1.1, x0 + sign * 0.18 * ph, ground - 0.55 * ph, style, s);
+        }
+        KickPainter.drawBootSide(g, x0, ground - 0.30 * ph, ph * 0.95, sign,
+                BoardPanel.cornerColor(ke.attackerCorner), style, t);
     }
 
     /** Draws a prop with the painter of the world. */
@@ -1674,12 +1759,15 @@ class Board3DPanel extends JPanel {
         boolean small = ph < 70;
         BufferedImage sprite = small ? cache.pawnHalf(theme, BoardPanel.cornerColor(corner), corner)
                 : cache.pawn(theme, BoardPanel.cornerColor(corner), corner);
-        double tilt = resting && !v.hopping ? theme.restTilt() : 0;
+        double tilt = (resting && !v.hopping ? theme.restTilt() : 0) + attackerLean(corner, idx);
         double scale = ph / AssetCache.PAWN_BODY;
         double dw = AssetCache.PAWN_W * scale, dh = AssetCache.PAWN_H * scale;
         AffineTransform keep = g.getTransform();
         if (tilt != 0) {
             g.rotate(tilt, x, groundY);
+        }
+        if (v.spin != 0) {
+            g.rotate(v.spin, x, groundY - ph * 0.5);
         }
         g.translate(x, groundY);
         g.scale(1 + 0.16 * squash, 1 - 0.2 * squash);
@@ -1687,6 +1775,15 @@ class Board3DPanel extends JPanel {
         g.drawImage(sprite, (int) Math.round(x - dw / 2), (int) Math.round(groundY - AssetCache.PAWN_GROUND * scale),
                 (int) Math.round(dw), (int) Math.round(dh), null);
         g.setTransform(keep);
+        if (v.spin > 0 && v.hopping) {
+            KickStyle style = theme.kickStyle();
+            for (int i = 0; i < 4; i++) {
+                double a = v.spin * 0.7 + i * Math.PI / 2;
+                double r = ph * (0.75 + 0.12 * Math.sin(v.spin + i));
+                KickPainter.drawSparkle(g, x + Math.cos(a) * r, groundY - ph * 0.5 + Math.sin(a) * r * 0.8,
+                        ph * 0.14, style.burst);
+            }
+        }
         if (selectable) {
             double w = ph * (tilt != 0 ? 1.1 : 0.75);
             hits.add(new Hit(corner, idx, board.pieceInCastle(corner, idx),
