@@ -4,6 +4,8 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import javax.swing.border.EmptyBorder;
 import Controller.HistoryController;
 import Controller.MovementController;
@@ -12,7 +14,7 @@ import Controller.TurnController;
 import Enums.RollAction;
 import Enums.SquareType;
 
-public class GameScreen extends JPanel {
+public class GameScreen extends JPanel implements PropertyChangeListener {
 
     static final Color BACKGROUND = new Color(14, 22, 54);
     static final Color PRIMARY = new Color(75, 110, 248);
@@ -145,8 +147,7 @@ public class GameScreen extends JPanel {
         }
         arena.add(boardCard, BorderLayout.CENTER);
         sidebar = new GameSidebarPanel(
-                turns.getPlayerNames(),
-                turns.getPlayerColors(),
+                turns,
                 this.difficulty,
                 turnController.getBoostDieFaces(),
                 this::onRoll,
@@ -162,7 +163,7 @@ public class GameScreen extends JPanel {
             // the green "Go!" button of the 3D view rolls the dice when no piece can be moved
             board3D.setRollAction(this::onRoll, sidebar::isRollEnabled);
         }
-        refreshPlayers();
+        turns.addObserver(this);
         setStatus(turns.getPlayerNames()[0] + "'s turn. Click Roll Dice to start."
                 + (threeD ? " (3D board)" : ""));
         startTimer();
@@ -347,13 +348,11 @@ public class GameScreen extends JPanel {
                     + "You cannot take a piece out now.");
             return;
         }
-        if (!board.placeActivePieceOnStart(slot)) {
-            return;
-        }
         if (!turns.takeOutPiece(slot)) {
             throw new IllegalStateException(
                     "Castle state is out of sync");
         }
+        board.clearHighlight();
         setStatus(
                 "Piece on start! You earned another turn. Click Roll Dice.");
         sidebar.setRollButton(true, "Roll Dice");
@@ -374,10 +373,7 @@ public class GameScreen extends JPanel {
             return;
         }
         if (turns.finishPiece(pieceIndex, routeSize)) {
-            if (!board.showActivePieceFinished(pieceIndex)) {
-                throw new IllegalStateException(
-                        "Finish state is out of sync");
-            }
+            board.clearHighlight();
             String player = turns.getCurrentPlayerName();
             int finished = board.getActiveFinishedPieceCount();
             setStatus(player + ": piece reached the goal ("
@@ -385,7 +381,6 @@ public class GameScreen extends JPanel {
             if (pieces.isCurrentPlayerFinished()) {
                 passTurn();
                 if (turns.isGameOver()) {
-                    sidebar.setEndGameEnabled(true);
                     setStatus(
                         "Game complete! Click End Game to see the results.");
                 }
@@ -395,12 +390,6 @@ public class GameScreen extends JPanel {
             return;
         }
         if (turns.enterHomePath(pieceIndex, routeSize)) {
-            int homeStep = pieces.getPieceStep(pieceIndex);
-            if (!board.showActivePieceInHomePath(pieceIndex, homeStep)) {
-                throw new IllegalStateException(
-                    "Home path view is out of sync"
-                );
-            }
             board.clearHighlight();
             setStatus("Piece entered the home path!");
             endTurnOrExtraTurn();
@@ -501,12 +490,6 @@ public class GameScreen extends JPanel {
             throw new IllegalStateException("Arrow move is out of sync");
         }
         boolean middle = pieces.isPieceInMiddlePath(pieceIndex);
-        boolean shown = middle
-                ? board.showActivePieceInMiddlePath(pieceIndex, 0)
-                : board.showActivePieceInInnerPath(pieceIndex, 0);
-        if (!shown) {
-            throw new IllegalStateException("Path view is out of sync");
-        }
         String pathName = middle ? "the middle path (64)" : "the inner path (52)";
         if (remaining <= 0) {
             captureThen(pieceIndex, () -> {
@@ -666,17 +649,31 @@ public class GameScreen extends JPanel {
     private void passTurn() {
         turnController.passTurn();
         sidebar.setFormula(" ");
-        sidebar.setRollButton(turnController.canRoll(), "Roll Dice");
-        sidebar.setEndGameEnabled(turns.isGameOver());
         if (turns.isGameOver()) {
             handleGameOver();
         }
         board.clearHighlight();
-        refreshPlayers();
         setStatus(turnController.canRoll()
                 ? turns.getCurrentPlayerName()
                     + "'s turn. Click Roll Dice."
                 : "Game finished: no active turns remain.");
+    }
+
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        if (turns.isGameOver()) {
+            if (SwingUtilities.isEventDispatchThread()) {
+                handleGameOver();
+            } else {
+                SwingUtilities.invokeLater(this::handleGameOver);
+            }
+        }
+    }
+
+    private void cleanupObservers() {
+        turns.removeObserver(this);
+        board.removeObservers();
+        sidebar.removeObserver();
     }
 
     // ------------------------------------------------------------------
@@ -705,6 +702,7 @@ public class GameScreen extends JPanel {
     private void showEndScreen() {
         gameTimer.stop();
         stopBoard3D();
+        cleanupObservers();
         JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(this);
         if (frame != null) {
             // SRS 3.2.8.3.1 - the end screen shows the players by final place
@@ -724,6 +722,7 @@ public class GameScreen extends JPanel {
 	    }
 	    gameTimer.stop();
 	    stopBoard3D();
+	    cleanupObservers();
 	    Window w =SwingUtilities.getWindowAncestor(this);
 	    new MainMenuScreen().setVisible(true);
 	    if (w != null) {
@@ -734,10 +733,6 @@ public class GameScreen extends JPanel {
     // ------------------------------------------------------------------
     // UI helpers
     // ------------------------------------------------------------------
-
-    private void refreshPlayers() {
-        sidebar.refreshPlayers(turns.getCurrentPlayerIndex());
-    }
 
     private void setStatus(String text) {
         sidebar.setStatus(captureNote + text);

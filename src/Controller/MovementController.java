@@ -30,12 +30,12 @@ public class MovementController {
         if (!canTakeOutActivePiece(slot) || !game.selectPiece(slot)) {
             return false;
         }
-        game.setPiecesInCastle(game.getPiecesInCastle() - 1);
         game.getSelectedPiece().setOnBoard(true);
         game.getSelectedPiece().setSteps(0);
         game.getSelectedPiece().setInInnerPath(false);
         game.getSelectedPiece().setInMiddlePath(false);
         game.getSelectedPiece().setInHomePath(false);
+        game.setPiecesInCastle(game.getPiecesInCastle() - 1);
         game.setStage(Stage.ROLL);
         return true;
     }
@@ -155,6 +155,7 @@ public class MovementController {
             return false;
         }
         game.getSelectedPiece().setSteps(targetStep);
+        game.notifyObservers("pieceMoved");
         return true;
     }
 
@@ -255,6 +256,7 @@ public class MovementController {
         if (player.getFinishedPieceCount() == Game.PIECES_PER_PLAYER) {
             game.setPlayerFinished(game.getCurrentPlayer(), true);
         }
+        game.notifyObservers("pieceFinished");
         return true;
     }
 
@@ -296,6 +298,7 @@ public class MovementController {
         }
         game.getSelectedPiece().setInHomePath(false);
         game.getSelectedPiece().setSteps(innerPathStartStep);
+        game.notifyObservers("pieceMoved");
         return true;
     }
 
