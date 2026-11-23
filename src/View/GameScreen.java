@@ -596,10 +596,11 @@ public class GameScreen extends JPanel implements PropertyChangeListener {
         // עדכון ההודעה בהתאם לתוצאת התנועה
         if (targetStep == startStep) {
             setStatus("Question answered. Piece stays in place at route boundary.");
+        } else if (!correct) {
+            setStatus("Wrong answer. Move " + (startStep - targetStep)
+                    + " square(s) back.");
         } else {
-            setStatus(correct
-                    ? "Correct! Move " + questionSteps + " square(s) forward."
-                    : "Wrong answer. Move " + questionSteps + " square(s) back.");
+            setStatus("Correct! Move " + questionSteps + " square(s) forward.");
         }
 
         if (!pieces.applyEventMovement(
