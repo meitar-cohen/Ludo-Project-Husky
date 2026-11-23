@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import Enums.Stage;
 import Enums.SquareType;
@@ -35,6 +36,8 @@ public class GameController {
     private final TurnController turnController;
     // Command pattern: every move of a piece goes through the invoker, which logs it
     private final CommandInvoker commands = new CommandInvoker();
+    // Observer pattern: the views that want to hear about a capture (subject side)
+    private final List<CaptureListener> captureListeners = new CopyOnWriteArrayList<>();
     // מאגר השאלות שנטען מקובץ ה-CSV
     private final QuestionBank questionBank;
 
@@ -485,10 +488,30 @@ public class GameController {
             }
             // two pieces of one player on a square are a block, not a single piece
             if (count == 1 && commands.execute(new CaptureCommand(game, pieces, player, found))) {
+                notifyCapture(new CaptureEvent(movingPlayer, movingPiece, player, found, position));
                 return new int[]{player, found};
             }
         }
         return null;
+    }
+
+    // ------------------------------------------------------------------ Observer (subject)
+
+    /** Registers a view that wants to be told about every capture. */
+    public void addCaptureListener(CaptureListener listener) {
+        if (listener != null && !captureListeners.contains(listener)) {
+            captureListeners.add(listener);
+        }
+    }
+
+    public void removeCaptureListener(CaptureListener listener) {
+        captureListeners.remove(listener);
+    }
+
+    private void notifyCapture(CaptureEvent event) {
+        for (CaptureListener listener : captureListeners) {
+            listener.onCapture(event);
+        }
     }
 
     private void initializeBoard() {

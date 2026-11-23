@@ -9,6 +9,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.IntConsumer;
+import java.util.function.LongSupplier;
+import Controller.CaptureEvent;
+import Controller.CaptureListener;
 import Controller.GameController;
 import Enums.SquareType;
 
@@ -16,7 +19,7 @@ import Enums.SquareType;
  * Board component for the game screen.
  * Draws the board, special squares, castles, and pieces.
  */
-public class BoardPanel extends JPanel {
+public class BoardPanel extends JPanel implements CaptureListener {
 
     public static final String[] CORNER_COLOR_NAMES = {"Green", "Yellow", "Blue", "Red"};
 
@@ -74,6 +77,12 @@ public class BoardPanel extends JPanel {
     private final PiecePanel piecePanel = new PiecePanel();
     private final BoardDrawingPanel drawingPanel = new BoardDrawingPanel();
 
+    // the kick animation of a capture (the board is an observer of the controller, see onCapture)
+    private KickEvent kick;
+    private Timer kickTimer;
+    private Runnable kickFinished;
+    private LongSupplier kickClock = System::nanoTime;
+
     public BoardPanel(GameController turns) {
         this.turns = turns;
         String[] playerColorNames = turns.getPlayerColors();
@@ -94,6 +103,7 @@ public class BoardPanel extends JPanel {
                 new Color[]{Q_EASY, Q_MEDIUM, Q_HARD}, SURPRISE);
         setBackground(new Color(244, 247, 255));
         setPreferredSize(new Dimension(700, 700));
+        turns.addCaptureListener(this);
         addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -347,6 +357,18 @@ public class BoardPanel extends JPanel {
      * @return a message for the players, or null when nothing was captured
      */
     public String resolveCapture(int movingPlayer, int movingPiece) {
+        return resolveCapture(movingPlayer, movingPiece, null);
+    }
+
+    /**
+     * Same as {@link #resolveCapture(int, int)}, and when a piece was captured the capture is shown
+     * as a kick animation: {@code onFinished} runs when the animation is over, so the game goes on
+     * only after the captured piece has landed in its castle. When nothing was captured the method
+     * returns null and {@code onFinished} is not called (the caller just carries on).
+     * Whether a capture happens is decided only by the controller (protected squares, blocks...).
+     */
+    public String resolveCapture(int movingPlayer, int movingPiece, Runnable onFinished) {
+        endKick();
         int[] captured = turns.captureOpponentAt(movingPlayer, movingPiece);
         if (captured == null) {
             return null;
@@ -359,9 +381,80 @@ public class BoardPanel extends JPanel {
         piecesInHomePath[corner][captured[1]] = false;
         piecesInInnerPath[corner][captured[1]] = false;
         piecesInMiddlePath[corner][captured[1]] = false;
+        // onCapture (called by the controller above) has started the kick
+        if (kick != null) {
+            kickFinished = onFinished;
+        } else if (onFinished != null) {
+            SwingUtilities.invokeLater(onFinished);
+        }
         repaint();
         return turns.getPlayerNames()[movingPlayer] + " captured a piece of "
-                + turns.getPlayerNames()[captured[0]] + " - it returns to its castle. ";
+                + turns.getPlayerNames()[captured[0]] + " - it kicked it back to its castle. ";
+    }
+
+    // ------------------------------------------------------------------
+    // Kick animation (Observer: the controller tells the board about the capture)
+    // ------------------------------------------------------------------
+
+    /** Observer: the controller reports a capture, the board starts the kick animation. */
+    @Override
+    public void onCapture(CaptureEvent event) {
+        endKick();
+        int attacker = cornerOf(turns.getPlayerColors()[event.getAttackerPlayer()]);
+        int victim = cornerOf(turns.getPlayerColors()[event.getVictimPlayer()]);
+        kick = new KickEvent(attacker, event.getAttackerPiece(), victim, event.getVictimPiece(),
+                event.getSquare(), kickClock.getAsLong());
+        kickTimer = new Timer(16, e -> {
+            repaint();
+            if (kick != null && kickSeconds() >= KickEvent.TOTAL) {
+                endKick();
+            }
+        });
+        kickTimer.start();
+        repaint();
+    }
+
+    /** Ends the kick (also when a new one starts) and lets the game go on. */
+    private void endKick() {
+        if (kickTimer != null) {
+            kickTimer.stop();
+            kickTimer = null;
+        }
+        boolean wasPlaying = kick != null;
+        kick = null;
+        Runnable next = kickFinished;
+        kickFinished = null;
+        if (wasPlaying) {
+            repaint();
+        }
+        if (next != null) {
+            next.run();
+        }
+    }
+
+    /** True while a kick animation is playing. */
+    public boolean isKickPlaying() {
+        return kick != null;
+    }
+
+    /** Length of the kick animation in seconds. */
+    public static double kickDurationSeconds() {
+        return KickEvent.TOTAL;
+    }
+
+    KickEvent kickEvent() {
+        return kick;
+    }
+
+    /** Seconds since the kick started, or -1 when there is none. */
+    double kickSeconds() {
+        KickEvent k = kick;
+        return k == null ? -1 : (kickClock.getAsLong() - k.startNanos) / 1e9;
+    }
+
+    /** For the render harness: replaces the clock of the animation. */
+    void setKickClock(LongSupplier clock) {
+        this.kickClock = clock;
     }
 
     // עדכון מיקום כלי יריב ללא שינוי התור הפעיל
@@ -1057,6 +1150,7 @@ public class BoardPanel extends JPanel {
         for (int corner = 0; corner < 4; corner++) {
             for (int s = 0; s < 4; s++) {
                 if (!castlePieces[corner][s]) continue;
+                if (kick != null && kick.isVictim(corner, s)) continue;   // it is flying, see drawKick
                 double[] c = slotCenter(corner, s);
                 boolean hl = highlightCastle && corner == activeCorner;
                 piecePanel.drawPiece(
@@ -1071,6 +1165,9 @@ public class BoardPanel extends JPanel {
             for (int pieceIndex = 0; pieceIndex < 4; pieceIndex++) {
                 if (!piecesOnBoard[corner][pieceIndex]) {
                     continue;
+                }
+                if (kick != null && kick.isAttacker(corner, pieceIndex)) {
+                    continue;   // drawn by the kick
                 }
                 List<Point> route = routeForPlayerPiece(
                     corner, pieceIndex
@@ -1096,7 +1193,20 @@ public class BoardPanel extends JPanel {
             }
         }
         drawDoubleBlocks(g2, cs, ox, oy);
+        drawKick(g2, cs, ox, oy);
         g2.dispose();
+    }
+
+    /** The kick of a capture: the attacker kicks, the captured piece flies to its castle. */
+    private void drawKick(Graphics2D g2, int cs, int ox, int oy) {
+        KickEvent k = kick;
+        if (k == null) {
+            return;
+        }
+        double[] target = slotCenter(k.victimCorner, k.victimSlot);
+        KickPainter.draw(g2, piecePanel, cs, ox + (k.cell.x + 0.5) * cs, oy + (k.cell.y + 0.5) * cs,
+                target[0], target[1], CORNER_COLORS[k.attackerCorner], CORNER_COLORS[k.victimCorner],
+                KickStyle.CLASSIC, kickSeconds());
     }
 
     /** SRS 3.2.5.3.3 - a golden double ring marks every square that holds a Double Block. */

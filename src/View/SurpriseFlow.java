@@ -41,9 +41,10 @@ final class SurpriseFlow {
     // SRS 3.2.3.3.7 - תזוזה שנגרמה מהפתעה מפעילה גם את חוק האכילה
     private Runnable endTurnAfterCapture(int player, int piece) {
         return () -> {
-            String message = board.resolveCapture(player, piece);
+            // the capture is shown as a kick, and the turn ends when it is over
+            String message = board.resolveCapture(player, piece, endTurn);
             if (message != null) captureNote.accept(message);
-            endTurn.run();
+            else endTurn.run();
         };
     }
 

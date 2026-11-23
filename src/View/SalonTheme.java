@@ -47,6 +47,7 @@ final class SalonTheme extends AbstractTheme {
     // ------------------------------------------------------------------ light and island
 
     @Override public double ambientLight() { return 0.74; }
+    @Override public KickStyle kickStyle() { return KickStyle.GLAM; }
     @Override public double directLight() { return 0.38; }
     @Override public Color fogColor() { return new Color(255, 222, 238); }
 

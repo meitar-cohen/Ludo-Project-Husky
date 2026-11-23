@@ -33,6 +33,7 @@ final class RacingTheme extends AbstractTheme {
     // ------------------------------------------------------------------ light and island
 
     @Override public double ambientLight() { return 0.52; }
+    @Override public KickStyle kickStyle() { return KickStyle.RACE; }
     @Override public double directLight() { return 0.62; }
     @Override public Color fogColor() { return new Color(200, 216, 236); }
 
