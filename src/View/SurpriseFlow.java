@@ -77,14 +77,12 @@ final class SurpriseFlow {
         status.accept(outcome.getDescription());
         switch (plan.getType()) {
             case FINISH_PIECE:
-                if (!board.showActivePieceFinished(pieceIndex))
-                    throw new IllegalStateException("Surprise finish view is out of sync");
+                board.clearHighlight();
                 if (game.getMovementController().isCurrentPlayerFinished()) passTurn.run();
                 else endTurn.run();
                 break;
             case RETURN_TO_CASTLE:
-                if (!board.showActivePieceReturnedToCastle(pieceIndex))
-                    throw new IllegalStateException("Surprise castle view is out of sync");
+                board.clearHighlight();
                 endTurn.run();
                 break;
             case MOVE_BACK_THREE:

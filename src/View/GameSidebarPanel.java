@@ -3,12 +3,17 @@ package View;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import Controller.GameController;
+import Enums.Stage;
 
 /** Sidebar containing the active players, dice, status, and game controls. */
-class GameSidebarPanel extends JPanel {
+class GameSidebarPanel extends JPanel implements PropertyChangeListener {
 
     private static final Color LIGHT = new Color(244, 247, 254);
 
+    private final GameController turns;
     private final String[] playerNames;
     private final String[] playerColors;
     private final JLabel turnLabel;
@@ -18,17 +23,19 @@ class GameSidebarPanel extends JPanel {
     private final JButton endGameButton;
     private final JPanel playersPanel;
     private final DicePanel dice;
+    private int lastCurrentPlayer = -1;
+    private Stage lastStage;
 
     GameSidebarPanel(
-            String[] playerNames,
-            String[] playerColors,
+            GameController turns,
             String difficulty,
             int boostDieFaces,
             Runnable onRoll,
             Runnable onEndGame,
             Runnable onLeaveGame) {
-        this.playerNames = playerNames.clone();
-        this.playerColors = playerColors.clone();
+        this.turns = turns;
+        this.playerNames = turns.getPlayerNames();
+        this.playerColors = turns.getPlayerColors();
         setOpaque(false);
         setLayout(new BorderLayout());
         setPreferredSize(new Dimension(330, 0));
@@ -107,6 +114,41 @@ class GameSidebarPanel extends JPanel {
         menuButton.addActionListener(e -> onLeaveGame.run());
         stack.add(GameScreen.leftAligned(menuButton));
         add(stack, BorderLayout.CENTER);
+        turns.addObserver(this);
+        syncFromModel();
+    }
+
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        if (SwingUtilities.isEventDispatchThread()) {
+            syncFromModel();
+        } else {
+            SwingUtilities.invokeLater(this::syncFromModel);
+        }
+    }
+
+    void removeObserver() {
+        turns.removeObserver(this);
+    }
+
+    void syncFromModel() {
+        int current = turns.getCurrentPlayerIndex();
+        boolean playerChanged = current != lastCurrentPlayer;
+        if (playerChanged) {
+            lastCurrentPlayer = current;
+            refreshPlayers(current);
+        }
+        Stage stage = turns.getStage();
+        boolean stageChanged = stage != lastStage;
+        setEndGameEnabled(stage == Stage.DONE);
+        if (stage == Stage.DONE) {
+            setRollButton(false, "Roll Dice");
+        } else if (stage == Stage.TAKE_OUT || stage == Stage.MOVE) {
+            setRollButton(false, "Select Your Piece");
+        } else if (stage == Stage.ROLL && (playerChanged || (lastStage != null && stageChanged))) {
+            setRollButton(true, "Roll Dice");
+        }
+        lastStage = stage;
     }
 
     void setBoostMode(boolean ultra, int ordinaryFaces) {

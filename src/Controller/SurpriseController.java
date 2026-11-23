@@ -133,6 +133,7 @@ public final class SurpriseController {
                 int distance = (normalDie + 1) / 2; // עיגול כלפי מעלה לפי ההוראות
                 int after = Math.max(0, before - distance);
                 enemy.setSteps(after);
+                game.notifyObservers("pieceMoved");
                 return result(plan, opponentIndex, chosen, before, after,
                         "OPPONENT DETOUR!", "Rolled " + normalDie + "; opponent moves back "
                                 + (before - after) + " squares.");

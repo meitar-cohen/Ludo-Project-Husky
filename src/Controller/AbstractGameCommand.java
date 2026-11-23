@@ -113,6 +113,7 @@ abstract class AbstractGameCommand implements GameCommand {
             game.setCurrentPlayer(currentPlayer);
             game.selectPiece(selectedPiece);
             game.setStage(stage);
+            game.notifyObservers("undo");
         }
     }
 }
