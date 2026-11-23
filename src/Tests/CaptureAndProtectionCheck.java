@@ -22,7 +22,7 @@ public final class CaptureAndProtectionCheck {
         Setup(String difficulty) {
             game = new Game(new Player[]{new Player("A", "Green"),
                     new Player("B", "Red")}, difficulty);
-            controller = new GameController(game, new MovementController(game));
+            controller = GameController.forTesting(game, new MovementController(game));
         }
 
         void place(int player, int piece, int steps) {

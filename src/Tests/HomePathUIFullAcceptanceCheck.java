@@ -48,7 +48,7 @@ public class HomePathUIFullAcceptanceCheck {
 
                     Object gameControllerObject = getField(view[0], "turns");
                     game[0] = (Game) getField(gameControllerObject, "game");
-                    GameController controller = new GameController(
+                    GameController controller = GameController.forTesting(
                             game[0], new MovementController(game[0]));
                     board[0] = (BoardPanel) getField(view[0], "board");
 

@@ -44,7 +44,7 @@ public class StepZeroAcceptanceCheck {
     }
 
     private static GameController newController(Game game) {
-        return new GameController(game, new MovementController(game));
+        return GameController.forTesting(game, new MovementController(game));
     }
 
     // בדיקת הנוסחאות בשלוש רמות הקושי
@@ -88,7 +88,7 @@ public class StepZeroAcceptanceCheck {
         game.getSelectedPiece().setOnBoard(true);
 
         MovementController controllerPieces = new MovementController(game);
-        GameController controller = new GameController(game, controllerPieces);
+        GameController controller = GameController.forTesting(game, controllerPieces);
         controller.getTurnController().registerRollAndCheckThirdSix(4);
 
         expect(RollAction.NEED_SIX,
@@ -113,7 +113,7 @@ public class StepZeroAcceptanceCheck {
         game.getSelectedPiece().setSteps(1);
 
         MovementController controllerPieces = new MovementController(game);
-        GameController controller = new GameController(game, controllerPieces);
+        GameController controller = GameController.forTesting(game, controllerPieces);
         controller.getTurnController().registerRollAndCheckThirdSix(4);
 
         expect(RollAction.MOVE,
@@ -146,7 +146,7 @@ public class StepZeroAcceptanceCheck {
         game.getSelectedPiece().setSteps(4);
 
         MovementController controllerPieces = new MovementController(game);
-        GameController controller = new GameController(game, controllerPieces);
+        GameController controller = GameController.forTesting(game, controllerPieces);
         controller.getTurnController().registerRollAndCheckThirdSix(4);
 
         expect(RollAction.NEED_SIX,
@@ -163,7 +163,7 @@ public class StepZeroAcceptanceCheck {
         Game game = newGame(level);
 
         MovementController controllerPieces = new MovementController(game);
-        GameController controller = new GameController(game, controllerPieces);
+        GameController controller = GameController.forTesting(game, controllerPieces);
         controller.getTurnController().registerRollAndCheckThirdSix(6);
 
         expect(RollAction.TAKE_OUT,

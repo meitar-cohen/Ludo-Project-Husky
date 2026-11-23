@@ -55,7 +55,7 @@ public class BoardRouteStructureCheck {
     private static void checkModelOwnership(String[] colors) {
         Game game = new Game(TestPlayers.of(colors, colors), "Medium");
         GameController controller =
-                new GameController(game, new MovementController(game));
+                GameController.forTesting(game, new MovementController(game));
         GameController other =
                 TestPlayers.gameControllerForBoard("Medium", colors);
 

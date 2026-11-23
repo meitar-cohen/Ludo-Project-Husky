@@ -22,7 +22,14 @@ import java.io.IOException;
 import Model.QuestionBank;
 import Model.QuestionRepository;
 
-/** Coordinates game setup, board state, questions, and game results. */
+/**
+ * Coordinates game setup, board state, questions, and game results.
+ *
+ * <p>Singleton design pattern: this is the central controller of the running game, so there is
+ * exactly one of it at a time. The constructor is private; {@link #createNewGame} starts a game
+ * and makes its controller the instance, and every part of the program that needs the controller
+ * asks {@link #getInstance()}, so no two parts can work with different copies of the game.
+ */
 public class GameController {
     public static final int PIECES_PER_PLAYER = Game.PIECES_PER_PLAYER;
     // board corner of each colour; the same order is used by the board view
@@ -46,8 +53,36 @@ public class GameController {
     private long startTimeMillis = -1;
     private long endTimeMillis = -1;
 
+    // Singleton: the one controller of the running game (replaced only when a new game starts)
+    private static GameController instance;
 
-	public GameController(Game game, MovementController pieces) {
+    /** The controller of the running game. */
+    public static synchronized GameController getInstance() {
+        if (instance == null) {
+            throw new IllegalStateException("No game has been started yet");
+        }
+        return instance;
+    }
+
+    /** True when a game has been started and its controller is the instance. */
+    public static synchronized boolean hasInstance() {
+        return instance != null;
+    }
+
+    /** Forgets the running game (for example when the player leaves it for the main menu). */
+    public static synchronized void clearInstance() {
+        instance = null;
+    }
+
+    /**
+     * Test seam: a separate controller over a model made by the test, which never becomes the
+     * instance of the program, so the tests do not disturb each other or the running game.
+     */
+    public static GameController forTesting(Game game, MovementController pieces) {
+        return new GameController(game, pieces);
+    }
+
+	private GameController(Game game, MovementController pieces) {
 	    this.game = game;
 	    this.pieces = pieces;
 	    this.turnController = new TurnController(game, pieces);
@@ -73,14 +108,19 @@ public class GameController {
 	}
 
 
-    public static GameController createNewGame(
+    /**
+     * Starts a new game: its controller becomes the instance of the program (it replaces the one
+     * of the previous game) and is returned.
+     */
+    public static synchronized GameController createNewGame(
             String[] names, String[] colors, String difficulty) {
         String validationError = validatePlayers(names, colors);
         if (validationError != null) {
             throw new IllegalArgumentException(validationError);
         }
         Game game = new Game(createPlayers(names, colors), difficulty);
-        return new GameController(game, new MovementController(game));
+        instance = new GameController(game, new MovementController(game));
+        return instance;
     }
 
 	
@@ -172,22 +212,22 @@ public class GameController {
 
     /** Takes the given piece of the current player out of the castle (as a command). */
     public boolean takeOutPiece(int slot) {
-        return commands.execute(new TakeOutPieceCommand(game, pieces, slot));
+        return commands.execute(new GameCommands.TakeOutPiece(game, pieces, slot));
     }
 
     /** Moves a piece of the current player along its path (as a command). */
     public boolean movePiece(int pieceIndex, int targetStep, int routeSize) {
-        return commands.execute(new MovePieceCommand(game, pieces, pieceIndex, targetStep, routeSize));
+        return commands.execute(new GameCommands.MovePiece(game, pieces, pieceIndex, targetStep, routeSize));
     }
 
     /** Finishes a piece that reaches the goal (as a command). */
     public boolean finishPiece(int pieceIndex, int routeSize) {
-        return commands.execute(new FinishPieceCommand(game, pieces, pieceIndex, routeSize));
+        return commands.execute(new GameCommands.FinishPiece(game, pieces, pieceIndex, routeSize));
     }
 
     /** Moves a piece into the private home path (as a command). */
     public boolean enterHomePath(int pieceIndex, int sharedRouteSize) {
-        return commands.execute(new EnterHomePathCommand(game, pieces, pieceIndex, sharedRouteSize));
+        return commands.execute(new GameCommands.EnterHomePath(game, pieces, pieceIndex, sharedRouteSize));
     }
 
     public int getBoardRings() {
@@ -487,7 +527,7 @@ public class GameController {
                 }
             }
             // two pieces of one player on a square are a block, not a single piece
-            if (count == 1 && commands.execute(new CaptureCommand(game, pieces, player, found))) {
+            if (count == 1 && commands.execute(new GameCommands.Capture(game, pieces, player, found))) {
                 notifyCapture(new CaptureEvent(movingPlayer, movingPiece, player, found, position));
                 return new int[]{player, found};
             }

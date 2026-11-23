@@ -13,7 +13,7 @@ public class StepCalculationCheck {
         Game game = new Game(TestPlayers.of(new String[] {"Player1", "Player2"}, new String[] {"Red", "Blue"}), difficulty);
 
         MovementController controllerPieces = new MovementController(game);
-        GameController controller = new GameController(game, controllerPieces);
+        GameController controller = GameController.forTesting(game, controllerPieces);
         int actual = controller.getTurnController().calculateSteps(stepDie, boostDie);
 
         if (actual != expected) {
@@ -43,7 +43,7 @@ public class StepCalculationCheck {
 
         game1.getSelectedPiece().setOnBoard(true);
         MovementController controller1Pieces = new MovementController(game1);
-        GameController controller1 = new GameController(game1, controller1Pieces);
+        GameController controller1 = GameController.forTesting(game1, controller1Pieces);
 
         String action1 = controller1.getTurnController().finishRoll(4, 3).name();
 
@@ -59,7 +59,7 @@ public class StepCalculationCheck {
 
         game2.getSelectedPiece().setOnBoard(true);
         MovementController controller2Pieces = new MovementController(game2);
-        GameController controller2 = new GameController(game2, controller2Pieces);
+        GameController controller2 = GameController.forTesting(game2, controller2Pieces);
 
         String action2 = controller2.getTurnController().finishRoll(4, 1).name();
 
@@ -74,7 +74,7 @@ public class StepCalculationCheck {
         Game game3 = new Game(TestPlayers.of(new String[] {"Player1", "Player2"}, new String[] {"Red", "Blue"}), "Medium");
 
         MovementController controller3Pieces = new MovementController(game3);
-        GameController controller3 = new GameController(game3, controller3Pieces);
+        GameController controller3 = GameController.forTesting(game3, controller3Pieces);
 
         String action3 = controller3.getTurnController().finishRoll(6, 1).name();
 

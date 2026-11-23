@@ -160,7 +160,7 @@ public class Iteration1UiRegressionCheck {
 
         Game game = new Game(TestPlayers.of(names, colors), "Medium");
         MovementController controllerPieces = new MovementController(game);
-        GameController controller = new GameController(game, controllerPieces);
+        GameController controller = GameController.forTesting(game, controllerPieces);
         BoardPanel board = new BoardPanel(controller);
 
         board.setActivePlayerColor("Red");

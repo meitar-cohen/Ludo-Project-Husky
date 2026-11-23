@@ -5,7 +5,7 @@ import java.util.List;
 import Controller.CommandInvoker;
 import Controller.GameCommand;
 import Controller.GameController;
-import Controller.MovePieceCommand;
+import Controller.GameCommands;
 import Controller.MovementController;
 import Enums.PieceState;
 import Enums.Stage;
@@ -31,7 +31,7 @@ public final class CommandPatternCheck {
             game = new Game(new Player[]{new Player("Ann", "Green"),
                     new Player("Bob", "Red")}, difficulty);
             movement = new MovementController(game);
-            controller = new GameController(game, movement);
+            controller = GameController.forTesting(game, movement);
         }
 
         Piece piece(int player, int index) {
@@ -133,11 +133,11 @@ public final class CommandPatternCheck {
         log.game.setStage(Stage.MOVE);
         log.game.setPendingSteps(2);
         CommandInvoker invoker = new CommandInvoker();
-        GameCommand first = new MovePieceCommand(log.game, log.movement, 0, 5, 52);
+        GameCommand first = new GameCommands.MovePiece(log.game, log.movement, 0, 5, 52);
         check(invoker.execute(first), "first command");
         check(!first.execute(), "a command cannot run twice");
         log.game.setStage(Stage.MOVE);
-        check(invoker.execute(new MovePieceCommand(log.game, log.movement, 1, 7, 52)), "second command");
+        check(invoker.execute(new GameCommands.MovePiece(log.game, log.movement, 1, 7, 52)), "second command");
         List<String> lines = invoker.getLog();
         check(invoker.size() == 2 && lines.size() == 2, "two commands logged");
         check(lines.get(0).equals("Ann moves piece 1 from step 3 to step 5"),

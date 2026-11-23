@@ -37,7 +37,7 @@ public final class CaptureKickCheck {
 
     private static final class Setup {
         final Game game = new Game(new Player[]{new Player("Ann", "Green"), new Player("Bob", "Red")}, "Easy");
-        final GameController controller = new GameController(game, new MovementController(game));
+        final GameController controller = GameController.forTesting(game, new MovementController(game));
 
         /** Ann's piece 0 and Bob's piece 0 on the same square (Green step s is Red step s + 13 on Easy). */
         Point meet() {

@@ -36,7 +36,7 @@ public class GameControllerQuestionCheck {
 
         Game game = new Game(players, "Easy");
 
-        GameController controller = new GameController(
+        GameController controller = GameController.forTesting(
                 game, new MovementController(game));
 
         // בדיקה שהשאלה הראשונית מגיעה ממאגר ה-CSV

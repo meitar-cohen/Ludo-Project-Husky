@@ -101,7 +101,7 @@ public class NoLegalMoveRulesCheck {
 
         Game game = newGame("Hard");
         MovementController controllerPieces = new MovementController(game);
-        GameController controller = new GameController(game, controllerPieces);
+        GameController controller = GameController.forTesting(game, controllerPieces);
 
         // המשתתף השני כבר סיים
         game.setPlayerFinished(1, true);

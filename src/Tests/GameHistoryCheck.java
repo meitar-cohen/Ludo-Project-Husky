@@ -83,7 +83,7 @@ public class GameHistoryCheck {
                 new String[] {"Red", "Blue", "Green"}), "Medium");
         game.setPlayerFinished(2, true);
         game.setPlayerFinished(0, true);
-        GameController turns = new GameController(
+        GameController turns = GameController.forTesting(
                 game, new MovementController(game));
         Player[] ranking = turns.getRanking();
         check("ranking follows the finish order",
@@ -114,7 +114,7 @@ public class GameHistoryCheck {
         Game unplayed = new Game(TestPlayers.of(new String[] {"A", "B"},
                 new String[] {"Red", "Blue"}), "Easy");
         File unplayedFile = new File(dir, "unplayed.csv");
-        GameController unplayedTurns = new GameController(
+        GameController unplayedTurns = GameController.forTesting(
                 unplayed, new MovementController(unplayed));
         HistoryController.forFile(unplayedFile).saveFinishedGame(
                 unplayed, unplayedTurns);
@@ -125,7 +125,7 @@ public class GameHistoryCheck {
         check("create blocking folder", blocked.mkdir());
         Game failing = new Game(TestPlayers.of(new String[] {"A", "B"},
                 new String[] {"Red", "Blue"}), "Easy");
-        GameController failingTurns = new GameController(
+        GameController failingTurns = GameController.forTesting(
                 failing, new MovementController(failing));
         failingTurns.startGameClock();
         String error = HistoryController.forFile(blocked).saveFinishedGame(
