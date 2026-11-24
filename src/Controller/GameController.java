@@ -22,6 +22,7 @@ import Model.Player;
 import Model.QuestionEvent;
 import Model.QuestionEventCreator;
 import Model.Square;
+import Model.SurpriseEngine;
 import java.io.IOException;
 import Model.QuestionBank;
 import Model.QuestionRepository;
@@ -92,8 +93,9 @@ public class GameController {
 	    this.game = game;
 	    this.pieces = pieces;
 	    this.turnController = new TurnController(game, pieces);
-	    this.surpriseController =
-	            new SurpriseController(game, pieces, this.turnController);
+	    // the surprise controller asks this controller about Double Blocks (SRS 3.2.5.3.4)
+	    this.surpriseController = new SurpriseController(
+	            game, pieces, this.turnController, new SurpriseEngine(), this);
 	
 	    // טעינת השאלות מתוך קובץ ה-CSV הקיים
 	    try {

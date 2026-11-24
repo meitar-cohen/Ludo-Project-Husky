@@ -19,6 +19,8 @@ public final class SurpriseController {
     private final MovementController movement;
     private final TurnController turns;
     private final SurpriseEngine engine;
+    // the board rules (Double Block); null when the controller is used without a board
+    private final GameController board;
 
     public SurpriseController(Game game, MovementController movement, TurnController turns) {
         this(game, movement, turns, new SurpriseEngine());
@@ -26,12 +28,26 @@ public final class SurpriseController {
 
     public SurpriseController(Game game, MovementController movement,
             TurnController turns, SurpriseEngine engine) {
+        this(game, movement, turns, engine, null);
+    }
+
+    SurpriseController(Game game, MovementController movement,
+            TurnController turns, SurpriseEngine engine, GameController board) {
         if (game == null || movement == null || turns == null || engine == null)
             throw new IllegalArgumentException("Surprise dependencies are required");
         this.game = game;
         this.movement = movement;
         this.turns = turns;
         this.engine = engine;
+        this.board = board;
+    }
+
+    /**
+     * SRS 3.2.5.3.4 and 3.2.3.3.7 - a move caused by a surprise also stops on the square before an
+     * opponent's Double Block. Returns the step the piece really reaches ({@code to} when free).
+     */
+    private int stopBeforeBlock(int playerIndex, int pieceIndex, int from, int to) {
+        return board == null ? to : board.getStepsBeforeBlock(playerIndex, pieceIndex, from, to);
     }
 
     public SurprisePlan drawForPiece(int pieceIndex, int routeSize) {
@@ -95,10 +111,15 @@ public final class SurpriseController {
                 int target = plan.getTargetStep();
                 if (target != Math.max(0, start - 3))
                     throw new IllegalArgumentException("Invalid movement plan");
-                if (!movement.applyEventMovement(pieceIndex, target, routeSize))
+                int reached = stopBeforeBlock(actor, pieceIndex, start, target);
+                if (!movement.applyEventMovement(pieceIndex, reached, routeSize))
                     throw new IllegalStateException("Cannot move backward");
-                return result(plan, actor, pieceIndex, start, target,
-                        "A LITTLE DETOUR!", "Your piece moves back " + (start - target) + " squares.");
+                String text = reached == target
+                        ? "Your piece moves back " + (start - reached) + " squares."
+                        : reached == start
+                        ? "A Double Block stops your piece: it cannot move back."
+                        : "A Double Block stops your piece after " + (start - reached) + " squares.";
+                return result(plan, actor, pieceIndex, start, reached, "A LITTLE DETOUR!", text);
             }
             case SKIP_NEXT_TURN: {
                 turns.markSkipNextTurn(actor);
@@ -131,11 +152,14 @@ public final class SurpriseController {
                 Piece enemy = game.getPlayer(opponentIndex).getPiece(chosen);
                 int before = enemy.getSteps();
                 int distance = (normalDie + 1) / 2; // עיגול כלפי מעלה לפי ההוראות
-                int after = movement.moveOpponentPieceBack(opponentIndex, chosen, distance);
+                int wanted = Math.max(0, before - distance);
+                int reached = stopBeforeBlock(opponentIndex, chosen, before, wanted);
+                int after = movement.moveOpponentPieceBack(opponentIndex, chosen, before - reached);
                 if (after < 0) throw new IllegalStateException("Cannot move opponent backward");
                 return result(plan, opponentIndex, chosen, before, after,
                         "OPPONENT DETOUR!", "Rolled " + normalDie + "; opponent moves back "
-                                + (before - after) + " squares.");
+                                + (before - after) + " squares."
+                                + (reached == wanted ? "" : " A Double Block stops it."));
             }
             default:
                 throw new IllegalStateException("Unhandled surprise: " + plan.getType());
