@@ -2,6 +2,8 @@ package Model;
 
 import Enums.Stage;
 
+import java.beans.PropertyChangeListener;
+import java.beans.PropertyChangeSupport;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,6 +24,8 @@ public class Game {
     private boolean savedToHistory;
     private int lastStepDie;
     private int consecutiveSixes;
+    // Observer design pattern (Subject): notifies registered listeners when game state changes
+    private final PropertyChangeSupport observers = new PropertyChangeSupport(this);
 
     public Game(Player[] players, String difficulty) {
         if (players == null || players.length == 0) {
@@ -91,12 +95,36 @@ public class Game {
         this.consecutiveSixes = consecutiveSixes;
     }
 
+    public void addObserver(PropertyChangeListener observer) {
+        if (observer == null) {
+            return;
+        }
+        for (PropertyChangeListener existing : observers.getPropertyChangeListeners()) {
+            if (existing == observer) {
+                return;
+            }
+        }
+        observers.addPropertyChangeListener(observer);
+    }
+
+    public void removeObserver(PropertyChangeListener observer) {
+        if (observer != null) {
+            observers.removePropertyChangeListener(observer);
+        }
+    }
+
+    public void notifyObservers(String eventName) {
+        String property = (eventName == null || eventName.isBlank()) ? "gameState" : eventName;
+        observers.firePropertyChange(property, null, null);
+    }
+
     public Stage getStage() {
         return stage;
     }
 
     public void setStage(Stage stage) {
         this.stage = stage;
+        notifyObservers("stage");
     }
 
     public int getCurrentPlayer() {
@@ -113,6 +141,7 @@ public class Game {
 
     public void setCurrentPlayer(int currentPlayer) {
         this.currentPlayer = currentPlayer;
+        notifyObservers("currentPlayer");
     }
 
     public int getPendingSteps() {
@@ -121,6 +150,7 @@ public class Game {
 
     public void setPendingSteps(int pendingSteps) {
         this.pendingSteps = pendingSteps;
+        notifyObservers("pendingSteps");
     }
 
     public String getDifficulty() {
@@ -166,6 +196,7 @@ public class Game {
         } else {
             finishOrder.remove(Integer.valueOf(playerIndex));
         }
+        notifyObservers("playerFinished");
     }
 
     // SRS 3.2.8.3.1 - שמירת הסדר שבו המשתתפים סיימו
@@ -205,6 +236,7 @@ public class Game {
         }
 
         piecesInCastleByPlayer[playerIndex] = piecesInCastle;
+        notifyObservers("piecesInCastle");
     }
 
     public boolean selectPiece(int pieceIndex) {

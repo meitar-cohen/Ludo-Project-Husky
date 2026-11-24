@@ -30,12 +30,12 @@ public class MovementController {
         if (!canTakeOutActivePiece(slot) || !game.selectPiece(slot)) {
             return false;
         }
-        game.setPiecesInCastle(game.getPiecesInCastle() - 1);
         game.getSelectedPiece().setOnBoard(true);
         game.getSelectedPiece().setSteps(0);
         game.getSelectedPiece().setInInnerPath(false);
         game.getSelectedPiece().setInMiddlePath(false);
         game.getSelectedPiece().setInHomePath(false);
+        game.setPiecesInCastle(game.getPiecesInCastle() - 1);
         game.setStage(Stage.ROLL);
         return true;
     }
@@ -97,8 +97,10 @@ public class MovementController {
 	     // תשובה נכונה מקדמת ותשובה שגויה מחזירה אחורה
 	     int change = correct ? questionSteps : -questionSteps;
 	
-	     // חישוב מיקום היעד
-	     int target = getClockwiseTarget(current, change);
+	     // תנועה אחורה נעצרת במשבצת ההתחלה, ולא מחזירה את הכלי לטירה
+	     int target = correct
+	             ? getClockwiseTarget(current, change)
+	             : Math.max(0, getClockwiseTarget(current, change));
 	
 	     // שמירת ההתנהגות הקיימת בגבולות המסלול
 	     return target >= 0 && target < routeSize
@@ -106,9 +108,23 @@ public class MovementController {
 	 }
 
 
-    public int getSurpriseMoveTarget(int routeSize) {
-        int target = game.getSelectedPiece().getSteps() - 3;
-        return target >= 0 ? target : 0;
+    // SRS 3.2.4.3.5 - תנועה אחורה של כלי יריב נעצרת בצעד 0 ולא מחזירה לטירה
+    public int moveOpponentPieceBack(int opponentIndex, int pieceIndex, int distance) {
+        if (game.getStage() != Stage.BUSY
+                || opponentIndex < 0 || opponentIndex >= game.getPlayerCount()
+                || opponentIndex == game.getCurrentPlayer()
+                || pieceIndex < 0 || pieceIndex >= Game.PIECES_PER_PLAYER
+                || distance < 0) {
+            return -1;
+        }
+        Piece piece = game.getPlayer(opponentIndex).getPiece(pieceIndex);
+        if (!piece.isOnBoard() || piece.isFinished()) {
+            return -1;
+        }
+        int target = Math.max(0, piece.getSteps() - distance);
+        piece.setSteps(target);
+        game.notifyObservers("pieceMoved");
+        return target;
     }
 
     public int getMoveStepsForSelectedPiece() {
@@ -155,6 +171,7 @@ public class MovementController {
             return false;
         }
         game.getSelectedPiece().setSteps(targetStep);
+        game.notifyObservers("pieceMoved");
         return true;
     }
 
@@ -255,6 +272,7 @@ public class MovementController {
         if (player.getFinishedPieceCount() == Game.PIECES_PER_PLAYER) {
             game.setPlayerFinished(game.getCurrentPlayer(), true);
         }
+        game.notifyObservers("pieceFinished");
         return true;
     }
 
@@ -296,6 +314,7 @@ public class MovementController {
         }
         game.getSelectedPiece().setInHomePath(false);
         game.getSelectedPiece().setSteps(innerPathStartStep);
+        game.notifyObservers("pieceMoved");
         return true;
     }
 

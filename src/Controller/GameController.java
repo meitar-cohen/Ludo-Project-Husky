@@ -3,6 +3,9 @@ package Controller;
 import java.awt.Color;
 
 import java.awt.Point;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.beans.PropertyChangeSupport;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -10,6 +13,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import Enums.PieceState;
 import Enums.Stage;
 import Enums.SquareType;
 import Model.Game;
@@ -45,6 +49,8 @@ public class GameController {
     private final CommandInvoker commands = new CommandInvoker();
     // Observer pattern: the views that want to hear about a capture (subject side)
     private final List<CaptureListener> captureListeners = new CopyOnWriteArrayList<>();
+    // Observer pattern: forwards model changes to View observers without exposing Model to View
+    private final PropertyChangeSupport stateObservers = new PropertyChangeSupport(this);
     // מאגר השאלות שנטען מקובץ ה-CSV
     private final QuestionBank questionBank;
 
@@ -105,6 +111,7 @@ public class GameController {
 	    selectQuestion("easy");
 	
 	    initializeBoard();
+	    this.game.addObserver(this::forwardGameObserverEvent);
 	}
 
 
@@ -552,6 +559,58 @@ public class GameController {
         for (CaptureListener listener : captureListeners) {
             listener.onCapture(event);
         }
+    }
+
+    // ------------------------------------------------------------------ Observer (Model <-> View bridge)
+
+    /** Registers a View observer to be notified whenever the game state changes. */
+    public void addObserver(PropertyChangeListener observer) {
+        if (observer == null) {
+            return;
+        }
+        for (PropertyChangeListener existing : stateObservers.getPropertyChangeListeners()) {
+            if (existing == observer) {
+                return;
+            }
+        }
+        stateObservers.addPropertyChangeListener(observer);
+    }
+
+    /** Unregisters a View observer so closed screens do not leak memory. */
+    public void removeObserver(PropertyChangeListener observer) {
+        if (observer != null) {
+            stateObservers.removePropertyChangeListener(observer);
+        }
+    }
+
+    /** Notifies all registered View observers that the game state changed. */
+    public void notifyObservers(String eventName) {
+        String property = (eventName == null || eventName.isBlank()) ? "gameState" : eventName;
+        stateObservers.firePropertyChange(property, null, null);
+    }
+
+    private void forwardGameObserverEvent(PropertyChangeEvent event) {
+        notifyObservers(event.getPropertyName());
+    }
+
+    public Stage getStage() {
+        return game.getStage();
+    }
+
+    public PieceState getPieceState(int playerIndex, int pieceIndex) {
+        return game.getPlayer(playerIndex).getPiece(pieceIndex).getState();
+    }
+
+    public int getPieceSteps(int playerIndex, int pieceIndex) {
+        return game.getPlayer(playerIndex).getPiece(pieceIndex).getSteps();
+    }
+
+    public boolean isPieceInInnerPath(int playerIndex, int pieceIndex) {
+        return game.getPlayer(playerIndex).getPiece(pieceIndex).isInInnerPath();
+    }
+
+    public boolean isPieceInMiddlePath(int playerIndex, int pieceIndex) {
+        return game.getPlayer(playerIndex).getPiece(pieceIndex).isInMiddlePath();
     }
 
     private void initializeBoard() {

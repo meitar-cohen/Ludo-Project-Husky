@@ -4,6 +4,8 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -13,13 +15,14 @@ import java.util.function.LongSupplier;
 import Controller.CaptureEvent;
 import Controller.CaptureListener;
 import Controller.GameController;
+import Enums.PieceState;
 import Enums.SquareType;
 
 /**
  * Board component for the game screen.
  * Draws the board, special squares, castles, and pieces.
  */
-public class BoardPanel extends JPanel implements CaptureListener {
+public class BoardPanel extends JPanel implements CaptureListener, PropertyChangeListener {
 
     public static final String[] CORNER_COLOR_NAMES = {"Green", "Yellow", "Blue", "Red"};
 
@@ -71,6 +74,8 @@ public class BoardPanel extends JPanel implements CaptureListener {
     private IntConsumer castlePieceClickListener;
     private IntConsumer boardPieceClickListener;
     private Timer animation;
+    private int animatingCorner = -1;
+    private int animatingPiece = -1;
     private int stepDelay = 220;
     private Timer highlightPulse;
     private boolean pulsePhase;
@@ -104,6 +109,8 @@ public class BoardPanel extends JPanel implements CaptureListener {
         setBackground(new Color(244, 247, 255));
         setPreferredSize(new Dimension(700, 700));
         turns.addCaptureListener(this);
+        turns.addObserver(this);
+        syncFromModel();
         addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -314,7 +321,16 @@ public class BoardPanel extends JPanel implements CaptureListener {
     }
 
     public boolean placeActivePieceOnStart(int slot) {
-        if (slot < 0 || slot >= 4 || !castlePieces[activeCorner][slot]) return false;
+        if (slot < 0 || slot >= 4) return false;
+        if (!castlePieces[activeCorner][slot]) {
+            if (piecesOnBoard[activeCorner][slot] && isModelPieceOnBoard(activeCorner, slot)) {
+                selectedPieceIndex = slot;
+                clearHighlight();
+                repaint();
+                return true;
+            }
+            return false;
+        }
         castlePieces[activeCorner][slot] = false;
         piecesInCastle[activeCorner]--;
         piecesOnBoard[activeCorner][slot] = true;
@@ -330,8 +346,20 @@ public class BoardPanel extends JPanel implements CaptureListener {
 
  // החזרת כלי פעיל לטירה בתצוגת הלוח
     public boolean showActivePieceReturnedToCastle(int pieceIndex) {
-        if (pieceIndex < 0 || pieceIndex >= 4
-                || !piecesOnBoard[activeCorner][pieceIndex]
+        if (pieceIndex < 0 || pieceIndex >= 4) {
+            return false;
+        }
+        if (!piecesOnBoard[activeCorner][pieceIndex] && castlePieces[activeCorner][pieceIndex]) {
+            if (!finishedPieces[activeCorner][pieceIndex]
+                    && isModelPieceInCastle(activeCorner, pieceIndex)) {
+                selectedPieceIndex = pieceIndex;
+                clearHighlight();
+                repaint();
+                return true;
+            }
+            return false;
+        }
+        if (!piecesOnBoard[activeCorner][pieceIndex]
                 || castlePieces[activeCorner][pieceIndex]) {
             return false;
         }
@@ -373,14 +401,7 @@ public class BoardPanel extends JPanel implements CaptureListener {
         if (captured == null) {
             return null;
         }
-        int corner = cornerOf(turns.getPlayerColors()[captured[0]]);
-        piecesOnBoard[corner][captured[1]] = false;
-        castlePieces[corner][captured[1]] = true;
-        piecesInCastle[corner]++;
-        pieceSteps[corner][captured[1]] = 0;
-        piecesInHomePath[corner][captured[1]] = false;
-        piecesInInnerPath[corner][captured[1]] = false;
-        piecesInMiddlePath[corner][captured[1]] = false;
+        // Observer (syncFromModel) has already updated board state from the model.
         // onCapture (called by the controller above) has started the kick
         if (kick != null) {
             kickFinished = onFinished;
@@ -583,8 +604,19 @@ public class BoardPanel extends JPanel implements CaptureListener {
     }
 
     public boolean showActivePieceFinished(int pieceIndex) {
-        if (pieceIndex < 0 || pieceIndex >= 4
-                || !piecesOnBoard[activeCorner][pieceIndex]
+        if (pieceIndex < 0 || pieceIndex >= 4) {
+            return false;
+        }
+        if (finishedPieces[activeCorner][pieceIndex] && !piecesOnBoard[activeCorner][pieceIndex]) {
+            if (isModelPieceFinished(activeCorner, pieceIndex)) {
+                selectedPieceIndex = pieceIndex;
+                clearHighlight();
+                repaint();
+                return true;
+            }
+            return false;
+        }
+        if (!piecesOnBoard[activeCorner][pieceIndex]
                 || finishedPieces[activeCorner][pieceIndex]) {
             return false;
         }
@@ -807,6 +839,8 @@ public class BoardPanel extends JPanel implements CaptureListener {
             animation.stop();
         }
 
+        animatingCorner = corner;
+        animatingPiece = pieceIndex;
         pieceSteps[corner][pieceIndex] = startStep;
         final int[] position = {startStep};
 
@@ -815,6 +849,9 @@ public class BoardPanel extends JPanel implements CaptureListener {
         animation.addActionListener(e -> {
             if (position[0] == targetStep) {
                 animation.stop();
+                animatingCorner = -1;
+                animatingPiece = -1;
+                syncFromModel();
                 if (onDone != null) {
                     onDone.run();
                 }
@@ -842,6 +879,8 @@ public class BoardPanel extends JPanel implements CaptureListener {
         if (animation != null && animation.isRunning()) {
             animation.stop();
         }
+        animatingCorner = activeCorner;
+        animatingPiece = pieceIndex;
         pieceSteps[activeCorner][pieceIndex] = startStep;
         final boolean forward = targetStep >= startStep;
         final int[] remaining = {
@@ -851,6 +890,9 @@ public class BoardPanel extends JPanel implements CaptureListener {
         animation.addActionListener(e -> {
             if (remaining[0] == 0) {
                 animation.stop();
+                animatingCorner = -1;
+                animatingPiece = -1;
+                syncFromModel();
                 if (onDone != null) {
                     onDone.run();
                 }
@@ -865,6 +907,86 @@ public class BoardPanel extends JPanel implements CaptureListener {
             repaint();
         });
         animation.start();
+    }
+
+    // ------------------------------------------------------------------
+    // Observer synchronization with GameController (Model -> Controller -> View)
+    // ------------------------------------------------------------------
+
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        if (SwingUtilities.isEventDispatchThread()) {
+            syncFromModel();
+        } else {
+            SwingUtilities.invokeLater(this::syncFromModel);
+        }
+    }
+
+    public void removeObservers() {
+        turns.removeCaptureListener(this);
+        turns.removeObserver(this);
+    }
+
+    public void syncFromModel() {
+        String[] colors = turns.getPlayerColors();
+        for (int player = 0; player < colors.length; player++) {
+            int corner = cornerOf(colors[player]);
+            int castleCount = 0;
+            for (int pieceIndex = 0; pieceIndex < 4; pieceIndex++) {
+                if (animation != null && animation.isRunning()
+                        && corner == animatingCorner && pieceIndex == animatingPiece) {
+                    if (castlePieces[corner][pieceIndex]) {
+                        castleCount++;
+                    }
+                    continue;
+                }
+                PieceState state = turns.getPieceState(player, pieceIndex);
+                boolean inCastle = state == PieceState.CASTLE;
+                castlePieces[corner][pieceIndex] = inCastle;
+                if (inCastle) {
+                    castleCount++;
+                }
+                piecesOnBoard[corner][pieceIndex] =
+                        state == PieceState.BOARD || state == PieceState.HOME_PATH;
+                piecesInHomePath[corner][pieceIndex] = state == PieceState.HOME_PATH;
+                finishedPieces[corner][pieceIndex] = state == PieceState.FINISHED;
+                piecesInInnerPath[corner][pieceIndex] =
+                        turns.isPieceInInnerPath(player, pieceIndex);
+                piecesInMiddlePath[corner][pieceIndex] =
+                        turns.isPieceInMiddlePath(player, pieceIndex);
+                pieceSteps[corner][pieceIndex] =
+                        inCastle ? 0 : turns.getPieceSteps(player, pieceIndex);
+            }
+            piecesInCastle[corner] = castleCount;
+        }
+        repaint();
+    }
+
+    private int playerIndexForCorner(int corner) {
+        String[] colors = turns.getPlayerColors();
+        for (int i = 0; i < colors.length; i++) {
+            if (cornerOf(colors[i]) == corner) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private boolean isModelPieceInCastle(int corner, int pieceIndex) {
+        int player = playerIndexForCorner(corner);
+        return player >= 0 && turns.getPieceState(player, pieceIndex) == PieceState.CASTLE;
+    }
+
+    private boolean isModelPieceOnBoard(int corner, int pieceIndex) {
+        int player = playerIndexForCorner(corner);
+        if (player < 0) return false;
+        PieceState state = turns.getPieceState(player, pieceIndex);
+        return state == PieceState.BOARD || state == PieceState.HOME_PATH;
+    }
+
+    private boolean isModelPieceFinished(int corner, int pieceIndex) {
+        int player = playerIndexForCorner(corner);
+        return player >= 0 && turns.getPieceState(player, pieceIndex) == PieceState.FINISHED;
     }
 
     // ------------------------------------------------------------------
