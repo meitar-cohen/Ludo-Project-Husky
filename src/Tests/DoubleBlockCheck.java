@@ -32,7 +32,7 @@ public final class DoubleBlockCheck {
             game = new Game(new Player[]{new Player("A", "Green"),
                     new Player("B", "Red")}, difficulty);
             movement = new MovementController(game);
-            controller = new GameController(game, movement);
+            controller = GameController.forTesting(game, movement);
         }
 
         void place(int player, int piece, int steps) {

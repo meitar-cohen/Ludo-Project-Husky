@@ -109,7 +109,7 @@ public final class QuestionMovementIntegrationCheck {
             };
             Game game = new Game(players, "Hard");
             MovementController movement = new MovementController(game);
-            GameController controller = new GameController(game, movement);
+            GameController controller = GameController.forTesting(game, movement);
             final BoardPanel[] boardHolder = new BoardPanel[1];
             SwingUtilities.invokeAndWait(() ->
                     boardHolder[0] = new BoardPanel(controller));

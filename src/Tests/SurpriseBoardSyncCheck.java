@@ -18,7 +18,7 @@ public final class SurpriseBoardSyncCheck {
         final Game game = new Game(new Player[]{new Player("A", "Green"),
                 new Player("B", "Red")}, "Medium");
         final MovementController movement = new MovementController(game);
-        final GameController controller = new GameController(game, movement);
+        final GameController controller = GameController.forTesting(game, movement);
         final BoardPanel board = new BoardPanel(controller);
 
         Setup() {

@@ -23,7 +23,7 @@ public class CastleRuleAcceptanceCheck {
 
         Game game = newGame(level);
         MovementController controllerPieces = new MovementController(game);
-        GameController controller = new GameController(game, controllerPieces);
+        GameController controller = GameController.forTesting(game, controllerPieces);
 
         int bonus = "Easy".equals(level) ? 0 : 1;
 
@@ -87,7 +87,7 @@ public class CastleRuleAcceptanceCheck {
 
         Game game = newGame(level);
         MovementController controllerPieces = new MovementController(game);
-        GameController controller = new GameController(game, controllerPieces);
+        GameController controller = GameController.forTesting(game, controllerPieces);
 
         int bonus = "Easy".equals(level) ? 0 : 2;
 
@@ -122,7 +122,7 @@ public class CastleRuleAcceptanceCheck {
 
         Game game = newGame("Medium");
         MovementController controllerPieces = new MovementController(game);
-        GameController controller = new GameController(game, controllerPieces);
+        GameController controller = GameController.forTesting(game, controllerPieces);
 
         game.setPiecesInCastle(3);
         game.getSelectedPiece().setOnBoard(true);

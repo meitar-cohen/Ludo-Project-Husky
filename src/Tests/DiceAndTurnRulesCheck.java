@@ -35,7 +35,7 @@ public class DiceAndTurnRulesCheck {
     }
 
     private static GameController controllerFor(Game game) {
-        return new GameController(game, new MovementController(game));
+        return GameController.forTesting(game, new MovementController(game));
     }
 
     private static Game newGame(String level) {

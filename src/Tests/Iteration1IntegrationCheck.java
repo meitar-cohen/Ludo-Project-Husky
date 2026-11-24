@@ -31,7 +31,7 @@ public class Iteration1IntegrationCheck {
         // יצירת המודל, הבקר והלוח
         Game game = new Game(TestPlayers.of(names, colors), level);
         MovementController controllerPieces = new MovementController(game);
-        GameController controller = new GameController(game, controllerPieces);
+        GameController controller = GameController.forTesting(game, controllerPieces);
         BoardPanel board = new BoardPanel(controller);
 
         // 3.2.1 - מצב התחלתי של משחק

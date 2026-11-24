@@ -124,7 +124,7 @@ public class ExactHomeFinishRulesCheck {
 
         Game game = newGame("Easy");
         MovementController controllerPieces = new MovementController(game);
-        GameController controller = new GameController(game, controllerPieces);
+        GameController controller = GameController.forTesting(game, controllerPieces);
 
         for (int piece = 0; piece < 4; piece++) {
 

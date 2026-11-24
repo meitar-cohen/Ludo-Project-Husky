@@ -32,7 +32,7 @@ public class HomePathZeroRollCheck {
         game.getSelectedPiece().setSteps(1);
 
         MovementController controllerPieces = new MovementController(game);
-        GameController controller = new GameController(game, controllerPieces);
+        GameController controller = GameController.forTesting(game, controllerPieces);
         controller.getTurnController().registerRollAndCheckThirdSix(4);
 
         same(RollAction.MOVE, controller.getTurnController().finishRoll(4, 1),
@@ -61,7 +61,7 @@ public class HomePathZeroRollCheck {
         game.getSelectedPiece().setOnBoard(true);
 
         MovementController controllerPieces = new MovementController(game);
-        GameController controller = new GameController(game, controllerPieces);
+        GameController controller = GameController.forTesting(game, controllerPieces);
         controller.getTurnController().registerRollAndCheckThirdSix(4);
 
         same(RollAction.NEED_SIX, controller.getTurnController().finishRoll(4, 1),
@@ -85,7 +85,7 @@ public class HomePathZeroRollCheck {
         game.getSelectedPiece().setSteps(0);
 
         MovementController controllerPieces = new MovementController(game);
-        GameController controller = new GameController(game, controllerPieces);
+        GameController controller = GameController.forTesting(game, controllerPieces);
         controller.getTurnController().registerRollAndCheckThirdSix(3);
 
         same(RollAction.MOVE, controller.getTurnController().finishRoll(3, 1),
@@ -108,7 +108,7 @@ public class HomePathZeroRollCheck {
         game.getSelectedPiece().setSteps(2);
 
         MovementController controllerPieces = new MovementController(game);
-        GameController controller = new GameController(game, controllerPieces);
+        GameController controller = GameController.forTesting(game, controllerPieces);
         controller.getTurnController().registerRollAndCheckThirdSix(4);
 
         same(RollAction.MOVE, controller.getTurnController().finishRoll(4, 3),
@@ -129,7 +129,7 @@ public class HomePathZeroRollCheck {
         game.getSelectedPiece().setSteps(4);
 
         MovementController controllerPieces = new MovementController(game);
-        GameController controller = new GameController(game, controllerPieces);
+        GameController controller = GameController.forTesting(game, controllerPieces);
         controller.getTurnController().registerRollAndCheckThirdSix(3);
 
         same(RollAction.NEED_SIX, controller.getTurnController().finishRoll(3, 1),

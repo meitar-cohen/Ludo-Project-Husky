@@ -37,7 +37,7 @@ public class QuestionMoveTargetCheck {
 
         Game game = new Game(players, "Medium");
         MovementController movement = new MovementController(game);
-        GameController controller = new GameController(game, movement);
+        GameController controller = GameController.forTesting(game, movement);
 
         game.selectPiece(0);
         game.getSelectedPiece().setOnBoard(true);

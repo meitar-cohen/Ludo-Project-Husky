@@ -73,7 +73,7 @@ public final class GameControllerQuestionFactoryIntegrationCheck {
                 new Player("B", "Blue")
         };
         Game game = new Game(players, "Hard");
-        GameController controller = new GameController(
+        GameController controller = GameController.forTesting(
                 game, new MovementController(game));
 
         // בבנאי נוצר אוטומטית אירוע שאלה קלה

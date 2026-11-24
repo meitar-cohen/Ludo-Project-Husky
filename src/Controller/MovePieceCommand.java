@@ -4,9 +4,8 @@ import Model.Game;
 
 /** Command: the current player moves one piece along the shared path to a new step. */
 public final class MovePieceCommand extends AbstractGameCommand {
-    private final int pieceIndex, targetStep, routeSize;
+    private final int pieceIndex, targetStep, routeSize, fromStep;
     private final String player;
-    private final int fromStep;
 
     public MovePieceCommand(Game game, MovementController movement,
                             int pieceIndex, int targetStep, int routeSize) {

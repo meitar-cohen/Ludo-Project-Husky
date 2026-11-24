@@ -31,7 +31,7 @@ public final class CommandPatternCheck {
             game = new Game(new Player[]{new Player("Ann", "Green"),
                     new Player("Bob", "Red")}, difficulty);
             movement = new MovementController(game);
-            controller = new GameController(game, movement);
+            controller = GameController.forTesting(game, movement);
         }
 
         Piece piece(int player, int index) {
