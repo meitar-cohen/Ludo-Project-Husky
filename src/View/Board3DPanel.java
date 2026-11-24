@@ -62,8 +62,11 @@ class Board3DPanel extends JPanel {
     private static final double BOARD_TOP = 0.45;       // height of the board surface
     private static final double PAWN_HEIGHT = 1.35;
     private static final double PITCH_DEGREES = 16;     // low camera right behind the piece
-    private static final double CHASE_BACK = 7.0;       // distance behind the piece
-    private static final double CHASE_HEIGHT = 3.4;     // height above the board
+    // high broadcast-style view (about 42 degrees, like the classic football-game camera)
+    private static final double CHASE_BACK = 14.5;      // distance behind the piece
+    private static final double CHASE_HEIGHT = 13.0;    // height above the board
+    private static final double AIM_BELOW = Math.toRadians(4);   // the camera aims a little below the piece's line
+    private static final double CENTER_Y = 0.52;        // the piece is near the middle of the screen
     private static final int TRACK = 1, CASTLE = 2, CENTER = 3;
     private static final double HOP_SECONDS = 0.17;
     private static final double TRAIL_SECONDS = 0.55;
@@ -1123,10 +1126,9 @@ class Board3DPanel extends JPanel {
         double heading = chaseHeading + orbitYaw;
         cam.focal = focal;
         // keep aiming so the piece stays at the same place on screen, whatever the elevation
-        cam.pitch = Math.max(Math.toRadians(2), orbitElevation - 0.38 * DEFAULT_ELEVATION);
+        cam.pitch = Math.max(Math.toRadians(2), orbitElevation - AIM_BELOW);
         cam.centerX = w / 2.0;
-        // the optical axis stays where it is for the default view; the horizon moves with the pitch
-        cam.centerY = h * AssetCache.HORIZON + focal * Math.tan(0.62 * DEFAULT_ELEVATION);
+        cam.centerY = h * CENTER_Y;
         cam.heading = heading;
         cam.posX = chaseX - Math.sin(heading) * distance * Math.cos(orbitElevation);
         cam.posZ = chaseZ - Math.cos(heading) * distance * Math.cos(orbitElevation);
