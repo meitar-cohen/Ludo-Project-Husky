@@ -219,22 +219,22 @@ public class GameController {
 
     /** Takes the given piece of the current player out of the castle (as a command). */
     public boolean takeOutPiece(int slot) {
-        return commands.execute(new GameCommands.TakeOutPiece(game, pieces, slot));
+        return commands.execute(new TakeOutPieceCommand(game, pieces, slot));
     }
 
     /** Moves a piece of the current player along its path (as a command). */
     public boolean movePiece(int pieceIndex, int targetStep, int routeSize) {
-        return commands.execute(new GameCommands.MovePiece(game, pieces, pieceIndex, targetStep, routeSize));
+        return commands.execute(new MovePieceCommand(game, pieces, pieceIndex, targetStep, routeSize));
     }
 
     /** Finishes a piece that reaches the goal (as a command). */
     public boolean finishPiece(int pieceIndex, int routeSize) {
-        return commands.execute(new GameCommands.FinishPiece(game, pieces, pieceIndex, routeSize));
+        return commands.execute(new FinishPieceCommand(game, pieces, pieceIndex, routeSize));
     }
 
     /** Moves a piece into the private home path (as a command). */
     public boolean enterHomePath(int pieceIndex, int sharedRouteSize) {
-        return commands.execute(new GameCommands.EnterHomePath(game, pieces, pieceIndex, sharedRouteSize));
+        return commands.execute(new EnterHomePathCommand(game, pieces, pieceIndex, sharedRouteSize));
     }
 
     public int getBoardRings() {
@@ -534,7 +534,7 @@ public class GameController {
                 }
             }
             // two pieces of one player on a square are a block, not a single piece
-            if (count == 1 && commands.execute(new GameCommands.Capture(game, pieces, player, found))) {
+            if (count == 1 && commands.execute(new CaptureCommand(game, pieces, player, found))) {
                 notifyCapture(new CaptureEvent(movingPlayer, movingPiece, player, found, position));
                 return new int[]{player, found};
             }

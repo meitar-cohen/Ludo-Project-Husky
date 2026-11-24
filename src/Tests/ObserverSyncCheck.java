@@ -44,7 +44,7 @@ public final class ObserverSyncCheck {
                 new Player("Bob", "Red")
         }, "Medium");
         MovementController movement = new MovementController(game);
-        GameController controller = new GameController(game, movement);
+        GameController controller = GameController.forTesting(game, movement);
 
         List<PropertyChangeEvent> received = new ArrayList<>();
         PropertyChangeListener observer = received::add;
@@ -71,7 +71,7 @@ public final class ObserverSyncCheck {
                         new Player("Bob", "Red")
                 }, "Medium");
                 GameController syncController =
-                        new GameController(syncGame, new MovementController(syncGame));
+                        GameController.forTesting(syncGame, new MovementController(syncGame));
                 BoardPanel board = new BoardPanel(syncController);
 
                 syncGame.setStage(Stage.TAKE_OUT);
@@ -112,7 +112,7 @@ public final class ObserverSyncCheck {
                         new Player("Bob", "Red")
                 }, "Easy");
                 GameController screenController =
-                        new GameController(screenGame, new MovementController(screenGame));
+                        GameController.forTesting(screenGame, new MovementController(screenGame));
                 screen = new GameScreen(screenController, "Easy");
 
                 Object sidebar = field(screen, "sidebar");
