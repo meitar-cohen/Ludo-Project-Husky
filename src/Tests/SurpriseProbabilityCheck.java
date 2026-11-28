@@ -4,9 +4,9 @@ import java.util.EnumMap;
 import java.util.Map;
 import java.util.Random;
 
+import Enums.SurpriseEventType;
 import Model.SurpriseContext;
 import Model.SurpriseEngine;
-import Model.SurpriseType;
 
 /**
  * בדיקת הסתברויות מדויקת ללא תלות במזל:
@@ -31,16 +31,16 @@ public final class SurpriseProbabilityCheck {
     public static void main(String[] args) {
         SurpriseEngine engine = new SurpriseEngine(new SequentialHundredRolls());
         SurpriseContext context = new SurpriseContext(10, 52);
-        Map<SurpriseType, Integer> counts = new EnumMap<>(SurpriseType.class);
-        for (SurpriseType type : SurpriseType.values()) counts.put(type, 0);
+        Map<SurpriseEventType, Integer> counts = new EnumMap<>(SurpriseEventType.class);
+        for (SurpriseEventType type : SurpriseEventType.values()) counts.put(type, 0);
 
         for (int i = 0; i < 100; i++) {
-            SurpriseType type = engine.draw(context).getType();
+            SurpriseEventType type = engine.draw(context).getType();
             counts.put(type, counts.get(type) + 1);
         }
 
         int total = 0;
-        for (SurpriseType type : SurpriseType.values()) {
+        for (SurpriseEventType type : SurpriseEventType.values()) {
             int actual = counts.get(type);
             int expected = type.getProbabilityPercent();
             if (actual != expected) {

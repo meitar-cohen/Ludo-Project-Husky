@@ -8,7 +8,7 @@ import java.awt.event.WindowEvent;
 import javax.swing.JButton;
 import javax.swing.SwingUtilities;
 
-import View.AdminLoginView;
+import View.AdminLoginScreen;
 import View.MainMenuScreen;
 
 /**
@@ -54,13 +54,13 @@ public final class AdminNavigationCheck {
                 check(manage != null && manage.isVisible(),
                         "Question Management is not visible in menu");
                 manage.doClick();
-                check(visibleWindow(AdminLoginView.class) != null,
+                check(visibleWindow(AdminLoginScreen.class) != null,
                         "Admin login did not open");
                 check(!menu.isDisplayable(),
                         "Original menu did not close");
                 System.out.println("PASS - menu opens administrator login");
 
-                AdminLoginView login = visibleWindow(AdminLoginView.class);
+                AdminLoginScreen login = visibleWindow(AdminLoginScreen.class);
                 JButton back = findButton(login.getContentPane(),
                         "Back to Main Menu");
                 check(back != null, "Back button missing");
@@ -74,7 +74,7 @@ public final class AdminNavigationCheck {
                 JButton next = findButton(returned.getContentPane(),
                         "Question Management");
                 next.doClick();
-                AdminLoginView second = visibleWindow(AdminLoginView.class);
+                AdminLoginScreen second = visibleWindow(AdminLoginScreen.class);
                 check(second != null, "Second login did not open");
                 second.dispatchEvent(new WindowEvent(second,
                         WindowEvent.WINDOW_CLOSING));

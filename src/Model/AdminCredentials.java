@@ -22,7 +22,7 @@ import javax.crypto.spec.PBEKeySpec;
  * אחסון פרטי אימות למנהל מחוץ לתיקיית הפרויקט.
  * נשמרים Salt וגיבוב PBKDF2 בלבד, ולא הסיסמה המקורית.
  */
-public final class AdminCredentialsStore {
+public final class AdminCredentials {
 
     private static final int ITERATIONS = 210_000;
     private static final int KEY_BITS = 256;
@@ -31,13 +31,13 @@ public final class AdminCredentialsStore {
 
     private final Path file;
 
-    public AdminCredentialsStore() {
+    public AdminCredentials() {
         this(Path.of(System.getProperty("user.home"), ".ludo",
                 "admin-auth.properties"));
     }
 
     // מאפשר בדיקה מול קובץ זמני, ללא שינוי חשבון המנהל האמיתי.
-    public AdminCredentialsStore(Path file) {
+    public AdminCredentials(Path file) {
         if (file == null) {
             throw new IllegalArgumentException("Credential file is required");
         }

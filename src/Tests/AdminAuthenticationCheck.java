@@ -6,7 +6,7 @@ import java.nio.file.Path;
 import java.util.Arrays;
 
 import Controller.AdminAuthController;
-import Model.AdminCredentialsStore;
+import Model.AdminCredentials;
 
 /** בדיקות כניסת מנהל על קובץ זמני בלבד, ללא שינוי פרטי האימות האמיתיים. */
 public final class AdminAuthenticationCheck {
@@ -31,7 +31,7 @@ public final class AdminAuthenticationCheck {
         char[] wrongPassword = "WrongPassword123".toCharArray();
         try {
             AdminAuthController auth = new AdminAuthController(
-                    new AdminCredentialsStore(credentials));
+                    new AdminCredentials(credentials));
             check(auth.requiresSetup(), "Expected initial setup");
             check(!auth.authenticate(goodPassword),
                     "Authentication succeeded before setup");
@@ -58,7 +58,7 @@ public final class AdminAuthenticationCheck {
 
             // טעינה מחדש מאותו קובץ מדמה כניסה לאחר סגירת המשחק.
             AdminAuthController restarted = new AdminAuthController(
-                    new AdminCredentialsStore(credentials));
+                    new AdminCredentials(credentials));
             check(restarted.authenticate(goodPassword),
                     "Correct password failed after restart");
             check(!restarted.authenticate(wrongPassword),

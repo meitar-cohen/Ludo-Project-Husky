@@ -52,7 +52,7 @@ public class MainMenuScreen extends JFrame {
             dispose();
         });
         questionManagementButton.addActionListener(e -> {
-            new AdminLoginView().setVisible(true);
+            new AdminLoginScreen().setVisible(true);
             dispose();
         });
         exitButton.addActionListener(e -> dispose());

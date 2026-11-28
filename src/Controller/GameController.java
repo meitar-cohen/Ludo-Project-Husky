@@ -20,7 +20,6 @@ import Model.Game;
 import Model.Piece;
 import Model.Player;
 import Model.QuestionEvent;
-import Model.QuestionEventCreator;
 import Model.Square;
 import java.io.IOException;
 import Model.QuestionBank;
@@ -53,6 +52,7 @@ public class GameController {
     private final PropertyChangeSupport stateObservers = new PropertyChangeSupport(this);
     // מאגר השאלות שנטען מקובץ ה-CSV
     private final QuestionBank questionBank;
+    private final QuestionController questionController;
 
     // אירוע השאלה הנוכחי שנוצר באמצעות Factory Method
     private QuestionEvent currentQuestionEvent;
@@ -107,6 +107,9 @@ public class GameController {
 	        );
 	    }
 	
+	    // הבקר המרכזי משתמש במאגר השאלות וב-Factory Method הקיימים.
+	    this.questionController = new QuestionController(questionBank);
+
 	    // אתחול אירוע שאלה קלה באמצעות Factory Method
 	    selectQuestion("easy");
 	
@@ -132,33 +135,9 @@ public class GameController {
 
 	
 
-    // בחירת שאלה באמצעות Factory Method לפי רמת הקושי
+    // הבקר המרכזי יוצר את האירוע באמצעות ה-Factory Method הקיים.
     public void selectQuestion(String difficulty) {
-
-        if (difficulty == null || difficulty.isBlank()) {
-            throw new IllegalArgumentException(
-                    "Question difficulty is required");
-        }
-
-        // בחירת היוצר המתאים לרמת הקושי
-        QuestionEventCreator creator = switch (
-                difficulty.trim().toLowerCase(java.util.Locale.ROOT)) {
-
-            case "easy" ->
-                    new QuestionEventCreator.Easy(questionBank);
-
-            case "medium" ->
-                    new QuestionEventCreator.Medium(questionBank);
-
-            case "hard" ->
-                    new QuestionEventCreator.Hard(questionBank);
-
-            default -> throw new IllegalArgumentException(
-                    "Unsupported question difficulty: " + difficulty);
-        };
-
-        // יצירת האירוע באמצעות Factory Method
-        currentQuestionEvent = creator.create();
+        currentQuestionEvent = questionController.createQuestionEvent(difficulty);
     }
 
     // בדיקת נכונות התשובה באמצעות האירוע הנוכחי

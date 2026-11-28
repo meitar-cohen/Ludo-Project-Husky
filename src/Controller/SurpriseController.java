@@ -7,8 +7,8 @@ import Model.Piece;
 import Model.SurpriseContext;
 import Model.SurpriseEngine;
 import Model.SurprisePlan;
-import Model.SurpriseType;
 import Enums.Stage;
+import Enums.SurpriseEventType;
 
 /**
  * בקר הפתעות: מפעיל את Strategy שנבחרה ואת ההשפעה על מודל המשחק.
@@ -39,7 +39,7 @@ public final class SurpriseController {
     }
 
     // נקודת כניסה דטרמיניסטית לצורכי בדיקות.
-    public SurprisePlan resolveForPiece(SurpriseType type, int pieceIndex, int routeSize) {
+    public SurprisePlan resolveForPiece(SurpriseEventType type, int pieceIndex, int routeSize) {
         return engine.resolve(type, context(pieceIndex, routeSize));
     }
 
@@ -79,19 +79,19 @@ public final class SurpriseController {
         int start = now.getCurrentStep();
 
         switch (plan.getType()) {
-            case FINISH_PIECE: {
+            case GO_TO_FINISH: {
                 if (!movement.finishPieceFromSurprise(pieceIndex))
                     throw new IllegalStateException("Cannot finish surprise piece");
                 return result(plan, actor, pieceIndex, -1, -1,
                         "STRAIGHT TO HOME!", "Your piece reached the finish directly.");
             }
-            case RETURN_TO_CASTLE: {
+            case BACK_TO_CASTLE: {
                 if (!movement.returnPieceToCastleFromSurprise(pieceIndex))
                     throw new IllegalStateException("Cannot return piece to castle");
                 return result(plan, actor, pieceIndex, -1, -1,
                         "BACK TO THE CASTLE!", "Your piece returns to its castle.");
             }
-            case MOVE_BACK_THREE: {
+            case BACK_3_SQUARES: {
                 int target = plan.getTargetStep();
                 if (target != Math.max(0, start - 3))
                     throw new IllegalArgumentException("Invalid movement plan");
@@ -100,17 +100,17 @@ public final class SurpriseController {
                 return result(plan, actor, pieceIndex, start, target,
                         "A LITTLE DETOUR!", "Your piece moves back " + (start - target) + " squares.");
             }
-            case SKIP_NEXT_TURN: {
+            case LOSE_NEXT_TURN: {
                 turns.markSkipNextTurn(actor);
                 return result(plan, actor, pieceIndex, -1, -1,
                         "MISS YOUR NEXT TURN!", "Your next turn will be skipped.");
             }
-            case EXTRA_TURN_ULTRABOOST: {
+            case EXTRA_ULTRABOOST_TURN: {
                 turns.requestSurpriseExtraTurn();
                 return result(plan, actor, pieceIndex, -1, -1,
                         "BONUS ULTRABOOST!", "Roll again immediately with UltraBoost (1-6).");
             }
-            case MOVE_OPPONENT: {
+            case MOVE_OPPONENT_BACK: {
                 if (eligibleOpponents().isEmpty()) {
                     return result(plan, actor, pieceIndex, -1, -1,
                             "NO TARGET AVAILABLE", "No opponent has a piece on the board.");

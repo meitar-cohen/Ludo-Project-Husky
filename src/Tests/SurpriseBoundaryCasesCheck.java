@@ -5,11 +5,11 @@ import Controller.SurpriseController;
 import Controller.SurpriseResolution;
 import Controller.TurnController;
 import Enums.Stage;
+import Enums.SurpriseEventType;
 import Model.Game;
 import Model.Piece;
 import Model.Player;
 import Model.SurprisePlan;
-import Model.SurpriseType;
 
 /** בדיקות מקרי קצה למנגנון ההפתעות, ללא פתיחת משחק. */
 public final class SurpriseBoundaryCasesCheck {
@@ -45,11 +45,11 @@ public final class SurpriseBoundaryCasesCheck {
             game.setStage(Stage.BUSY);
         }
 
-        SurprisePlan plan(SurpriseType type) {
+        SurprisePlan plan(SurpriseEventType type) {
             return controller.resolveForPiece(type, 0, 52);
         }
 
-        SurpriseResolution apply(SurpriseType type, int opponent, int die) {
+        SurpriseResolution apply(SurpriseEventType type, int opponent, int die) {
             return controller.apply(plan(type), 0, 52, opponent, die);
         }
 
@@ -64,7 +64,7 @@ public final class SurpriseBoundaryCasesCheck {
         // גם ממש בתחילת המסלול אין תנועה לאינדקס שלילי.
         for (int start = 0; start <= 5; start++) {
             Setup setup = new Setup(start);
-            SurpriseResolution result = setup.apply(SurpriseType.MOVE_BACK_THREE, -1, 0);
+            SurpriseResolution result = setup.apply(SurpriseEventType.BACK_3_SQUARES, -1, 0);
             int expected = Math.max(0, start - 3);
             check(result.getAfterStep() == expected
                     && setup.game.getPlayer(0).getPiece(0).getSteps() == expected,
@@ -76,7 +76,7 @@ public final class SurpriseBoundaryCasesCheck {
         for (int die = 1; die <= 6; die++) {
             Setup setup = new Setup(8);
             setup.putOpponentAt(10);
-            SurpriseResolution result = setup.apply(SurpriseType.MOVE_OPPONENT, 1, die);
+            SurpriseResolution result = setup.apply(SurpriseEventType.MOVE_OPPONENT_BACK, 1, die);
             int expected = 10 - ((die + 1) / 2);
             check(result.getAffectedPlayer() == 1
                     && result.getAffectedPiece() == 0
@@ -88,13 +88,13 @@ public final class SurpriseBoundaryCasesCheck {
         }
         Setup nearStart = new Setup(8);
         nearStart.putOpponentAt(1);
-        check(nearStart.apply(SurpriseType.MOVE_OPPONENT, 1, 6).getAfterStep() == 0,
+        check(nearStart.apply(SurpriseEventType.MOVE_OPPONENT_BACK, 1, 6).getAfterStep() == 0,
                 "Opponent movement passed the start of the route");
         System.out.println("PASS - all six die values and opponent route boundary");
 
         // ללא כלי יריב על הלוח אין בחירה שגויה ואין שינוי תור.
         Setup noOpponent = new Setup(8);
-        SurpriseResolution noTarget = noOpponent.apply(SurpriseType.MOVE_OPPONENT, -1, 0);
+        SurpriseResolution noTarget = noOpponent.apply(SurpriseEventType.MOVE_OPPONENT_BACK, -1, 0);
         check(noTarget.getTitle().contains("NO TARGET")
                 && noOpponent.game.getCurrentPlayer() == 0,
                 "Missing opponent was not handled safely");
@@ -103,14 +103,14 @@ public final class SurpriseBoundaryCasesCheck {
         // קלטים שגויים נדחים בלי לשנות את מיקום הכלים.
         Setup invalid = new Setup(8);
         invalid.putOpponentAt(10);
-        mustReject(() -> invalid.apply(SurpriseType.MOVE_OPPONENT, -1, 5),
+        mustReject(() -> invalid.apply(SurpriseEventType.MOVE_OPPONENT_BACK, -1, 5),
                 "Invalid opponent was accepted");
-        mustReject(() -> invalid.apply(SurpriseType.MOVE_OPPONENT, 1, 0),
+        mustReject(() -> invalid.apply(SurpriseEventType.MOVE_OPPONENT_BACK, 1, 0),
                 "Die zero was accepted");
-        mustReject(() -> invalid.apply(SurpriseType.MOVE_OPPONENT, 1, 7),
+        mustReject(() -> invalid.apply(SurpriseEventType.MOVE_OPPONENT_BACK, 1, 7),
                 "Die seven was accepted");
         mustReject(() -> invalid.controller.apply(
-                        new SurprisePlan(SurpriseType.MOVE_BACK_THREE, 7),
+                        new SurprisePlan(SurpriseEventType.BACK_3_SQUARES, 7),
                         0, 52, -1, 0),
                 "Incorrect backward movement target was accepted");
         check(invalid.game.getPlayer(0).getPiece(0).getSteps() == 8
@@ -122,11 +122,11 @@ public final class SurpriseBoundaryCasesCheck {
         Setup wrongStage = new Setup(8);
         wrongStage.game.setStage(Stage.ROLL);
         mustReject(() -> wrongStage.controller.resolveForPiece(
-                        SurpriseType.MOVE_BACK_THREE, 0, 52),
+                        SurpriseEventType.BACK_3_SQUARES, 0, 52),
                 "Surprise was accepted outside BUSY stage");
         Setup invalidPiece = new Setup(8);
         mustReject(() -> invalidPiece.controller.resolveForPiece(
-                        SurpriseType.RETURN_TO_CASTLE, 4, 52),
+                        SurpriseEventType.BACK_TO_CASTLE, 4, 52),
                 "Invalid piece index was accepted");
         System.out.println("PASS - surprise requires a legal active piece and stage");
         System.out.println("All surprise boundary case checks passed.");

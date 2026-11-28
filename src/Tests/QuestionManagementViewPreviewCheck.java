@@ -10,7 +10,7 @@ import javax.swing.SwingUtilities;
 
 import Controller.QuestionManagementController;
 import Model.QuestionRepository;
-import View.QuestionManagementView;
+import View.QuestionManagementScreen;
 
 /**
  * פתיחת ממשק הניהול על עותק CSV זמני בלבד.
@@ -26,7 +26,7 @@ public final class QuestionManagementViewPreviewCheck {
                 new QuestionManagementController(copy);
         System.out.println("PASS - admin preview uses a temporary CSV copy");
         SwingUtilities.invokeLater(() -> {
-            QuestionManagementView window = new QuestionManagementView(controller);
+            QuestionManagementScreen window = new QuestionManagementScreen(controller);
             window.addWindowListener(new WindowAdapter() {
                 @Override public void windowClosed(WindowEvent e) {
                     try {

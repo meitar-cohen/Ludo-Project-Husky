@@ -2,6 +2,8 @@ package Model;
 
 import java.util.Objects;
 
+import Enums.SurpriseEventType;
+
 /**
  * המימושים הקונקרטיים של Strategy לכל אחד מסוגי ההפתעות.
  */
@@ -13,8 +15,8 @@ public final class SurpriseStrategies {
     // מאיץ את הכלי למשבצת הסיום. ביצוע הסיום יטופל בבקר.
     public static final class FinishPiece implements SurpriseStrategy {
         @Override
-        public SurpriseType getType() {
-            return SurpriseType.FINISH_PIECE;
+        public SurpriseEventType getType() {
+            return SurpriseEventType.GO_TO_FINISH;
         }
 
         @Override
@@ -27,8 +29,8 @@ public final class SurpriseStrategies {
     // בוחר באפקט הזזת יריב; הבקר יבחר כלי יריב ויטיל קובייה רגילה.
     public static final class MoveOpponent implements SurpriseStrategy {
         @Override
-        public SurpriseType getType() {
-            return SurpriseType.MOVE_OPPONENT;
+        public SurpriseEventType getType() {
+            return SurpriseEventType.MOVE_OPPONENT_BACK;
         }
 
         @Override
@@ -41,8 +43,8 @@ public final class SurpriseStrategies {
     // מחזיר את הכלי הפעיל לטירה; הבקר יעדכן את מצב הכלי והמונה.
     public static final class ReturnToCastle implements SurpriseStrategy {
         @Override
-        public SurpriseType getType() {
-            return SurpriseType.RETURN_TO_CASTLE;
+        public SurpriseEventType getType() {
+            return SurpriseEventType.BACK_TO_CASTLE;
         }
 
         @Override
@@ -55,8 +57,8 @@ public final class SurpriseStrategies {
     // מחשב יעד אמיתי לתנועה אחורה בלי לחרוג מתחילת המסלול.
     public static final class MoveBackThree implements SurpriseStrategy {
         @Override
-        public SurpriseType getType() {
-            return SurpriseType.MOVE_BACK_THREE;
+        public SurpriseEventType getType() {
+            return SurpriseEventType.BACK_3_SQUARES;
         }
 
         @Override
@@ -70,8 +72,8 @@ public final class SurpriseStrategies {
     // מסמן הפסד התור הבא, לא הפסד התור הנוכחי.
     public static final class SkipNextTurn implements SurpriseStrategy {
         @Override
-        public SurpriseType getType() {
-            return SurpriseType.SKIP_NEXT_TURN;
+        public SurpriseEventType getType() {
+            return SurpriseEventType.LOSE_NEXT_TURN;
         }
 
         @Override
@@ -84,8 +86,8 @@ public final class SurpriseStrategies {
     // מסמן תור נוסף מיידי עם קובייה רגילה ו-UltraBoost.
     public static final class ExtraTurnUltraBoost implements SurpriseStrategy {
         @Override
-        public SurpriseType getType() {
-            return SurpriseType.EXTRA_TURN_ULTRABOOST;
+        public SurpriseEventType getType() {
+            return SurpriseEventType.EXTRA_ULTRABOOST_TURN;
         }
 
         @Override

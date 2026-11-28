@@ -1,10 +1,10 @@
 package Controller;
 
-import Model.SurpriseType;
+import Enums.SurpriseEventType;
 
 /** תוצאת ביצוע הפתעה; מיועדת לסנכרון ה-View עם המודל. */
 public final class SurpriseResolution {
-    private final SurpriseType type;
+    private final SurpriseEventType type;
     private final int affectedPlayer;
     private final int affectedPiece;
     private final int beforeStep;
@@ -12,7 +12,7 @@ public final class SurpriseResolution {
     private final String title;
     private final String description;
 
-    public SurpriseResolution(SurpriseType type, int affectedPlayer, int affectedPiece,
+    public SurpriseResolution(SurpriseEventType type, int affectedPlayer, int affectedPiece,
             int beforeStep, int afterStep, String title, String description) {
         this.type = type;
         this.affectedPlayer = affectedPlayer;
@@ -23,7 +23,7 @@ public final class SurpriseResolution {
         this.description = description;
     }
 
-    public SurpriseType getType() { return type; }
+    public SurpriseEventType getType() { return type; }
     public int getAffectedPlayer() { return affectedPlayer; }
     public int getAffectedPiece() { return affectedPiece; }
     public int getBeforeStep() { return beforeStep; }

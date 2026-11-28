@@ -3,9 +3,9 @@ package Tests;
 import Controller.GameController;
 import Controller.MovementController;
 import Enums.Stage;
+import Enums.SurpriseEventType;
 import Model.Game;
 import Model.Player;
-import Model.SurpriseType;
 import View.BoardPanel;
 
 /** בדיקת סנכרון מודל-לוח להפתעות שלא דורשות משחק ידני. */
@@ -33,7 +33,7 @@ public final class SurpriseBoardSyncCheck {
         Setup castle = new Setup();
         castle.controller.getSurpriseController().apply(
                 castle.controller.getSurpriseController().resolveForPiece(
-                        SurpriseType.RETURN_TO_CASTLE, 0, 64), 0, 64, -1, 0);
+                        SurpriseEventType.BACK_TO_CASTLE, 0, 64), 0, 64, -1, 0);
         check(castle.board.showActivePieceReturnedToCastle(0),
                 "View could not return piece to castle");
         check(castle.board.hasPieceInCastle()
@@ -44,7 +44,7 @@ public final class SurpriseBoardSyncCheck {
         Setup finish = new Setup();
         finish.controller.getSurpriseController().apply(
                 finish.controller.getSurpriseController().resolveForPiece(
-                        SurpriseType.FINISH_PIECE, 0, 64), 0, 64, -1, 0);
+                        SurpriseEventType.GO_TO_FINISH, 0, 64), 0, 64, -1, 0);
         check(finish.board.showActivePieceFinished(0),
                 "View could not finish piece");
         check(finish.board.isActivePieceFinished(0)

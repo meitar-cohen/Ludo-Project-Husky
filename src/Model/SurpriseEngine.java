@@ -5,13 +5,15 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
 
+import Enums.SurpriseEventType;
+
 /**
  * אחראי להגרלת סוג ההפתעה ולהפעלת ה-Strategy המתאימה.
  * ה-Random מוזרק מבחוץ כדי שאפשר יהיה לכתוב בדיקות דטרמיניסטיות.
  */
 public final class SurpriseEngine {
     private final Random random;
-    private final Map<SurpriseType, SurpriseStrategy> strategies;
+    private final Map<SurpriseEventType, SurpriseStrategy> strategies;
 
     public SurpriseEngine() {
         this(new Random());
@@ -19,7 +21,7 @@ public final class SurpriseEngine {
 
     public SurpriseEngine(Random random) {
         this.random = Objects.requireNonNull(random, "Random generator is required");
-        EnumMap<SurpriseType, SurpriseStrategy> map = new EnumMap<>(SurpriseType.class);
+        EnumMap<SurpriseEventType, SurpriseStrategy> map = new EnumMap<>(SurpriseEventType.class);
         register(map, new SurpriseStrategies.FinishPiece());
         register(map, new SurpriseStrategies.MoveOpponent());
         register(map, new SurpriseStrategies.ReturnToCastle());
@@ -29,7 +31,7 @@ public final class SurpriseEngine {
         strategies = Map.copyOf(map);
 
         int total = 0;
-        for (SurpriseType type : SurpriseType.values()) {
+        for (SurpriseEventType type : SurpriseEventType.values()) {
             total += type.getProbabilityPercent();
             if (!strategies.containsKey(type)) {
                 throw new IllegalStateException("No strategy for " + type);
@@ -40,7 +42,7 @@ public final class SurpriseEngine {
         }
     }
 
-    private static void register(Map<SurpriseType, SurpriseStrategy> map,
+    private static void register(Map<SurpriseEventType, SurpriseStrategy> map,
                                  SurpriseStrategy strategy) {
         if (map.put(strategy.getType(), strategy) != null) {
             throw new IllegalStateException("Duplicate strategy: " + strategy.getType());
@@ -52,7 +54,7 @@ public final class SurpriseEngine {
         Objects.requireNonNull(context, "context");
         int roll = random.nextInt(100);
         int cumulative = 0;
-        for (SurpriseType type : SurpriseType.values()) {
+        for (SurpriseEventType type : SurpriseEventType.values()) {
             cumulative += type.getProbabilityPercent();
             if (roll < cumulative) {
                 return resolve(type, context);
@@ -62,7 +64,7 @@ public final class SurpriseEngine {
     }
 
     // פתרון מפורש משמש לבדיקות ולחיבור עתידי של ה-Controller.
-    public SurprisePlan resolve(SurpriseType type, SurpriseContext context) {
+    public SurprisePlan resolve(SurpriseEventType type, SurpriseContext context) {
         if (type == null) {
             throw new IllegalArgumentException("Surprise type is required");
         }

@@ -1,19 +1,21 @@
 package Model;
 
+import Enums.SurpriseEventType;
+
 /**
  * תוצאת התכנון של Strategy: סוג הפעולה ויעד תנועה במקרה הרלוונטי.
  * targetStep הוא -1 כאשר התוצאה אינה תנועה רגילה לאחור.
  * ביצוע ההשפעה עצמה יתבצע דרך Controller בשלב החיבור למשחק.
  */
 public final class SurprisePlan {
-    private final SurpriseType type;
+    private final SurpriseEventType type;
     private final int targetStep;
 
-    public SurprisePlan(SurpriseType type, int targetStep) {
+    public SurprisePlan(SurpriseEventType type, int targetStep) {
         if (type == null) {
             throw new IllegalArgumentException("Surprise type is required");
         }
-        if (type == SurpriseType.MOVE_BACK_THREE) {
+        if (type == SurpriseEventType.BACK_3_SQUARES) {
             if (targetStep < 0) {
                 throw new IllegalArgumentException("Backward move needs a valid target");
             }
@@ -24,7 +26,7 @@ public final class SurprisePlan {
         this.targetStep = targetStep;
     }
 
-    public SurpriseType getType() {
+    public SurpriseEventType getType() {
         return type;
     }
 

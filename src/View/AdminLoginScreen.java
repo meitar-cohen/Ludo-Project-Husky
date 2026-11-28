@@ -30,30 +30,35 @@ import javax.swing.WindowConstants;
 import javax.swing.border.EmptyBorder;
 
 import Controller.AdminAuthController;
+import Controller.QuestionController;
 
 /**
  * כניסה למנהל: בהרצה ראשונה הגדרת סיסמה, ובהרצות הבאות אימות.
  * אין סיסמת דמו קבועה בקוד, וסיסמה לא נשמרת ב-GitHub.
  */
-public final class AdminLoginView extends JFrame {
+public final class AdminLoginScreen extends JFrame {
 
     private static final Color NAVY = new Color(18, 27, 61);
     private static final Color BLUE = new Color(75, 110, 248);
     private static final Color MUTED = new Color(111, 125, 153);
     private static final Color RED = new Color(198, 63, 82);
 
-    private final AdminAuthController auth;
+    private final QuestionController auth;
     private final boolean setupMode;
     private final JPasswordField passwordField = new JPasswordField();
     private final JPasswordField confirmationField = new JPasswordField();
     private final JLabel message = new JLabel(" ");
 
-    public AdminLoginView() {
-        this(new AdminAuthController());
+    public AdminLoginScreen() {
+        this(new QuestionController());
     }
 
-    // בנאי לבדיקה, מאפשר שימוש במאגר אימות זמני.
-    public AdminLoginView(AdminAuthController auth) {
+    // בנאי תאימות לבדיקות קיימות: מאגר אימות זמני.
+    public AdminLoginScreen(AdminAuthController auth) {
+        this(new QuestionController(auth));
+    }
+
+    public AdminLoginScreen(QuestionController auth) {
         if (auth == null) {
             throw new IllegalArgumentException("Authentication controller is required");
         }
@@ -174,13 +179,13 @@ public final class AdminLoginView extends JFrame {
         try {
             if (setupMode) {
                 auth.setupPassword(password, confirmation);
-            } else if (!auth.authenticate(password)) {
+            } else if (!auth.authenticateAdmin(password)) {
                 message.setText("Incorrect password. Please try again.");
                 return;
             }
 
             // גישה למסך הניהול רק אחרי הגדרת סיסמה או אימות מוצלח.
-            QuestionManagementView management = new QuestionManagementView();
+            QuestionManagementScreen management = new QuestionManagementScreen();
             management.setVisible(true);
             dispose();
         } catch (IOException | IllegalArgumentException | IllegalStateException exception) {

@@ -13,9 +13,9 @@ import javax.swing.Timer;
 import Controller.GameController;
 import Controller.MovementController;
 import Enums.Stage;
+import Enums.SurpriseEventType;
 import Model.Game;
 import Model.Player;
-import Model.SurpriseType;
 import View.BoardPanel;
 import View.GameScreen;
 
@@ -88,7 +88,7 @@ public final class ObserverSyncCheck {
                 syncGame.setStage(Stage.BUSY);
                 syncController.getSurpriseController().apply(
                         syncController.getSurpriseController().resolveForPiece(
-                                SurpriseType.FINISH_PIECE, 0, 64),
+                                SurpriseEventType.GO_TO_FINISH, 0, 64),
                         0, 64, -1, 0);
                 check(board.isActivePieceFinished(0) && !board.hasPieceOnBoard(),
                         "BoardPanel automatically synced surprise finish without manual show call");

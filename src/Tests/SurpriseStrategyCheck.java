@@ -1,9 +1,9 @@
 package Tests;
 
+import Enums.SurpriseEventType;
 import Model.SurpriseContext;
 import Model.SurpriseEngine;
 import Model.SurprisePlan;
-import Model.SurpriseType;
 
 /** בדיקות יחידה לכל שש אסטרטגיות ההפתעה. */
 public final class SurpriseStrategyCheck {
@@ -25,10 +25,10 @@ public final class SurpriseStrategyCheck {
     public static void main(String[] args) {
         SurpriseEngine engine = new SurpriseEngine();
         SurpriseContext context = new SurpriseContext(12, 52);
-        for (SurpriseType type : SurpriseType.values()) {
+        for (SurpriseEventType type : SurpriseEventType.values()) {
             SurprisePlan plan = engine.resolve(type, context);
             check(plan.getType() == type, "Wrong strategy for " + type);
-            if (type != SurpriseType.MOVE_BACK_THREE) {
+            if (type != SurpriseEventType.BACK_3_SQUARES) {
                 check(plan.getTargetStep() == -1,
                         "Unexpected numeric target for " + type);
             }
@@ -36,13 +36,13 @@ public final class SurpriseStrategyCheck {
         }
 
         // תנועה אחורה בקצה המסלול: אסור לקבל אינדקס שלילי.
-        check(engine.resolve(SurpriseType.MOVE_BACK_THREE,
+        check(engine.resolve(SurpriseEventType.BACK_3_SQUARES,
                 new SurpriseContext(12, 52)).getTargetStep() == 9,
                 "Backward movement should use three steps");
-        check(engine.resolve(SurpriseType.MOVE_BACK_THREE,
+        check(engine.resolve(SurpriseEventType.BACK_3_SQUARES,
                 new SurpriseContext(1, 52)).getTargetStep() == 0,
                 "Backward movement should stop at zero");
-        check(engine.resolve(SurpriseType.MOVE_BACK_THREE,
+        check(engine.resolve(SurpriseEventType.BACK_3_SQUARES,
                 new SurpriseContext(0, 52)).getTargetStep() == 0,
                 "Backward movement should stay at zero");
 

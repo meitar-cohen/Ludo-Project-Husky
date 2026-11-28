@@ -5,11 +5,11 @@ import Controller.SurpriseController;
 import Controller.SurpriseResolution;
 import Controller.TurnController;
 import Enums.Stage;
+import Enums.SurpriseEventType;
 import Model.Game;
 import Model.Piece;
 import Model.Player;
 import Model.SurprisePlan;
-import Model.SurpriseType;
 
 /** בדיקות אינטגרציה של שש ההפתעות ללא הפעלת משחק גרפי. */
 public final class SurpriseControllerIntegrationCheck {
@@ -29,37 +29,37 @@ public final class SurpriseControllerIntegrationCheck {
             game.setPiecesInCastle(3);
             game.setStage(Stage.BUSY);
         }
-        SurprisePlan plan(SurpriseType type) {
+        SurprisePlan plan(SurpriseEventType type) {
             return surprises.resolveForPiece(type, 0, 52);
         }
-        SurpriseResolution apply(SurpriseType type) {
+        SurpriseResolution apply(SurpriseEventType type) {
             return surprises.apply(plan(type), 0, 52, -1, 0);
         }
     }
 
     public static void main(String[] args) {
         Setup back = new Setup();
-        SurpriseResolution backResult = back.apply(SurpriseType.MOVE_BACK_THREE);
+        SurpriseResolution backResult = back.apply(SurpriseEventType.BACK_3_SQUARES);
         assertThat(back.game.getPlayer(0).getPiece(0).getSteps() == 5,
                 "Move-back strategy was not applied");
         assertThat(backResult.getAfterStep() == 5, "Wrong view position");
         System.out.println("PASS - move back 3 squares and view target");
 
         Setup castle = new Setup();
-        castle.apply(SurpriseType.RETURN_TO_CASTLE);
+        castle.apply(SurpriseEventType.BACK_TO_CASTLE);
         Piece returned = castle.game.getPlayer(0).getPiece(0);
         assertThat(!returned.isOnBoard() && castle.game.getPiecesInCastle() == 4,
                 "Castle count/state is out of sync");
         System.out.println("PASS - return to castle and piece count");
 
         Setup finish = new Setup();
-        finish.apply(SurpriseType.FINISH_PIECE);
+        finish.apply(SurpriseEventType.GO_TO_FINISH);
         assertThat(finish.game.getPlayer(0).getPiece(0).isFinished(),
                 "Direct finish was not applied");
         System.out.println("PASS - direct finish");
 
         Setup skip = new Setup();
-        skip.apply(SurpriseType.SKIP_NEXT_TURN);
+        skip.apply(SurpriseEventType.LOSE_NEXT_TURN);
         assertThat(skip.game.isSkipNextTurnPending(0), "Skip was not recorded");
         skip.turns.passTurn(); // שחקן B מקבל תור
         assertThat(skip.game.getCurrentPlayer() == 1, "Expected player B");
@@ -69,7 +69,7 @@ public final class SurpriseControllerIntegrationCheck {
         System.out.println("PASS - skip next turn exactly once");
 
         Setup bonus = new Setup();
-        bonus.apply(SurpriseType.EXTRA_TURN_ULTRABOOST);
+        bonus.apply(SurpriseEventType.EXTRA_ULTRABOOST_TURN);
         assertThat(bonus.turns.hasExtraTurn(), "Bonus turn was not requested");
         bonus.turns.grantExtraTurn();
         assertThat(bonus.turns.isUltraBoostRollPending()
@@ -86,7 +86,7 @@ public final class SurpriseControllerIntegrationCheck {
         assertThat(enemy.surprises.eligibleOpponents().contains(1),
                 "Eligible opponent was not found");
         SurpriseResolution enemyResult = enemy.surprises.apply(
-                enemy.plan(SurpriseType.MOVE_OPPONENT), 0, 52, 1, 5);
+                enemy.plan(SurpriseEventType.MOVE_OPPONENT_BACK), 0, 52, 1, 5);
         assertThat(enemy.game.getPlayer(1).getPiece(1).getSteps() == 7
                 && enemyResult.getAfterStep() == 7,
                 "Opponent should move back ceil(5/2)=3 squares");
@@ -99,7 +99,7 @@ public final class SurpriseControllerIntegrationCheck {
         nearStartPiece.setOnBoard(true);
         nearStartPiece.setSteps(2);
         SurpriseResolution nearStartResult = nearStart.surprises.apply(
-                nearStart.plan(SurpriseType.MOVE_OPPONENT), 0, 52, 1, 6);
+                nearStart.plan(SurpriseEventType.MOVE_OPPONENT_BACK), 0, 52, 1, 6);
         assertThat(nearStartPiece.getSteps() == 0 && nearStartPiece.isOnBoard()
                 && nearStartResult.getAfterStep() == 0,
                 "Opponent must stop at the start square, not return to the castle");
@@ -108,7 +108,7 @@ public final class SurpriseControllerIntegrationCheck {
         Piece atStartPiece = atStart.game.getPlayer(1).getPiece(1);
         atStartPiece.setOnBoard(true);
         atStartPiece.setSteps(0);
-        atStart.surprises.apply(atStart.plan(SurpriseType.MOVE_OPPONENT), 0, 52, 1, 6);
+        atStart.surprises.apply(atStart.plan(SurpriseEventType.MOVE_OPPONENT_BACK), 0, 52, 1, 6);
         assertThat(atStartPiece.getSteps() == 0 && atStartPiece.isOnBoard(),
                 "Opponent on the start square must stay there");
 
@@ -116,7 +116,7 @@ public final class SurpriseControllerIntegrationCheck {
         Piece homePathPiece = homePath.game.getPlayer(1).getPiece(1);
         homePathPiece.setInHomePath(true);
         homePathPiece.setSteps(1);
-        homePath.surprises.apply(homePath.plan(SurpriseType.MOVE_OPPONENT), 0, 52, 1, 6);
+        homePath.surprises.apply(homePath.plan(SurpriseEventType.MOVE_OPPONENT_BACK), 0, 52, 1, 6);
         assertThat(homePathPiece.getSteps() == 0 && homePathPiece.isInHomePath()
                 && !homePathPiece.isFinished(),
                 "Opponent in the home path must move back inside it and stop at step 0");
@@ -131,13 +131,13 @@ public final class SurpriseControllerIntegrationCheck {
         notify.game.addObserver(event -> {
             if ("pieceMoved".equals(event.getPropertyName())) pieceMovedCount[0]++;
         });
-        notify.surprises.apply(notify.plan(SurpriseType.MOVE_OPPONENT), 0, 52, 1, 4);
+        notify.surprises.apply(notify.plan(SurpriseEventType.MOVE_OPPONENT_BACK), 0, 52, 1, 4);
         assertThat(pieceMovedCount[0] == 1,
                 "Opponent move must fire exactly one pieceMoved notification");
         System.out.println("PASS - opponent move notifies observers once");
 
         Setup noEnemy = new Setup();
-        SurpriseResolution noTarget = noEnemy.apply(SurpriseType.MOVE_OPPONENT);
+        SurpriseResolution noTarget = noEnemy.apply(SurpriseEventType.MOVE_OPPONENT_BACK);
         assertThat(noTarget.getTitle().contains("NO TARGET"),
                 "No-opponent edge case not handled");
         System.out.println("PASS - no opponent on the board");

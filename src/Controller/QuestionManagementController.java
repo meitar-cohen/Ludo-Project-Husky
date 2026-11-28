@@ -67,6 +67,11 @@ public final class QuestionManagementController {
         saveAndApply(updated);
     }
 
+    /** שומר את הרשומות הקיימות לקובץ ה-CSV הפעיל (גם כשלא בוצעה עריכה). */
+    public void save() throws IOException {
+        QuestionRepository.saveRecordsToCsv(csvPath, List.copyOf(records));
+    }
+
     private int indexOf(int id) {
         for (int i = 0; i < records.size(); i++) {
             if (records.get(i).getId() == id) return i;

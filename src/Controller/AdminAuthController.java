@@ -3,18 +3,18 @@ package Controller;
 import java.io.IOException;
 import java.util.Arrays;
 
-import Model.AdminCredentialsStore;
+import Model.AdminCredentials;
 
 /** מתאם בין מסך כניסת המנהל לבין שמירת פרטי האימות ב-Model. */
 public final class AdminAuthController {
 
-    private final AdminCredentialsStore store;
+    private final AdminCredentials store;
 
     public AdminAuthController() {
-        this(new AdminCredentialsStore());
+        this(new AdminCredentials());
     }
 
-    public AdminAuthController(AdminCredentialsStore store) {
+    public AdminAuthController(AdminCredentials store) {
         if (store == null) {
             throw new IllegalArgumentException("Credential store is required");
         }

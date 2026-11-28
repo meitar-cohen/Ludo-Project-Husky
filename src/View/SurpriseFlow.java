@@ -8,8 +8,8 @@ import Controller.GameController;
 import Controller.SurpriseController;
 import Controller.SurpriseResolution;
 import Controller.TurnController;
+import Enums.SurpriseEventType;
 import Model.SurprisePlan;
-import Model.SurpriseType;
 
 /** מתאם תצוגה להפעלת הפתעות; אינו קובע חוקי משחק בעצמו. */
 final class SurpriseFlow {
@@ -54,7 +54,7 @@ final class SurpriseFlow {
                 board.getActiveRouteSize(pieceIndex));
         int opponent = -1;
         int die = 0;
-        if (plan.getType() == SurpriseType.MOVE_OPPONENT) {
+        if (plan.getType() == SurpriseEventType.MOVE_OPPONENT_BACK) {
             List<Integer> players = controller.eligibleOpponents();
             if (!players.isEmpty()) {
                 String[] names = game.getPlayerNames();
@@ -76,21 +76,21 @@ final class SurpriseFlow {
         dialog.setVisible(true);
         status.accept(outcome.getDescription());
         switch (plan.getType()) {
-            case FINISH_PIECE:
+            case GO_TO_FINISH:
                 board.clearHighlight();
                 if (game.getMovementController().isCurrentPlayerFinished()) passTurn.run();
                 else endTurn.run();
                 break;
-            case RETURN_TO_CASTLE:
+            case BACK_TO_CASTLE:
                 board.clearHighlight();
                 endTurn.run();
                 break;
-            case MOVE_BACK_THREE:
+            case BACK_3_SQUARES:
                 board.animatePiece(pieceIndex, outcome.getBeforeStep(),
                         outcome.getAfterStep(),
                         endTurnAfterCapture(game.getCurrentPlayerIndex(), pieceIndex));
                 break;
-            case MOVE_OPPONENT:
+            case MOVE_OPPONENT_BACK:
                 if (outcome.hasAnimatedMovement()) {
                     board.animateOtherPlayerPiece(outcome.getAffectedPlayer(),
                             outcome.getAffectedPiece(), outcome.getBeforeStep(),
@@ -101,8 +101,8 @@ final class SurpriseFlow {
                     endTurn.run();
                 }
                 break;
-            case SKIP_NEXT_TURN:
-            case EXTRA_TURN_ULTRABOOST:
+            case LOSE_NEXT_TURN:
+            case EXTRA_ULTRABOOST_TURN:
                 endTurn.run();
                 break;
             default:
@@ -110,14 +110,14 @@ final class SurpriseFlow {
         }
     }
 
-    private static String heading(SurpriseType type) {
+    private static String heading(SurpriseEventType type) {
         return switch (type) {
-            case FINISH_PIECE -> "INSTANT FINISH";
-            case MOVE_OPPONENT -> "OPPONENT MOVEMENT";
-            case RETURN_TO_CASTLE -> "RETURN TO CASTLE";
-            case MOVE_BACK_THREE -> "BACK 3 SQUARES";
-            case SKIP_NEXT_TURN -> "SKIP NEXT TURN";
-            case EXTRA_TURN_ULTRABOOST -> "ULTRA BOOST ROLL";
+            case GO_TO_FINISH -> "INSTANT FINISH";
+            case MOVE_OPPONENT_BACK -> "OPPONENT MOVEMENT";
+            case BACK_TO_CASTLE -> "RETURN TO CASTLE";
+            case BACK_3_SQUARES -> "BACK 3 SQUARES";
+            case LOSE_NEXT_TURN -> "SKIP NEXT TURN";
+            case EXTRA_ULTRABOOST_TURN -> "ULTRA BOOST ROLL";
         };
     }
 }

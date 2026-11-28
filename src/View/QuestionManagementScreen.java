@@ -37,12 +37,13 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 
+import Controller.QuestionController;
 import Controller.QuestionManagementController;
 import Model.Question;
 import Model.QuestionRecord;
 
 /** ממשק ניהול שאלות - עובד מול ה-Controller ושומר שינויים לקובץ CSV. */
-public final class QuestionManagementView extends JFrame {
+public final class QuestionManagementScreen extends JFrame {
 
     private static final Color NAVY = new Color(18, 27, 61);
     private static final Color BLUE = new Color(75, 110, 248);
@@ -52,7 +53,7 @@ public final class QuestionManagementView extends JFrame {
     private static final Color RED = new Color(198, 63, 82);
     private static final Font BODY = new Font("Segoe UI", Font.PLAIN, 14);
 
-    private final QuestionManagementController controller;
+    private final QuestionController controller;
     private final DefaultTableModel model;
     private final JTable table;
     private final JLabel counter = new JLabel();
@@ -61,12 +62,16 @@ public final class QuestionManagementView extends JFrame {
     private final JButton deleteButton = button("Delete", false, true);
 
     /** בכניסה רגילה משתמשים בנתיב המאגר של הפרויקט. */
-    public QuestionManagementView() throws IOException {
-        this(new QuestionManagementController());
+    public QuestionManagementScreen() throws IOException {
+        this(new QuestionController(new QuestionManagementController()));
     }
 
-    /** הבנאי הזה מאפשר לבדוק את הממשק על עותק CSV זמני. */
-    public QuestionManagementView(QuestionManagementController controller) {
+    /** תאימות לבדיקות הממשק הקיימות על עותק CSV זמני. */
+    public QuestionManagementScreen(QuestionManagementController controller) {
+        this(new QuestionController(controller));
+    }
+
+    public QuestionManagementScreen(QuestionController controller) {
         if (controller == null) throw new IllegalArgumentException("Controller required");
         this.controller = controller;
         setTitle("Ludo - Question Management");
@@ -241,7 +246,7 @@ public final class QuestionManagementView extends JFrame {
     }
 
     private void refresh(int selectedId) {
-        List<QuestionRecord> records = controller.getQuestions();
+        List<QuestionRecord> records = controller.getQuestionRecords();
         model.setRowCount(0);
         for (QuestionRecord record : records) {
             Question q = record.getQuestion();
@@ -270,7 +275,7 @@ public final class QuestionManagementView extends JFrame {
         int row = table.getSelectedRow();
         if (row < 0) return null;
         int id = (Integer) model.getValueAt(table.convertRowIndexToModel(row), 0);
-        for (QuestionRecord record : controller.getQuestions()) {
+        for (QuestionRecord record : controller.getQuestionRecords()) {
             if (record.getId() == id) return record;
         }
         return null;
@@ -314,130 +319,18 @@ public final class QuestionManagementView extends JFrame {
     }
 
     private void showForm(QuestionRecord existing) {
-        JDialog dialog = new JDialog(this,
-                existing == null ? "Add Question" : "Edit Question #" + existing.getId(),
-                true);
-        dialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
-        dialog.setSize(740, 745);
-        dialog.setMinimumSize(new Dimension(600, 550));
-        dialog.setLocationRelativeTo(this);
-
-        JPanel fields = new JPanel();
-        fields.setLayout(new BoxLayout(fields, BoxLayout.Y_AXIS));
-        fields.setBackground(Color.WHITE);
-        fields.setBorder(new EmptyBorder(15, 22, 15, 22));
-
-        JComboBox<String> difficulty = new JComboBox<>(
-                new String[]{"easy", "medium", "hard"});
-        difficulty.setFont(BODY);
-        addField(fields, "DIFFICULTY", difficulty);
-
-        JTextArea questionText = textArea(4);
-        addField(fields, "QUESTION", areaScroll(questionText, 96));
-
-        JTextArea[] answerTexts = new JTextArea[4];
-        for (int i = 0; i < 4; i++) {
-            answerTexts[i] = textArea(3);
-            addField(fields, "ANSWER " + (i + 1), areaScroll(answerTexts[i], 68));
-        }
-
-        JComboBox<String> correct = new JComboBox<>(new String[]{
-                "Answer 1 (A)", "Answer 2 (B)",
-                "Answer 3 (C)", "Answer 4 (D)"});
-        correct.setFont(BODY);
-        addField(fields, "CORRECT ANSWER", correct);
-
-        JTextField pattern = new JTextField();
-        pattern.setFont(BODY);
-        addField(fields, "ARCHITECTURAL PATTERN", pattern);
-        JTextArea coverage = textArea(3);
-        addField(fields, "ADVANTAGES / DISADVANTAGES COVERED",
-                areaScroll(coverage, 65));
-        JTextArea source = textArea(3);
-        addField(fields, "SOURCE", areaScroll(source, 65));
-
-        if (existing != null) {
-            Question q = existing.getQuestion();
-            difficulty.setSelectedItem(q.getDifficulty().toLowerCase());
-            questionText.setText(q.getText());
-            String[] opts = q.getOptions();
-            for (int i = 0; i < 4; i++) answerTexts[i].setText(opts[i]);
-            correct.setSelectedIndex(q.getCorrectIndex());
-            pattern.setText(existing.getArchitecturalPattern());
-            coverage.setText(existing.getCoverage());
-            source.setText(existing.getSource());
-        }
-
-        JScrollPane formScroll = new JScrollPane(fields,
-                JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
-                JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        formScroll.getVerticalScrollBar().setUnitIncrement(18);
-        formScroll.setBorder(null);
-        JPanel actionBar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
-        actionBar.setBackground(Color.WHITE);
-        JButton cancel = button("Cancel", false, false);
-        cancel.addActionListener(e -> dialog.dispose());
-        JButton save = button(existing == null ? "Add & Save" : "Save Changes", true, false);
-        save.addActionListener(e -> {
-            try {
-                String[] options = new String[4];
-                for (int i = 0; i < 4; i++) options[i] = answerTexts[i].getText();
-                Question q = new Question(questionText.getText(), options,
-                        correct.getSelectedIndex(), (String) difficulty.getSelectedItem());
-                int selectedId;
-                if (existing == null) {
-                    selectedId = controller.add(q, pattern.getText(),
-                            coverage.getText(), source.getText());
-                } else {
-                    selectedId = existing.getId();
-                    controller.update(selectedId, q, pattern.getText(),
-                            coverage.getText(), source.getText());
-                }
-                dialog.dispose();
-                refresh(selectedId);
-            } catch (IllegalArgumentException | IllegalStateException | IOException ex) {
-                showError(ex);
-            }
-        });
-        actionBar.add(cancel);
-        actionBar.add(save);
-        JPanel outer = new JPanel(new BorderLayout());
-        outer.add(formScroll, BorderLayout.CENTER);
-        outer.add(actionBar, BorderLayout.SOUTH);
-        dialog.setContentPane(outer);
-        dialog.getRootPane().setDefaultButton(save);
-        dialog.setVisible(true);
-    }
-
-    private void addField(JPanel panel, String title, Component field) {
-        JLabel heading = label(title, 11, Font.BOLD, MUTED);
-        heading.setAlignmentX(Component.LEFT_ALIGNMENT);
-        ((javax.swing.JComponent) field).setAlignmentX(Component.LEFT_ALIGNMENT);
-        heading.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
-        field.setMaximumSize(new Dimension(Integer.MAX_VALUE,
-                field.getPreferredSize().height));
-        panel.add(heading);
-        panel.add(Box.createVerticalStrut(5));
-        panel.add(field);
-        panel.add(Box.createVerticalStrut(13));
-    }
-
-    private static JTextArea textArea(int rows) {
-        JTextArea area = new JTextArea(rows, 30);
-        area.setFont(BODY);
-        area.setLineWrap(true);
-        area.setWrapStyleWord(true);
-        area.setBorder(new EmptyBorder(6, 8, 6, 8));
-        return area;
-    }
-
-    private static JScrollPane areaScroll(JTextArea area, int height) {
-        JScrollPane scroll = new JScrollPane(area,
-                JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
-                JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        scroll.setPreferredSize(new Dimension(570, height));
-        scroll.setBorder(BorderFactory.createLineBorder(new Color(215, 224, 240)));
-        return scroll;
+        QuestionEditorDialog editor = new QuestionEditorDialog(this, existing,
+                (question, pattern, coverage, source) -> {
+                    int selectedId;
+                    if (existing == null) {
+                        selectedId = controller.add(question, pattern, coverage, source);
+                    } else {
+                        selectedId = existing.getId();
+                        controller.update(selectedId, question, pattern, coverage, source);
+                    }
+                    refresh(selectedId);
+                });
+        editor.setVisible(true);
     }
 
     private void showError(Exception ex) {

@@ -1,19 +1,19 @@
-package Model;
+package Enums;
 
 /**
  * ששת סוגי ההפתעות וההסתברויות שנקבעו בהוראות המשחק.
  */
-public enum SurpriseType {
-    FINISH_PIECE(10),
-    MOVE_OPPONENT(10),
-    RETURN_TO_CASTLE(10),
-    MOVE_BACK_THREE(30),
-    SKIP_NEXT_TURN(30),
-    EXTRA_TURN_ULTRABOOST(10);
+public enum SurpriseEventType {
+    GO_TO_FINISH(10),
+    MOVE_OPPONENT_BACK(10),
+    BACK_TO_CASTLE(10),
+    BACK_3_SQUARES(30),
+    LOSE_NEXT_TURN(30),
+    EXTRA_ULTRABOOST_TURN(10);
 
     private final int probabilityPercent;
 
-    SurpriseType(int probabilityPercent) {
+    SurpriseEventType(int probabilityPercent) {
         this.probabilityPercent = probabilityPercent;
     }
 
